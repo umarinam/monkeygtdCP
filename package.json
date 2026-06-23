@@ -1,0 +1,16 @@
+{
+  "name": "monkeygtd-copilot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MonkeyGTD test and policy automation",
+  "scripts": {
+    "test": "node scripts/run-tests.cjs",
+    "test:unit": "node scripts/run-tests.cjs --suite=unit",
+    "test:integration": "node scripts/run-tests.cjs --suite=integration",
+    "check:test-policy": "node scripts/check-tests-required.cjs",
+    "test:ci": "node scripts/check-tests-required.cjs && node scripts/run-tests.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
