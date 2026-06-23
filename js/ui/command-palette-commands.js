@@ -41,7 +41,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Undo', s: 'Ctrl+Z / uu', fn: () => app.undo() },
     { l: 'Sync now', s: 'sn', fn: () => app.syncGistNow() },
     { l: 'Pull from Gist', s: 'sp', fn: () => app.syncFromGist() },
-    { l: 'Push to Gist', s: 'ss', fn: () => app.syncToGist() },
+    { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
     { l: 'Hide/show completed', s: 'hc', fn: () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); } },
     { l: 'Toggle relative dates', s: 'df', fn: () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); } },
     { l: 'Zen mode', s: 'om', fn: () => app.setZen(!state.data.settings.zenMode) },
