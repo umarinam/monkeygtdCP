@@ -1,0 +1,435 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MonkeyGTD</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+<div id="app">
+
+  <!-- Top bar -->
+  <nav id="topbar">
+    <button class="tbtn" onclick="App.showPage('home')" title="Lists (gh)">📋</button>
+    <div id="list-title" onclick="App.showPage('home')">MonkeyGTD</div>
+    <div id="search-wrap">
+      <input id="search" type="text" placeholder="Search… (/)" autocomplete="off" spellcheck="false">
+      <span id="search-x" onclick="App.clearSearch()">✕</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+      <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
+      <button class="tbtn" onclick="App.showPage('tags')" title="Tags (gt)">🏷</button>
+      <button class="tbtn" onclick="App.openSettings()" title="Settings (oo)">⚙</button>
+    </div>
+  </nav>
+
+  <!-- Pages -->
+  <main id="main">
+    <!-- Home -->
+    <div id="home-page" class="page hidden">
+      <div style="padding:24px">
+        <div class="ph">My Lists</div>
+        <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
+          <button class="btn btn-p btn-sm" onclick="App.createList()">+ New List</button>
+        </div>
+        <div id="lists-c"></div>
+      </div>
+    </div>
+
+    <!-- List view -->
+    <div id="list-page" class="page" style="display:flex;flex-direction:column">
+      <div id="breadcrumbs"></div>
+      <div style="flex:1;overflow-y:auto"><div id="task-list"></div></div>
+    </div>
+
+    <!-- Due page -->
+    <div id="due-page" class="page hidden">
+      <div style="padding:16px"><div class="ph">Due Tasks</div><div id="due-c"></div></div>
+    </div>
+
+    <!-- Tags page -->
+    <div id="tags-page" class="page hidden">
+      <div style="padding:16px"><div class="ph">Tags</div><div id="tags-c"></div></div>
+    </div>
+  </main>
+
+  <!-- Status bar -->
+  <div id="sb">
+    <span class="sbi" id="sb-mode">CMD</span>
+    <span class="sbi" id="sb-list"></span>
+    <span class="sbi" id="sb-sel" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px"></span>
+    <span class="sbi click" id="sb-filt" style="display:none" onclick="App.clearSearch()"></span>
+    <span style="flex:1"></span>
+    <span class="sbi" id="sb-cnt"></span>
+  </div>
+</div>
+
+<!-- â”€â”€ Toast / Key hint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+<div id="toast"></div>
+<div id="kh"></div>
+
+<!-- ================================================================
+     MODALS
+     ================================================================ -->
+
+<!-- Due date -->
+<div id="ov-due" class="ov hidden">
+  <div class="modal" style="max-width:330px">
+    <div class="mh"><span class="mt">Due Date</span><span class="mx" onclick="App.closeModal('ov-due')">✕</span></div>
+    <div class="mb">
+      <div class="qp">
+        <span class="qpb" onclick="App.setDueQ('today')">Today</span>
+        <span class="qpb" onclick="App.setDueQ('tomorrow')">Tomorrow</span>
+        <span class="qpb" onclick="App.setDueQ('asap')">ASAP</span>
+        <span class="qpb" onclick="App.openRepeatModal()">Repeat…</span>
+        <span class="qpb" onclick="App.setDueQ('nextweek')">Next Week</span>
+        <span class="qpb" style="color:var(--danger)" onclick="App.setDueQ('clear')">✕ Clear</span>
+      </div>
+      <div id="cal-widget"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Repeating -->
+<div id="ov-repeat" class="ov hidden">
+  <div class="modal" style="max-width:390px">
+    <div class="mh"><span class="mt">Repeating Task</span><span class="mx" onclick="App.closeModal('ov-repeat')">✕</span></div>
+    <div class="mb">
+      <div class="fg">
+        <label>Frequency</label>
+        <select id="rep-freq" onchange="App.toggleRepeatWeekdays()">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Every</label>
+        <input id="rep-int" type="text" value="1" placeholder="1">
+      </div>
+      <div class="fg" id="rep-weekdays-wrap" style="display:none">
+        <label>Weekdays</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <label class="cb-lbl"><input type="checkbox" class="rep-wd" value="1">Mon</label>
+          <label class="cb-lbl"><input type="checkbox" class="rep-wd" value="2">Tue</label>
+          <label class="cb-lbl"><input type="checkbox" class="rep-wd" value="3">Wed</label>
+          <label class="cb-lbl"><input type="checkbox" class="rep-wd" value="4">Thu</label>
+          <label class="cb-lbl"><input type="checkbox" class="rep-wd" value="5">Fri</label>
+          <label class="cb-lbl"><input type="checkbox" class="rep-wd" value="6">Sat</label>
+          <label class="cb-lbl"><input type="checkbox" class="rep-wd" value="0">Sun</label>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Repeat from</label>
+        <select id="rep-from">
+          <option value="due">Due date</option>
+          <option value="completion">Completion date</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="cb-lbl"><input type="checkbox" id="rep-paused"> Paused</label>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-d" onclick="App.deleteRepeatSettings()">Delete Repeat</button>
+      <button class="btn" onclick="App.closeModal('ov-repeat')">Cancel</button>
+      <button class="btn btn-p" onclick="App.saveRepeatSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tags -->
+<div id="ov-tags" class="ov hidden">
+  <div class="modal">
+    <div class="mh"><span class="mt">Tags</span><span class="mx" onclick="App.closeModal('ov-tags')">✕</span></div>
+    <div class="mb">
+      <div class="fg">
+        <label>Add tags (Enter or comma to add)</label>
+        <div style="position:relative">
+          <input id="tag-in" type="text" placeholder="#tag-name" autocomplete="off">
+          <div id="tag-ac" class="tagac"></div>
+        </div>
+      </div>
+      <div id="cur-tags" class="curtags"></div>
+    </div>
+    <div class="mf"><button class="btn" onclick="App.closeModal('ov-tags')">Done</button></div>
+  </div>
+</div>
+
+<!-- Notes -->
+<div id="ov-notes" class="ov hidden">
+  <div class="modal">
+    <div class="mh"><span class="mt">Notes</span><span class="mx" onclick="App.closeModal('ov-notes')">✕</span></div>
+    <div class="mb">
+      <div id="notes-list" style="margin-bottom:12px"></div>
+      <div class="fg">
+        <label>New note (Markdown supported)</label>
+        <textarea id="note-in" rows="4" placeholder="Write a note…"></textarea>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-notes')">Cancel</button>
+      <button class="btn btn-p" onclick="App.addNote()">Add Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move -->
+<div id="ov-move" class="ov hidden">
+  <div class="modal">
+    <div class="mh"><span class="mt">Move to…</span><span class="mx" onclick="App.closeModal('ov-move')">✕</span></div>
+    <div class="mb">
+      <div class="fg"><input id="move-q" type="text" placeholder="Search lists and tasks…" autocomplete="off"></div>
+      <div id="move-r" style="max-height:280px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Sort -->
+<div id="ov-sort" class="ov hidden">
+  <div class="modal" style="max-width:310px">
+    <div class="mh"><span class="mt">Sort</span><span class="mx" onclick="App.closeModal('ov-sort')">✕</span></div>
+    <div class="mb">
+      <div id="sort-opts"></div>
+      <div class="fg" style="margin-top:10px">
+        <label class="cb-lbl"><input type="checkbox" id="sort-rev"> Reverse order</label>
+      </div>
+      <div class="fg">
+        <label class="cb-lbl"><input type="checkbox" id="sort-shallow"> Shallow (top level only)</label>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-sort')">Cancel</button>
+      <button class="btn btn-p" onclick="App.applySort()">Sort</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export -->
+<div id="ov-export" class="ov hidden">
+  <div class="modal">
+    <div class="mh"><span class="mt">Export</span><span class="mx" onclick="App.closeModal('ov-export')">✕</span></div>
+    <div class="mb">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="fg" style="flex:1;min-width:120px">
+          <label>Format</label>
+          <select id="exp-fmt" onchange="App.refreshExport()">
+            <option value="json">JSON</option>
+            <option value="markdown">Markdown</option>
+            <option value="opml">OPML</option>
+            <option value="text">Plain Text</option>
+          </select>
+        </div>
+        <div class="fg" style="flex:1;min-width:120px">
+          <label>Scope</label>
+          <select id="exp-scope" onchange="App.refreshExport()">
+            <option value="list">Whole list</option>
+            <option value="sel">Selected branch</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:10px">
+        <label class="cb-lbl"><input type="checkbox" id="exp-notes" checked onchange="App.refreshExport()"> Notes</label>
+        <label class="cb-lbl"><input type="checkbox" id="exp-done" checked onchange="App.refreshExport()"> Completed</label>
+      </div>
+      <textarea id="exp-out" rows="10" readonly style="font-family:var(--mono);font-size:12px"></textarea>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.copyExport()">Copy</button>
+      <button class="btn btn-p" onclick="App.downloadExport()">Download</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import -->
+<div id="ov-import" class="ov hidden">
+  <div class="modal">
+    <div class="mh"><span class="mt">Import</span><span class="mx" onclick="App.closeModal('ov-import')">✕</span></div>
+    <div class="mb">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="fg" style="flex:1;min-width:120px">
+          <label>Format</label>
+          <select id="imp-fmt">
+            <option value="json">JSON</option>
+            <option value="text">Indented text / Markdown</option>
+            <option value="opml">OPML</option>
+          </select>
+        </div>
+        <div class="fg" style="flex:1;min-width:120px">
+          <label>Position</label>
+          <select id="imp-pos">
+            <option value="bottom">Bottom of list</option>
+            <option value="top">Top of list</option>
+            <option value="under">Under selected task</option>
+            <option value="replace">Replace list</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Paste content</label>
+        <textarea id="imp-in" rows="10" placeholder="Paste here…"></textarea>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-import')">Cancel</button>
+      <button class="btn btn-p" onclick="App.doImport()">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Restore deleted -->
+<div id="ov-restore" class="ov hidden">
+  <div class="modal">
+    <div class="mh"><span class="mt">Restore Deleted Items</span><span class="mx" onclick="App.closeModal('ov-restore')">✕</span></div>
+    <div class="mb"><div id="del-list" style="max-height:300px;overflow-y:auto"></div></div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-restore')">Close</button>
+      <button class="btn btn-p" onclick="App.restoreSel()">Restore Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Word count -->
+<div id="ov-wc" class="ov hidden">
+  <div class="modal" style="max-width:270px">
+    <div class="mh"><span class="mt">Word Count</span><span class="mx" onclick="App.closeModal('ov-wc')">✕</span></div>
+    <div class="mb"><div id="wc-r"></div></div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div id="ov-settings" class="ov hidden">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><span class="mt">Settings</span><span class="mx" onclick="App.closeModal('ov-settings')">✕</span></div>
+    <div class="mb" style="max-height:62vh;overflow-y:auto">
+      <div style="margin-bottom:18px">
+        <div class="sst">Appearance</div>
+        <div class="ssi"><div><div class="ssl">Dark Mode</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-dark" onchange="App.setDark(this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Zen Mode</div><div class="ssd">Hide navigation</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-zen" onchange="App.setZen(this.checked)"><span class="tslider"></span></label></div>
+      </div>
+      <div style="margin-bottom:18px">
+        <div class="sst">Tasks</div>
+        <div class="ssi"><div><div class="ssl">Show Completed Tasks</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-showdone" onchange="App.setSetting('showCompleted',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Move Completed to Bottom</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-mvdown" onchange="App.setSetting('moveCompletedDown',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Close Parent When All Children Done</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-autoclose" onchange="App.setSetting('autoCloseParent',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Show Breadcrumbs in Hoist Mode</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-bc" onchange="App.setSetting('showBreadcrumbs',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Relative Due Dates</div><div class="ssd">"in 2 days" instead of exact date</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-rel" onchange="App.setSetting('relativeDates',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Hide Future Due Tasks</div><div class="ssd">Only show overdue / ASAP / today / tomorrow</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-hf" onchange="App.setSetting('hideFuture',this.checked)"><span class="tslider"></span></label></div>
+      </div>
+      <div style="margin-bottom:18px">
+        <div class="sst">List Style</div>
+        <div class="fg">
+          <select id="s-style" onchange="App.setListStyle(this.value)">
+            <option value="none">None</option><option value="numbered">Numbered</option>
+            <option value="boxes">Boxes (Checkboxes)</option><option value="bullets">Bullets</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:18px">
+        <div class="sst">Data</div>
+        <div id="storage-usage" style="padding:8px;background:var(--bg2);border-radius:4px;margin-bottom:12px;font-size:13px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="App.openExport()">Export (ex)</button>
+          <button class="btn btn-sm" onclick="App.openImport()">Import (im)</button>
+          <button class="btn btn-sm" onclick="App.showRestoreDeleted()">Restore Deleted (rd)</button>
+          <button class="btn btn-sm" onclick="App.showWC()">Word Count (wc)</button>
+          <button class="btn btn-sm" onclick="App.showStorageUsage()">Refresh</button>
+        </div>
+      </div>
+      <div style="margin-bottom:18px">
+        <div class="sst">GitHub Gist Sync</div>
+        <div class="fg">
+          <label>Personal Access Token</label>
+          <input id="gist-token" type="password" placeholder="ghp_..." onchange="App.setGistToken(this.value)">
+        </div>
+        <div class="fg">
+          <label>Gist ID</label>
+          <input id="gist-id" type="text" placeholder="e.g. 0123abcd4567" onchange="App.setGistId(this.value)">
+        </div>
+        <div class="fg">
+          <label>Backup file name</label>
+          <input id="gist-file" type="text" placeholder="monkeygtd-backup.json" onchange="App.setGistFilename(this.value)">
+        </div>
+        <div id="gist-sync-status" style="padding:8px;background:var(--bg2);border-radius:4px;margin-bottom:10px;font-size:12px;color:var(--fg2)">Not configured</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="App.syncGistNow()">Sync now</button>
+          <button class="btn btn-sm" onclick="App.syncFromGist()">Pull from Gist</button>
+          <button class="btn btn-sm" onclick="App.syncToGist()">Push to Gist</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Command palette -->
+<div id="ov-cp" class="ov hidden" onclick="if(event.target===this)App.closeCP()">
+  <div id="cp">
+    <input id="cpi" type="text" placeholder="Type a command or search─¦" autocomplete="off">
+    <div id="cpr"></div>
+  </div>
+</div>
+
+<!-- List create/rename -->
+<div id="ov-list" class="ov hidden">
+  <div class="modal" style="max-width:350px">
+    <div class="mh"><span class="mt" id="list-mt">New List</span><span class="mx" onclick="App.closeModal('ov-list')">✕</span></div>
+    <div class="mb">
+      <div class="fg"><label>Name</label><input id="list-n" type="text" placeholder="My List"></div>
+      <div class="fg"><label>Tags (e.g. #work #personal)</label><input id="list-t" type="text" placeholder="#tag1"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-list')">Cancel</button>
+      <button class="btn btn-p" id="list-ok" onclick="App.confirmList()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     JAVASCRIPT
+     ================================================================ -->
+<script src="js/core/cqrs.js"></script>
+<script src="js/core/traversal.js"></script>
+<script src="js/core/utils.js"></script>
+<script src="js/domain/queries.js"></script>
+<script src="js/domain/tree-ops.js"></script>
+<script src="js/domain/clipboard-ops.js"></script>
+<script src="js/domain/task-crud-ops.js"></script>
+<script src="js/domain/task-ops.js"></script>
+<script src="js/domain/import-export.js"></script>
+<script src="js/domain/lifecycle-ops.js"></script>
+<script src="js/domain/list-ops.js"></script>
+<script src="js/domain/settings-ops.js"></script>
+<script src="js/application/command-registry.js"></script>
+<script src="js/application/query-registry.js"></script>
+<script src="js/application/smoke-checks.js"></script>
+<script src="js/infra/storage.js"></script>
+<script src="js/infra/gist-sync.js"></script>
+<script src="js/ui/modal-controller.js"></script>
+<script src="js/ui/keyboard-controller.js"></script>
+<script src="js/ui/editor-controller.js"></script>
+<script src="js/ui/render-controller.js"></script>
+<script src="js/ui/command-palette-commands.js"></script>
+<script src="js/ui/command-palette-controller.js"></script>
+<script src="js/ui/chrome-controller.js"></script>
+<script src="js/ui/search-controller.js"></script>
+<script src="js/ui/settings-controller.js"></script>
+<script src="js/ui/navigation-controller.js"></script>
+<script src="js/ui/clipboard-controller.js"></script>
+<script src="js/ui/utilities-controller.js"></script>
+<script src="js/ui/storage-display.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
+
