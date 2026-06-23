@@ -39,7 +39,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Restore deleted', s: 'rd', fn: () => app.showRestoreDeleted() },
     { l: 'Extract branch as new list', s: 'xx', fn: () => app.extractBranch() },
     { l: 'Undo', s: 'Ctrl+Z / uu', fn: () => app.undo() },
-    { l: 'Sync now', s: 'sn', fn: () => app.syncGistNow() },
+    { l: 'Sync now', s: 'sg', fn: () => app.syncGistNow() },
     { l: 'Pull from Gist', s: 'sp', fn: () => app.syncFromGist() },
     { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
     { l: 'Hide/show completed', s: 'hc', fn: () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); } },
