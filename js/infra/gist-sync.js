@@ -86,6 +86,28 @@ function gistPreserveSyncSettings(state, previousSettings) {
   state.data.settings = current;
 }
 
+function gistResolveRemoteVsLocal(remoteMs, localMs) {
+  if (remoteMs > localMs) return 'pull';
+  if (localMs > remoteMs) return 'push';
+  return 'noop';
+}
+
+function startGistAutoSyncRemote(app, state, options) {
+  const opts = options || {};
+  const intervalMs = Number.isFinite(opts.intervalMs) ? opts.intervalMs : 5 * 60 * 1000;
+
+  if (state.gistAutoSyncTimer) {
+    clearInterval(state.gistAutoSyncTimer);
+    state.gistAutoSyncTimer = null;
+  }
+
+  state.gistAutoSyncTimer = setInterval(() => {
+    syncGistBidirectionalRemote(app, state, { silent: true, auto: true });
+  }, intervalMs);
+
+  return true;
+}
+
 async function syncFromGistRemote(app, state, options) {
   const opts = options || {};
   const config = gistGetConfig(state);
@@ -231,10 +253,12 @@ async function syncGistBidirectionalRemote(app, state, options) {
       gistIsoToMs(state.data?.settings?.gistLastSyncAt)
     );
 
-    if (remoteMs > localMs) {
+    const action = gistResolveRemoteVsLocal(remoteMs, localMs);
+
+    if (action === 'pull') {
       return syncFromGistRemote(app, state, { silent: opts.silent, auto: false });
     }
-    if (localMs > remoteMs) {
+    if (action === 'push') {
       return syncToGistRemote(app, state, { silent: opts.silent });
     }
 

@@ -28,6 +28,7 @@ const App={
     this.render();
     this.syncSettings();
     this.checkGistOnRefresh();
+    this.startGistAutoSync();
   },
 
   save(){
@@ -376,6 +377,7 @@ const App={
   async syncGistNow(){ return syncGistBidirectionalRemote(this, S, { silent:false }); },
   async checkGistNow(){ return this.syncGistNow(); },
   async checkGistOnRefresh(){ return checkGistOnRefreshRemote(this, S); },
+  startGistAutoSync(){ return startGistAutoSyncRemote(this, S, { intervalMs: 5 * 60 * 1000 }); },
 
   // â”€ Command palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openCP(mode){ openCommandPalette(this, S, mode); },
