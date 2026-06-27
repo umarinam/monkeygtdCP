@@ -684,6 +684,12 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
       </div>
       <div style="margin-bottom:18px">
         <div class="sst">GitHub Gist Sync</div>
+        <div class="ssi"><div><div class="ssl">Auto Sync</div><div class="ssd">Sync in background at a fixed interval</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-gist-auto" onchange="App.setGistAutoSyncEnabled(this.checked)"><span class="tslider"></span></label></div>
+        <div class="fg">
+          <label>Auto sync interval (minutes)</label>
+          <input id="s-gist-interval" type="number" min="1" step="1" placeholder="5" onchange="App.setGistAutoSyncInterval(this.value)">
+        </div>
         <div class="fg">
           <label>Personal Access Token</label>
           <input id="gist-token" type="password" placeholder="ghp_..." onchange="App.setGistToken(this.value)">
@@ -904,7 +910,8 @@ const seedData = () => {
     lists:{[lid]:list},tasks,
     settings:{darkMode:false,zenMode:false,showCompleted:true,moveCompletedDown:false,
               relativeDates:false,hideFuture:false,showBreadcrumbs:true,autoCloseParent:true,
-              listStyle:'none',showNotes:false},
+              listStyle:'none',showNotes:false,
+              gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5},
     deletedItems:[],currentListId:lid
   };
 };
@@ -2434,13 +2441,28 @@ function gistResolveRemoteVsLocal(remoteMs, localMs) {
   return 'noop';
 }
 
+function gistGetAutoSyncSettings(state) {
+  const s = state?.data?.settings || {};
+  const enabled = s.gistAutoSyncEnabled !== false;
+  const intervalMin = Math.max(1, Number(s.gistAutoSyncIntervalMin || 5));
+  return {
+    enabled,
+    intervalMs: intervalMin * 60 * 1000
+  };
+}
+
 function startGistAutoSyncRemote(app, state, options) {
   const opts = options || {};
-  const intervalMs = Number.isFinite(opts.intervalMs) ? opts.intervalMs : 5 * 60 * 1000;
+  const auto = gistGetAutoSyncSettings(state);
+  const intervalMs = Number.isFinite(opts.intervalMs) ? opts.intervalMs : auto.intervalMs;
 
   if (state.gistAutoSyncTimer) {
     clearInterval(state.gistAutoSyncTimer);
     state.gistAutoSyncTimer = null;
+  }
+
+  if (opts.enabled === false || !auto.enabled) {
+    return false;
   }
 
   state.gistAutoSyncTimer = setInterval(() => {
@@ -4636,10 +4658,14 @@ function syncSettingsUi(app, S) {
   const tokenEl = document.getElementById('gist-token');
   const gistIdEl = document.getElementById('gist-id');
   const gistFileEl = document.getElementById('gist-file');
+  const gistAutoEl = document.getElementById('s-gist-auto');
+  const gistIntervalEl = document.getElementById('s-gist-interval');
   const token = s.gistToken || localStorage.getItem('mgtd3_gist_token') || '';
   if (tokenEl) tokenEl.value = token;
   if (gistIdEl) gistIdEl.value = s.gistId || '';
   if (gistFileEl) gistFileEl.value = s.gistFilename || 'monkeygtd-backup.json';
+  if (gistAutoEl) gistAutoEl.checked = s.gistAutoSyncEnabled !== false;
+  if (gistIntervalEl) gistIntervalEl.value = String(Math.max(1, Number(s.gistAutoSyncIntervalMin || 5)));
 
   const statusEl = document.getElementById('gist-sync-status');
   if (statusEl) {
@@ -4967,7 +4993,9 @@ const App={
     this.bindGlobal();
     this.render();
     this.syncSettings();
-    this.checkGistOnRefresh();
+    if (S.data.settings.gistAutoSyncEnabled !== false) {
+      this.checkGistOnRefresh();
+    }
     this.startGistAutoSync();
   },
 
@@ -5316,12 +5344,23 @@ const App={
     setSettingDomain(this, S, 'gistFilename', v.trim() || 'monkeygtd-backup.json');
     this.syncSettings();
   },
+  setGistAutoSyncEnabled(v){
+    setSettingDomain(this, S, 'gistAutoSyncEnabled', !!v);
+    this.startGistAutoSync();
+    this.syncSettings();
+  },
+  setGistAutoSyncInterval(v){
+    const n = Math.max(1, parseInt(v, 10) || 5);
+    setSettingDomain(this, S, 'gistAutoSyncIntervalMin', n);
+    this.startGistAutoSync();
+    this.syncSettings();
+  },
   async syncFromGist(){ return syncFromGistRemote(this, S, { silent:false, auto:false }); },
   async syncToGist(){ return syncToGistRemote(this, S, { silent:false }); },
   async syncGistNow(){ return syncGistBidirectionalRemote(this, S, { silent:false }); },
   async checkGistNow(){ return this.syncGistNow(); },
   async checkGistOnRefresh(){ return checkGistOnRefreshRemote(this, S); },
-  startGistAutoSync(){ return startGistAutoSyncRemote(this, S, { intervalMs: 5 * 60 * 1000 }); },
+  startGistAutoSync(){ return startGistAutoSyncRemote(this, S, {}); },
 
   // â”€ Command palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openCP(mode){ openCommandPalette(this, S, mode); },

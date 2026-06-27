@@ -27,7 +27,9 @@ const App={
     this.bindGlobal();
     this.render();
     this.syncSettings();
-    this.checkGistOnRefresh();
+    if (S.data.settings.gistAutoSyncEnabled !== false) {
+      this.checkGistOnRefresh();
+    }
     this.startGistAutoSync();
   },
 
@@ -376,12 +378,23 @@ const App={
     setSettingDomain(this, S, 'gistFilename', v.trim() || 'monkeygtd-backup.json');
     this.syncSettings();
   },
+  setGistAutoSyncEnabled(v){
+    setSettingDomain(this, S, 'gistAutoSyncEnabled', !!v);
+    this.startGistAutoSync();
+    this.syncSettings();
+  },
+  setGistAutoSyncInterval(v){
+    const n = Math.max(1, parseInt(v, 10) || 5);
+    setSettingDomain(this, S, 'gistAutoSyncIntervalMin', n);
+    this.startGistAutoSync();
+    this.syncSettings();
+  },
   async syncFromGist(){ return syncFromGistRemote(this, S, { silent:false, auto:false }); },
   async syncToGist(){ return syncToGistRemote(this, S, { silent:false }); },
   async syncGistNow(){ return syncGistBidirectionalRemote(this, S, { silent:false }); },
   async checkGistNow(){ return this.syncGistNow(); },
   async checkGistOnRefresh(){ return checkGistOnRefreshRemote(this, S); },
-  startGistAutoSync(){ return startGistAutoSyncRemote(this, S, { intervalMs: 5 * 60 * 1000 }); },
+  startGistAutoSync(){ return startGistAutoSyncRemote(this, S, {}); },
 
   // â”€ Command palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openCP(mode){ openCommandPalette(this, S, mode); },

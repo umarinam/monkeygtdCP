@@ -112,7 +112,8 @@ const seedData = () => {
     lists:{[lid]:list},tasks,
     settings:{darkMode:false,zenMode:false,showCompleted:true,moveCompletedDown:false,
               relativeDates:false,hideFuture:false,showBreadcrumbs:true,autoCloseParent:true,
-              listStyle:'none',showNotes:false},
+              listStyle:'none',showNotes:false,
+              gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5},
     deletedItems:[],currentListId:lid
   };
 };

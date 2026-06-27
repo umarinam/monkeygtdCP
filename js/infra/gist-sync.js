@@ -92,13 +92,28 @@ function gistResolveRemoteVsLocal(remoteMs, localMs) {
   return 'noop';
 }
 
+function gistGetAutoSyncSettings(state) {
+  const s = state?.data?.settings || {};
+  const enabled = s.gistAutoSyncEnabled !== false;
+  const intervalMin = Math.max(1, Number(s.gistAutoSyncIntervalMin || 5));
+  return {
+    enabled,
+    intervalMs: intervalMin * 60 * 1000
+  };
+}
+
 function startGistAutoSyncRemote(app, state, options) {
   const opts = options || {};
-  const intervalMs = Number.isFinite(opts.intervalMs) ? opts.intervalMs : 5 * 60 * 1000;
+  const auto = gistGetAutoSyncSettings(state);
+  const intervalMs = Number.isFinite(opts.intervalMs) ? opts.intervalMs : auto.intervalMs;
 
   if (state.gistAutoSyncTimer) {
     clearInterval(state.gistAutoSyncTimer);
     state.gistAutoSyncTimer = null;
+  }
+
+  if (opts.enabled === false || !auto.enabled) {
+    return false;
   }
 
   state.gistAutoSyncTimer = setInterval(() => {

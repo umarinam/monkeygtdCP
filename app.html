@@ -385,6 +385,12 @@
       </div>
       <div style="margin-bottom:18px">
         <div class="sst">GitHub Gist Sync</div>
+        <div class="ssi"><div><div class="ssl">Auto Sync</div><div class="ssd">Sync in background at a fixed interval</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-gist-auto" onchange="App.setGistAutoSyncEnabled(this.checked)"><span class="tslider"></span></label></div>
+        <div class="fg">
+          <label>Auto sync interval (minutes)</label>
+          <input id="s-gist-interval" type="number" min="1" step="1" placeholder="5" onchange="App.setGistAutoSyncInterval(this.value)">
+        </div>
         <div class="fg">
           <label>Personal Access Token</label>
           <input id="gist-token" type="password" placeholder="ghp_..." onchange="App.setGistToken(this.value)">

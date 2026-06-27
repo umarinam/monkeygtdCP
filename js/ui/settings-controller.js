@@ -33,10 +33,14 @@ function syncSettingsUi(app, S) {
   const tokenEl = document.getElementById('gist-token');
   const gistIdEl = document.getElementById('gist-id');
   const gistFileEl = document.getElementById('gist-file');
+  const gistAutoEl = document.getElementById('s-gist-auto');
+  const gistIntervalEl = document.getElementById('s-gist-interval');
   const token = s.gistToken || localStorage.getItem('mgtd3_gist_token') || '';
   if (tokenEl) tokenEl.value = token;
   if (gistIdEl) gistIdEl.value = s.gistId || '';
   if (gistFileEl) gistFileEl.value = s.gistFilename || 'monkeygtd-backup.json';
+  if (gistAutoEl) gistAutoEl.checked = s.gistAutoSyncEnabled !== false;
+  if (gistIntervalEl) gistIntervalEl.value = String(Math.max(1, Number(s.gistAutoSyncIntervalMin || 5)));
 
   const statusEl = document.getElementById('gist-sync-status');
   if (statusEl) {

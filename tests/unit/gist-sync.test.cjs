@@ -123,6 +123,8 @@ function makeState(localTimestamp) {
         gistToken: 'token',
         gistId: 'gist-id',
         gistFilename: 'monkeygtd-backup.json',
+        gistAutoSyncEnabled: true,
+        gistAutoSyncIntervalMin: 5,
         gistLastLocalSaveAt: localTimestamp,
         gistLastSyncAt: localTimestamp
       }
@@ -285,4 +287,55 @@ test('startGistAutoSyncRemote schedules and replaces existing timer every 5 minu
   assert.equal(intervals.length, 1);
   assert.equal(intervals[0].ms, 5 * 60 * 1000);
   assert.equal(state.gistAutoSyncTimer, intervals[0]);
+});
+
+test('startGistAutoSyncRemote does not schedule when auto sync is disabled', () => {
+  const intervals = [];
+  const clears = [];
+
+  const { startGistAutoSyncRemote } = loadGistSyncModule({
+    setInterval: (fn, ms) => {
+      const id = { fn, ms };
+      intervals.push(id);
+      return id;
+    },
+    clearInterval: (id) => {
+      clears.push(id);
+    }
+  });
+
+  const state = makeState('2026-06-27T12:00:00.000Z');
+  state.data.settings.gistAutoSyncEnabled = false;
+  state.gistAutoSyncTimer = { old: true };
+  const { app } = makeAppCounters();
+
+  const started = startGistAutoSyncRemote(app, state, {});
+
+  assert.equal(started, false);
+  assert.equal(clears.length, 1);
+  assert.equal(intervals.length, 0);
+  assert.equal(state.gistAutoSyncTimer, null);
+});
+
+test('startGistAutoSyncRemote uses configured interval minutes from settings', () => {
+  const intervals = [];
+
+  const { startGistAutoSyncRemote } = loadGistSyncModule({
+    setInterval: (fn, ms) => {
+      const id = { fn, ms };
+      intervals.push(id);
+      return id;
+    },
+    clearInterval: () => {}
+  });
+
+  const state = makeState('2026-06-27T12:00:00.000Z');
+  state.data.settings.gistAutoSyncIntervalMin = 7;
+  const { app } = makeAppCounters();
+
+  const started = startGistAutoSyncRemote(app, state, {});
+
+  assert.equal(started, true);
+  assert.equal(intervals.length, 1);
+  assert.equal(intervals[0].ms, 7 * 60 * 1000);
 });
