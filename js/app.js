@@ -230,6 +230,10 @@ const App={
   delNote(tid,nid,internal){ deleteNoteUi(this, S, tid, nid, internal); },
   clearNotes(taskId,internal){ clearNotesUi(this, S, taskId, internal); },
 
+  openTaskJson(id){ openTaskJsonModalUi(this, S, id); },
+  saveTaskJson(){ saveTaskJsonUi(this, S); },
+  openTaskHistory(id){ openTaskHistoryUi(this, S, id); },
+
   // â”€ Assign â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   assignTask(internal,payload){
     assignTaskDomain(this, S, internal, payload);

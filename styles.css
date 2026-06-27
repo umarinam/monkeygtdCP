@@ -95,6 +95,12 @@ body.zen #topbar{display:none}
       color:var(--muted);border:1px solid var(--border)}
 .trep{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
   color:var(--accent);border:1px solid var(--border);cursor:pointer}
+.tjson{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
+     color:var(--muted);border:1px solid var(--border);cursor:pointer;font-family:var(--mono)}
+.tjson:hover{color:var(--text);background:var(--bg-hover)}
+.thist{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
+     color:var(--muted);border:1px solid var(--border);cursor:pointer;font-family:var(--mono)}
+.thist:hover{color:var(--text);background:var(--bg-hover)}
 .cbar{position:absolute;left:0;top:2px;bottom:2px;width:3px;border-radius:0 2px 2px 0}
 .priority-1 .cbar{background:var(--p1)}.priority-2 .cbar{background:var(--p2)}
 .priority-3 .cbar{background:var(--p3)}.priority-4 .cbar{background:var(--p4)}
@@ -265,6 +271,17 @@ label{display:block;margin-bottom:4px;font-size:12px;font-weight:500;color:var(-
 .wcs{padding:6px 0;border-bottom:1px solid var(--border);
      display:flex;justify-content:space-between;align-items:center}
 .wcs:last-child{border:none}.wcv{font-weight:600;font-size:16px}
+
+.task-json-error{min-height:18px;color:var(--danger);font-size:12px}
+
+.task-history-list{max-height:420px;overflow-y:auto}
+.task-history-empty{color:var(--muted);font-size:13px;padding:12px}
+.task-history-row{padding:10px 0;border-bottom:1px solid var(--border)}
+.task-history-row:last-child{border-bottom:none}
+.task-history-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:10px}
+.task-history-type{font-size:12px;font-weight:600;color:var(--text);text-transform:capitalize}
+.task-history-at{font-size:11px;color:var(--muted)}
+.task-history-changes{margin:0;background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--r);padding:8px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;word-break:break-word}
 
 /* â”€â”€ Misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .empty{padding:48px 24px;text-align:center;color:var(--muted)}

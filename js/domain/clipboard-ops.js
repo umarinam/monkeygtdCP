@@ -53,6 +53,11 @@ function pasteDomain(app, state) {
       nt.checklist_id = state.listId;
     }
     state.data.tasks[nt.id] = nt;
+    logTaskHistory(nt, 'creation', {
+      source: 'paste',
+      listId: nt.checklist_id,
+      parentId: nt.parent_id || ''
+    });
   }
 
   app.save();
@@ -74,6 +79,11 @@ function dupDomain(app, state, id) {
   const sibs = app.sibList(id);
   if (sibs) sibs.splice(sibs.indexOf(id) + 1, 0, nt.id);
   state.data.tasks[nt.id] = nt;
+  logTaskHistory(nt, 'creation', {
+    source: 'duplicate',
+    listId: nt.checklist_id,
+    parentId: nt.parent_id || ''
+  });
   state.selId = nt.id;
   app.save();
   app.render();

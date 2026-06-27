@@ -102,6 +102,12 @@ body.zen #topbar{display:none}
       color:var(--muted);border:1px solid var(--border)}
 .trep{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
   color:var(--accent);border:1px solid var(--border);cursor:pointer}
+.tjson{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
+     color:var(--muted);border:1px solid var(--border);cursor:pointer;font-family:var(--mono)}
+.tjson:hover{color:var(--text);background:var(--bg-hover)}
+.thist{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
+     color:var(--muted);border:1px solid var(--border);cursor:pointer;font-family:var(--mono)}
+.thist:hover{color:var(--text);background:var(--bg-hover)}
 .cbar{position:absolute;left:0;top:2px;bottom:2px;width:3px;border-radius:0 2px 2px 0}
 .priority-1 .cbar{background:var(--p1)}.priority-2 .cbar{background:var(--p2)}
 .priority-3 .cbar{background:var(--p3)}.priority-4 .cbar{background:var(--p4)}
@@ -272,6 +278,17 @@ label{display:block;margin-bottom:4px;font-size:12px;font-weight:500;color:var(-
 .wcs{padding:6px 0;border-bottom:1px solid var(--border);
      display:flex;justify-content:space-between;align-items:center}
 .wcs:last-child{border:none}.wcv{font-weight:600;font-size:16px}
+
+.task-json-error{min-height:18px;color:var(--danger);font-size:12px}
+
+.task-history-list{max-height:420px;overflow-y:auto}
+.task-history-empty{color:var(--muted);font-size:13px;padding:12px}
+.task-history-row{padding:10px 0;border-bottom:1px solid var(--border)}
+.task-history-row:last-child{border-bottom:none}
+.task-history-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:10px}
+.task-history-type{font-size:12px;font-weight:600;color:var(--text);text-transform:capitalize}
+.task-history-at{font-size:11px;color:var(--muted)}
+.task-history-changes{margin:0;background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--r);padding:8px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;word-break:break-word}
 
 /* â”€â”€ Misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .empty{padding:48px 24px;text-align:center;color:var(--muted)}
@@ -460,6 +477,37 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
   </div>
 </div>
 
+<!-- Task JSON -->
+<div id="ov-task-json" class="ov hidden">
+  <div class="modal" style="max-width:760px">
+    <div class="mh"><span class="mt">Task JSON</span><span class="mx" onclick="App.closeModal('ov-task-json')">✕</span></div>
+    <div class="mb">
+      <div class="fg">
+        <label>Edit task properties as JSON</label>
+        <textarea id="task-json-input" rows="16" style="font-family:var(--mono);font-size:12px"></textarea>
+      </div>
+      <div id="task-json-error" class="task-json-error"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-task-json')">Cancel</button>
+      <button class="btn btn-p" onclick="App.saveTaskJson()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task History -->
+<div id="ov-task-history" class="ov hidden">
+  <div class="modal" style="max-width:760px">
+    <div class="mh"><span class="mt">Task History</span><span class="mx" onclick="App.closeModal('ov-task-history')">✕</span></div>
+    <div class="mb">
+      <div id="task-history-list" class="task-history-list"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-task-history')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Move -->
 <div id="ov-move" class="ov hidden">
   <div class="modal">
@@ -609,6 +657,10 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           <label class="tog-sw"><input type="checkbox" id="s-rel" onchange="App.setSetting('relativeDates',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Hide Future Due Tasks</div><div class="ssd">Only show overdue / ASAP / today / tomorrow</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-hf" onchange="App.setSetting('hideFuture',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Show Task JSON Chip</div><div class="ssd">Display { } action next to each task</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-jsonchip" onchange="App.setSetting('showTaskJsonChip',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Show Task History Chip</div><div class="ssd">Display H action next to each task</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-histchip" onchange="App.setSetting('showTaskHistoryChip',this.checked)"><span class="tslider"></span></label></div>
       </div>
       <div style="margin-bottom:18px">
         <div class="sst">List Style</div>
@@ -803,10 +855,24 @@ const parseSmart = raw => {
   return r;
 };
 
+const ensureTaskHistory = task => {
+  if (!task) return [];
+  if (!Array.isArray(task.history)) task.history = [];
+  return task.history;
+};
+
+const logTaskHistory = (task, type, changes) => {
+  if (!task || !type || !changes) return;
+  const history = ensureTaskHistory(task);
+  history.push({ at: now(), type, changes });
+  if (history.length > 200) history.shift();
+};
+
 const mkTask = (o={}) => ({
   id:uid(),content:'',status:0,checklist_id:'',parent_id:'',position:0,deleted:false,
   tasks:[],tags:{},tags_as_text:'',color:0,due:'',due_asap:false,repeating_due:null,
   assignees:[],attachments:[],links:[],notes:[],comments_count:0,
+  history:[],
   update_line:'',updated_at:now(),created_at:now(),completed_at:'',_collapsed:false,...o
 });
 
@@ -1064,7 +1130,10 @@ function moveUpDomain(app, state, id) {
   if (!s) return;
   const i = s.indexOf(id);
   if (i > 0) {
+    const t = state.data.tasks[id];
+    const fromIndex = i;
     [s[i - 1], s[i]] = [s[i], s[i - 1]];
+    if (t) logTaskHistory(t, 'structure', { action: 'move-up', fromIndex, toIndex: i - 1 });
     app.save();
     app.renderList();
   }
@@ -1076,7 +1145,10 @@ function moveDownDomain(app, state, id) {
   if (!s) return;
   const i = s.indexOf(id);
   if (i < s.length - 1) {
+    const t = state.data.tasks[id];
+    const fromIndex = i;
     [s[i], s[i + 1]] = [s[i + 1], s[i]];
+    if (t) logTaskHistory(t, 'structure', { action: 'move-down', fromIndex, toIndex: i + 1 });
     app.save();
     app.renderList();
   }
@@ -1086,6 +1158,11 @@ function moveBeforeDomain(app, state, srcId, tgtId) {
   const src = state.data.tasks[srcId];
   const tgt = state.data.tasks[tgtId];
   if (!src || !tgt) return;
+
+  const before = {
+    parent_id: src.parent_id || '',
+    checklist_id: src.checklist_id || ''
+  };
 
   const ss = sibListDomain(state, srcId);
   if (ss) {
@@ -1099,6 +1176,12 @@ function moveBeforeDomain(app, state, srcId, tgtId) {
     ts.splice(i, 0, srcId);
     src.parent_id = tgt.parent_id;
     src.checklist_id = tgt.checklist_id;
+    logTaskHistory(src, 'structure', {
+      action: 'move-before',
+      targetTaskId: tgtId,
+      from: before,
+      to: { parent_id: src.parent_id || '', checklist_id: src.checklist_id || '' }
+    });
   }
 
   app.save();
@@ -1121,8 +1204,15 @@ function indentDomain(app, state, id) {
 
   sibs.splice(i, 1);
   np.tasks = [...(np.tasks || []), id];
+  const beforeParent = t.parent_id || '';
   t.parent_id = npId;
   np._collapsed = false;
+
+  logTaskHistory(t, 'structure', {
+    action: 'indent',
+    from: { parent_id: beforeParent },
+    to: { parent_id: t.parent_id || '' }
+  });
 
   app.save();
   app.renderList();
@@ -1139,8 +1229,14 @@ function unindentDomain(app, state, id) {
   p.tasks = (p.tasks || []).filter(x => x !== id);
   const gps = sibListDomain(state, p.id);
   if (gps) {
+    const beforeParent = t.parent_id || '';
     gps.splice(gps.indexOf(p.id) + 1, 0, id);
     t.parent_id = p.parent_id || '';
+    logTaskHistory(t, 'structure', {
+      action: 'unindent',
+      from: { parent_id: beforeParent },
+      to: { parent_id: t.parent_id || '' }
+    });
   }
 
   app.save();
@@ -1158,6 +1254,8 @@ function moveToListDomain(app, state, listId) {
     const t = state.data.tasks[id];
     if (!t) continue;
 
+    const before = { parent_id: t.parent_id || '', checklist_id: t.checklist_id || '' };
+
     const s = sibListDomain(state, id);
     if (s) {
       const i = s.indexOf(id);
@@ -1167,6 +1265,11 @@ function moveToListDomain(app, state, listId) {
     t.parent_id = '';
     t.checklist_id = listId;
     targetList.root_tasks.push(id);
+    logTaskHistory(t, 'structure', {
+      action: 'move-to-list',
+      from: before,
+      to: { parent_id: '', checklist_id: t.checklist_id || '' }
+    });
   }
 
   app.save();
@@ -1193,10 +1296,17 @@ function moveToTaskDomain(app, state, targetTaskId) {
 
     const task = state.data.tasks[id];
     if (!task) continue;
+    const before = { parent_id: task.parent_id || '', checklist_id: task.checklist_id || '' };
     task.parent_id = targetTaskId;
     task.checklist_id = targetTask.checklist_id;
     targetTask.tasks = [...(targetTask.tasks || []), id];
     targetTask._collapsed = false;
+    logTaskHistory(task, 'structure', {
+      action: 'move-to-task',
+      targetTaskId,
+      from: before,
+      to: { parent_id: task.parent_id || '', checklist_id: task.checklist_id || '' }
+    });
   }
 
   app.save();
@@ -1261,6 +1371,11 @@ function pasteDomain(app, state) {
       nt.checklist_id = state.listId;
     }
     state.data.tasks[nt.id] = nt;
+    logTaskHistory(nt, 'creation', {
+      source: 'paste',
+      listId: nt.checklist_id,
+      parentId: nt.parent_id || ''
+    });
   }
 
   app.save();
@@ -1282,6 +1397,11 @@ function dupDomain(app, state, id) {
   const sibs = app.sibList(id);
   if (sibs) sibs.splice(sibs.indexOf(id) + 1, 0, nt.id);
   state.data.tasks[nt.id] = nt;
+  logTaskHistory(nt, 'creation', {
+    source: 'duplicate',
+    listId: nt.checklist_id,
+    parentId: nt.parent_id || ''
+  });
   state.selId = nt.id;
   app.save();
   app.render();
@@ -1341,6 +1461,11 @@ function addTaskDomain(app, state, afterId, asChild, content) {
   }
 
   state.data.tasks[task.id] = task;
+  logTaskHistory(task, 'creation', {
+    source: 'manual',
+    listId: task.checklist_id,
+    parentId: task.parent_id || ''
+  });
   app.save();
   return task.id;
 }
@@ -1368,8 +1493,12 @@ function deleteTaskDomain(app, state, id) {
   const softDelete = tid => {
     const task = state.data.tasks[tid];
     if (!task) return;
+    const wasDeleted = !!task.deleted;
     task.deleted = true;
     task._deleted_at = now();
+    if (!wasDeleted) {
+      logTaskHistory(task, 'deletion', { action: 'soft-delete' });
+    }
     (task.tasks || []).forEach(softDelete);
   };
 
@@ -1397,6 +1526,15 @@ function saveEditDomain(app, state, id, value) {
   if (!t) return;
 
   app.pushUndo(app.snap());
+  const before = {
+    content: t.content,
+    tags_as_text: t.tags_as_text || '',
+    assignees: JSON.stringify(t.assignees || []),
+    due: t.due || '',
+    due_asap: !!t.due_asap,
+    color: Number(t.color || 0)
+  };
+
   const parsed = parseSmart(value);
   t.content = parsed.content || t.content;
   if (parsed.due) {
@@ -1413,12 +1551,33 @@ function saveEditDomain(app, state, id, value) {
   t.assignees = [...new Set([...(t.assignees || []), ...parsed.assignees])];
   t.updated_at = now();
 
+  if (before.content !== t.content) {
+    logTaskHistory(t, 'title', { from: before.content, to: t.content });
+  }
+  if (before.tags_as_text !== (t.tags_as_text || '')) {
+    logTaskHistory(t, 'tags', { from: before.tags_as_text, to: t.tags_as_text || '' });
+  }
+  if (before.assignees !== JSON.stringify(t.assignees || [])) {
+    logTaskHistory(t, 'assignment', { from: JSON.parse(before.assignees), to: t.assignees || [] });
+  }
+  if (before.due !== (t.due || '') || before.due_asap !== !!t.due_asap) {
+    logTaskHistory(t, 'scheduling', {
+      from: { due: before.due, due_asap: before.due_asap },
+      to: { due: t.due || '', due_asap: !!t.due_asap }
+    });
+  }
+  if (before.color !== Number(t.color || 0)) {
+    logTaskHistory(t, 'priority', { from: before.color, to: Number(t.color || 0) });
+  }
+
   if (state.data.settings.autoCloseParent && t.parent_id) app.checkAutoClose(t.parent_id);
   app.save();
 }
 
 function advanceRecurringTaskDomain(state, task) {
   if (!task || !task.repeating_due) return;
+
+  const before = { due: task.due || '', due_asap: !!task.due_asap };
 
   const r = task.repeating_due;
   const interval = Math.max(1, parseInt(r.interval || 1, 10) || 1);
@@ -1454,12 +1613,21 @@ function advanceRecurringTaskDomain(state, task) {
   task.due = dateStr(next);
   task.due_asap = false;
   task.update_line = 'repeated';
+  if (before.due !== (task.due || '') || before.due_asap !== !!task.due_asap) {
+    logTaskHistory(task, 'scheduling', {
+      from: before,
+      to: { due: task.due || '', due_asap: !!task.due_asap },
+      source: 'recurring'
+    });
+  }
 }
 
 function toggleStatusDomain(app, state, id) {
   app.pushUndo(app.snap());
   const t = state.data.tasks[id];
   if (!t) return;
+
+  const before = Number(t.status || 0);
 
   if (t.status === 0) {
     t.status = 1;
@@ -1474,6 +1642,9 @@ function toggleStatusDomain(app, state, id) {
   }
 
   t.updated_at = now();
+  if (before !== Number(t.status || 0)) {
+    logTaskHistory(t, 'status', { from: before, to: Number(t.status || 0) });
+  }
   if (state.data.settings.autoCloseParent && t.parent_id) app.checkAutoClose(t.parent_id);
   app.save();
   app.render();
@@ -1484,9 +1655,15 @@ function invalidateDomain(app, state, id) {
   const t = state.data.tasks[id];
   if (!t) return;
 
+  const before = Number(t.status || 0);
+
   t.status = t.status === 2 ? 0 : 2;
   t.updated_at = now();
   if (t.status === 2) t.completed_at = now();
+
+  if (before !== Number(t.status || 0)) {
+    logTaskHistory(t, 'status', { from: before, to: Number(t.status || 0) });
+  }
 
   app.save();
   app.render();
@@ -1536,8 +1713,12 @@ function assignTaskDomain(app, state, internal, payload) {
   if (!t) return;
 
   app.pushUndo(app.snap());
+  const before = [...(t.assignees || [])];
   t.assignees = [...new Set([...(t.assignees || []), payload.name])];
   t.updated_at = now();
+  if (JSON.stringify(before) !== JSON.stringify(t.assignees || [])) {
+    logTaskHistory(t, 'assignment', { from: before, to: t.assignees || [] });
+  }
   app.save();
   app.render();
   app.toast(`Assigned to @${payload.name}`);
@@ -1748,12 +1929,37 @@ function doImportDomain(app, state, payload) {
       for (const t of tasks) {
         const id = uid();
         state.data.tasks[id] = { ...mkTask(), ...t, id, checklist_id: state.listId };
+        logTaskHistory(state.data.tasks[id], 'creation', {
+          source: 'import-json',
+          listId: state.listId,
+          parentId: state.data.tasks[id].parent_id || ''
+        });
         ids.push(id);
       }
     } else if (fmt === 'text') {
       ids = importTextDomain(state, raw, list, uid, mkTask);
+      for (const id of ids) {
+        const t = state.data.tasks[id];
+        if (t) {
+          logTaskHistory(t, 'creation', {
+            source: 'import-text',
+            listId: state.listId,
+            parentId: t.parent_id || ''
+          });
+        }
+      }
     } else if (fmt === 'opml') {
       ids = importOpmlDomain(state, raw, list, uid, mkTask);
+      for (const id of ids) {
+        const t = state.data.tasks[id];
+        if (t) {
+          logTaskHistory(t, 'creation', {
+            source: 'import-opml',
+            listId: state.listId,
+            parentId: t.parent_id || ''
+          });
+        }
+      }
     }
 
     if (pos === 'top') list.root_tasks = [...ids, ...list.root_tasks];
@@ -1761,7 +1967,19 @@ function doImportDomain(app, state, payload) {
     else if (pos === 'under' && state.selId) {
       const parent = state.data.tasks[state.selId];
       parent.tasks = [...(parent.tasks || []), ...ids];
-      for (const id of ids) state.data.tasks[id].parent_id = state.selId;
+      for (const id of ids) {
+        const t = state.data.tasks[id];
+        if (!t) continue;
+        const beforeParent = t.parent_id || '';
+        t.parent_id = state.selId;
+        if (beforeParent !== (t.parent_id || '')) {
+          logTaskHistory(t, 'structure', {
+            action: 'import-under-parent',
+            from: { parent_id: beforeParent },
+            to: { parent_id: t.parent_id || '' }
+          });
+        }
+      }
     }
     else if (pos === 'replace') list.root_tasks = ids;
     else list.root_tasks = [...list.root_tasks, ...ids];
@@ -1797,6 +2015,12 @@ function restoreSelectedDomain(app, state, taskIds) {
     list.root_tasks.unshift(task.id);
     task.parent_id = '';
     task.checklist_id = state.listId;
+    logTaskHistory(task, 'deletion', { action: 'restore' });
+    logTaskHistory(task, 'creation', {
+      source: 'restore',
+      listId: task.checklist_id,
+      parentId: task.parent_id || ''
+    });
   }
 
   app.save();
@@ -1813,6 +2037,7 @@ function wipeCompletedDomain(app, state, walkTasksFn, skipChildren) {
 
   walkTasksFn(list.root_tasks || [], state.data.tasks, task => {
     if (task.status !== 0) {
+      logTaskHistory(task, 'deletion', { action: 'wipe-completed' });
       task.deleted = true;
       return skipChildren;
     }
@@ -1839,8 +2064,12 @@ function resetCompletedDomain(app, state, walkTasksFn) {
 
   walkTasksFn(list.root_tasks || [], state.data.tasks, task => {
     if (task.status !== 0) {
+      const before = Number(task.status || 0);
       task.status = 0;
       task.completed_at = '';
+      if (before !== 0) {
+        logTaskHistory(task, 'status', { from: before, to: 0, source: 'reset-completed' });
+      }
     }
   });
 
@@ -1864,7 +2093,13 @@ function extractBranchDomain(app, state, walkTasksFn, uidFn, mkListFn, sibListFn
   state.data.lists[listId] = list;
 
   walkTasksFn(task.tasks || [], state.data.tasks, t => {
+    const before = { checklist_id: t.checklist_id || '', parent_id: t.parent_id || '' };
     t.checklist_id = listId;
+    logTaskHistory(t, 'structure', {
+      action: 'extract-branch-rehome',
+      from: before,
+      to: { checklist_id: t.checklist_id || '', parent_id: t.parent_id || '' }
+    });
   });
 
   const siblings = sibListFn(state.selId);
@@ -1875,6 +2110,7 @@ function extractBranchDomain(app, state, walkTasksFn, uidFn, mkListFn, sibListFn
 
   task.deleted = true;
   task.tasks = [];
+  logTaskHistory(task, 'deletion', { action: 'extract-branch-source-removed', targetListId: listId });
 
   app.save();
   app.render();
@@ -2438,9 +2674,11 @@ function pickDateUi(app, state, ds) {
   if (!state.selId) return;
   app.pushUndo(app.snap());
   const t = state.data.tasks[state.selId];
+  const before = { due: t.due || '', due_asap: !!t.due_asap };
   t.due = ds;
   t.due_asap = false;
   t.updated_at = now();
+  logTaskHistory(t, 'scheduling', { from: before, to: { due: t.due || '', due_asap: !!t.due_asap } });
   app.save();
   app.closeModal('ov-due');
   app.render();
@@ -2456,6 +2694,7 @@ function setDueQuickUi(app, state, p, internal, taskId) {
   if (!taskId) return;
   app.pushUndo(app.snap());
   const t = state.data.tasks[taskId];
+  const before = { due: t.due || '', due_asap: !!t.due_asap };
   ({
     today: () => { t.due = todayS(); t.due_asap = false; },
     tomorrow: () => { t.due = tomorrowS(); t.due_asap = false; },
@@ -2464,6 +2703,9 @@ function setDueQuickUi(app, state, p, internal, taskId) {
     clear: () => { t.due = ''; t.due_asap = false; }
   })[p]?.();
   t.updated_at = now();
+  if (before.due !== (t.due || '') || before.due_asap !== !!t.due_asap) {
+    logTaskHistory(t, 'scheduling', { from: before, to: { due: t.due || '', due_asap: !!t.due_asap } });
+  }
   app.save();
   app.closeModal('ov-due');
   app.render();
@@ -2479,10 +2721,15 @@ function clearDueUi(app, state, taskId, internal, removeRepeat) {
   const t = state.data.tasks[taskId];
   if (!t) return;
   app.pushUndo(app.snap());
+  const before = { due: t.due || '', due_asap: !!t.due_asap, repeating_due: t.repeating_due ? 'set' : '' };
   t.due = '';
   t.due_asap = false;
   if (removeRepeat) t.repeating_due = null;
   t.updated_at = now();
+  logTaskHistory(t, 'scheduling', {
+    from: before,
+    to: { due: t.due || '', due_asap: !!t.due_asap, repeating_due: t.repeating_due ? 'set' : '' }
+  });
   app.save();
   app.render();
   app.toast(removeRepeat ? 'Due and repeating cleared' : 'Due cleared');
@@ -2522,6 +2769,7 @@ function saveRepeatSettingsUi(app, state) {
   if (!state.selId) return;
   app.pushUndo(app.snap());
   const t = state.data.tasks[state.selId];
+  const before = t.repeating_due ? JSON.stringify(t.repeating_due) : '';
   const freq = document.getElementById('rep-freq').value;
   const interval = Math.max(1, parseInt(document.getElementById('rep-int').value, 10) || 1);
   const repeatFrom = document.getElementById('rep-from').value;
@@ -2538,6 +2786,10 @@ function saveRepeatSettingsUi(app, state) {
   };
   if (!t.due && !t.due_asap) t.due = todayS();
   t.updated_at = now();
+  logTaskHistory(t, 'scheduling', {
+    from: { repeating_due: before },
+    to: { repeating_due: JSON.stringify(t.repeating_due) }
+  });
   app.save();
   app.closeModal('ov-repeat');
   app.render();
@@ -2548,8 +2800,10 @@ function deleteRepeatSettingsUi(app, state) {
   if (!state.selId) return;
   app.pushUndo(app.snap());
   const t = state.data.tasks[state.selId];
+  const before = t.repeating_due ? JSON.stringify(t.repeating_due) : '';
   t.repeating_due = null;
   t.updated_at = now();
+  logTaskHistory(t, 'scheduling', { from: { repeating_due: before }, to: { repeating_due: '' } });
   app.save();
   app.closeModal('ov-repeat');
   app.render();
@@ -2584,9 +2838,13 @@ function addTagFromInputUi(app, state, internal, payload) {
   const t = state.data.tasks[taskId];
   if (!t || !raw) return;
   app.pushUndo(app.snap());
+  const before = t.tags_as_text || '';
   t.tags[raw] = { isPrivate: false };
   t.tags_as_text = Object.keys(t.tags).join(',');
   t.updated_at = now();
+  if (before !== (t.tags_as_text || '')) {
+    logTaskHistory(t, 'tags', { from: before, to: t.tags_as_text || '' });
+  }
   app.save();
   if (el) el.value = '';
   renderCurrentTagsUi(app, state);
@@ -2602,9 +2860,13 @@ function removeTagUi(app, state, tg, internal, taskId) {
   const t = state.data.tasks[taskId];
   if (!t) return;
   app.pushUndo(app.snap());
+  const before = t.tags_as_text || '';
   delete t.tags[tg];
   t.tags_as_text = Object.keys(t.tags).join(',');
   t.updated_at = now();
+  if (before !== (t.tags_as_text || '')) {
+    logTaskHistory(t, 'tags', { from: before, to: t.tags_as_text || '' });
+  }
   app.save();
   renderCurrentTagsUi(app, state);
 }
@@ -2618,9 +2880,13 @@ function clearTagsUi(app, state, taskId, internal) {
   const t = state.data.tasks[taskId];
   if (!t) return;
   app.pushUndo(app.snap());
+  const before = t.tags_as_text || '';
   t.tags = {};
   t.tags_as_text = '';
   t.updated_at = now();
+  if (before) {
+    logTaskHistory(t, 'tags', { from: before, to: '' });
+  }
   app.save();
   app.render();
   app.toast('Tags cleared');
@@ -2673,9 +2939,16 @@ function addNoteUi(app, state, internal, payload) {
   app.pushUndo(app.snap());
   const t = state.data.tasks[taskId];
   if (!t) return;
+  const beforeCount = Number(t.comments_count || 0);
   t.notes = [...(t.notes || []), { id: uid(), author: 'me', content: c, created_at: now(), updated_at: now() }];
   t.comments_count = t.notes.length;
   t.updated_at = now();
+  logTaskHistory(t, 'notes', {
+    action: 'add-note',
+    noteLength: String(c || '').length,
+    fromCount: beforeCount,
+    toCount: Number(t.comments_count || 0)
+  });
   app.save();
   renderNotesUi(state, taskId);
   document.getElementById('note-in').value = '';
@@ -2691,9 +2964,15 @@ function deleteNoteUi(app, state, tid, nid, internal) {
   app.pushUndo(app.snap());
   const t = state.data.tasks[tid];
   if (!t) return;
+  const beforeCount = Number(t.comments_count || 0);
   t.notes = (t.notes || []).filter(n => n.id !== nid);
   t.comments_count = t.notes.length;
   t.updated_at = now();
+  logTaskHistory(t, 'notes', {
+    action: 'delete-note',
+    fromCount: beforeCount,
+    toCount: Number(t.comments_count || 0)
+  });
   app.save();
   renderNotesUi(state, tid);
   app.render();
@@ -2708,9 +2987,17 @@ function clearNotesUi(app, state, taskId, internal) {
   const t = state.data.tasks[taskId];
   if (!t) return;
   app.pushUndo(app.snap());
+  const beforeCount = Number(t.comments_count || 0);
   t.notes = [];
   t.comments_count = 0;
   t.updated_at = now();
+  if (beforeCount > 0) {
+    logTaskHistory(t, 'notes', {
+      action: 'clear-notes',
+      fromCount: beforeCount,
+      toCount: 0
+    });
+  }
   app.save();
   app.render();
   app.toast('Notes cleared');
@@ -2831,6 +3118,255 @@ function renameListUi(app, S, id) {
   setTimeout(() => document.getElementById('list-n').focus(), 50);
 }
 
+function parseTaskJsonInput(raw) {
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Task JSON must be an object');
+  }
+  return parsed;
+}
+
+function normalizeTaskFromJson(taskId, candidate, state) {
+  const existing = state.data.tasks[taskId] || {};
+  const normalized = { ...candidate };
+
+  normalized.id = taskId;
+  normalized.tasks = Array.isArray(normalized.tasks) ? normalized.tasks : [];
+  normalized.tags = (normalized.tags && typeof normalized.tags === 'object' && !Array.isArray(normalized.tags)) ? normalized.tags : {};
+  normalized.notes = Array.isArray(normalized.notes) ? normalized.notes : [];
+  normalized.assignees = Array.isArray(normalized.assignees) ? normalized.assignees : [];
+  normalized.content = typeof normalized.content === 'string' ? normalized.content : String(normalized.content || '');
+  normalized.status = Number.isFinite(normalized.status) ? normalized.status : (Number.isFinite(existing.status) ? existing.status : 0);
+  normalized.tags_as_text = Object.keys(normalized.tags).join(',');
+  normalized.comments_count = normalized.notes.length;
+
+  if (!normalized.checklist_id || !state.data.lists[normalized.checklist_id]) {
+    normalized.checklist_id = existing.checklist_id || state.listId;
+  }
+
+  if (normalized.parent_id && !state.data.tasks[normalized.parent_id]) {
+    normalized.parent_id = '';
+  }
+  if (normalized.parent_id === taskId) {
+    normalized.parent_id = '';
+  }
+
+  normalized.created_at = normalized.created_at || existing.created_at || now();
+  normalized.updated_at = now();
+
+  return normalized;
+}
+
+function setTaskJsonError(message) {
+  const el = document.getElementById('task-json-error');
+  if (!el) return;
+  el.textContent = message || '';
+}
+
+function openTaskJsonModalUi(app, state, taskId) {
+  const id = taskId || state.selId;
+  if (!id) {
+    app.toast('Select a task first');
+    return;
+  }
+
+  const task = state.data.tasks[id];
+  if (!task) {
+    app.toast('Task not found');
+    return;
+  }
+
+  state.selId = id;
+  setTaskJsonError('');
+  document.getElementById('task-json-input').value = JSON.stringify(task, null, 2);
+  app.openModal('ov-task-json');
+  setTimeout(() => document.getElementById('task-json-input').focus(), 50);
+}
+
+function saveTaskJsonUi(app, state) {
+  const id = state.selId;
+  if (!id) {
+    app.toast('Select a task first');
+    return;
+  }
+
+  const task = state.data.tasks[id];
+  if (!task) {
+    setTaskJsonError('Task not found');
+    return;
+  }
+
+  const raw = document.getElementById('task-json-input').value;
+  try {
+    const before = {
+      content: task.content,
+      tags_as_text: task.tags_as_text || '',
+      assignees: JSON.stringify(task.assignees || []),
+      due: task.due || '',
+      due_asap: !!task.due_asap,
+      repeating_due: task.repeating_due ? JSON.stringify(task.repeating_due) : '',
+      color: Number(task.color || 0)
+    };
+    const parsed = parseTaskJsonInput(raw);
+    const normalized = normalizeTaskFromJson(id, parsed, state);
+    app.pushUndo(app.snap());
+    state.data.tasks[id] = normalized;
+    if (before.content !== normalized.content) {
+      logTaskHistory(normalized, 'title', { from: before.content, to: normalized.content });
+    }
+    if (before.tags_as_text !== (normalized.tags_as_text || '')) {
+      logTaskHistory(normalized, 'tags', { from: before.tags_as_text, to: normalized.tags_as_text || '' });
+    }
+    if (before.assignees !== JSON.stringify(normalized.assignees || [])) {
+      logTaskHistory(normalized, 'assignment', {
+        from: JSON.parse(before.assignees),
+        to: normalized.assignees || []
+      });
+    }
+    if (
+      before.due !== (normalized.due || '') ||
+      before.due_asap !== !!normalized.due_asap ||
+      before.repeating_due !== (normalized.repeating_due ? JSON.stringify(normalized.repeating_due) : '')
+    ) {
+      logTaskHistory(normalized, 'scheduling', {
+        from: { due: before.due, due_asap: before.due_asap, repeating_due: before.repeating_due },
+        to: {
+          due: normalized.due || '',
+          due_asap: !!normalized.due_asap,
+          repeating_due: normalized.repeating_due ? JSON.stringify(normalized.repeating_due) : ''
+        }
+      });
+    }
+    if (before.color !== Number(normalized.color || 0)) {
+      logTaskHistory(normalized, 'priority', { from: before.color, to: Number(normalized.color || 0) });
+    }
+    app.save();
+    setTaskJsonError('');
+    app.closeModal('ov-task-json');
+    app.render();
+    app.toast('Task JSON saved');
+  } catch (err) {
+    setTaskJsonError(err?.message || 'Invalid JSON');
+  }
+}
+
+function formatHistoryTypeLabel(type) {
+  const labels = {
+    title: 'Title',
+    tags: 'Tags',
+    assignment: 'Assignment',
+    scheduling: 'Scheduling',
+    priority: 'Priority',
+    status: 'Status',
+    structure: 'Structure',
+    deletion: 'Deletion',
+    notes: 'Notes',
+    creation: 'Creation'
+  };
+  return labels[type] || (type ? String(type) : 'Change');
+}
+
+function statusText(status) {
+  if (Number(status) === 1) return 'done';
+  if (Number(status) === 2) return 'invalid';
+  return 'open';
+}
+
+function formatHistorySummary(type, changes) {
+  const c = changes || {};
+
+  if (type === 'title') {
+    return `Title: "${c.from || ''}" -> "${c.to || ''}"`;
+  }
+
+  if (type === 'tags') {
+    return `Tags: ${c.from || '(none)'} -> ${c.to || '(none)'}`;
+  }
+
+  if (type === 'assignment') {
+    const from = Array.isArray(c.from) ? c.from.join(', ') : (c.from || '(none)');
+    const to = Array.isArray(c.to) ? c.to.join(', ') : (c.to || '(none)');
+    return `Assignees: ${from || '(none)'} -> ${to || '(none)'}`;
+  }
+
+  if (type === 'priority') {
+    return `Priority: ${Number(c.from || 0)} -> ${Number(c.to || 0)}`;
+  }
+
+  if (type === 'status') {
+    return `Status: ${statusText(c.from)} -> ${statusText(c.to)}`;
+  }
+
+  if (type === 'notes') {
+    const action = c.action || 'updated-notes';
+    return `Notes ${action}: ${Number(c.fromCount || 0)} -> ${Number(c.toCount || 0)}`;
+  }
+
+  if (type === 'creation') {
+    const source = c.source || 'unknown';
+    return `Created via ${source} (list: ${c.listId || ''}, parent: ${c.parentId || '(root)'})`;
+  }
+
+  if (type === 'deletion') {
+    return `Deletion event: ${c.action || 'updated'}`;
+  }
+
+  if (type === 'structure') {
+    return `Structure: ${c.action || 'updated'} (parent ${c.from?.parent_id || '(root)'} -> ${c.to?.parent_id || '(root)'})`;
+  }
+
+  if (type === 'scheduling') {
+    const fromDue = c.from?.due || (c.from?.due_asap ? 'asap' : '(none)');
+    const toDue = c.to?.due || (c.to?.due_asap ? 'asap' : '(none)');
+    if (c.from?.repeating_due !== undefined || c.to?.repeating_due !== undefined) {
+      const fromRep = c.from?.repeating_due ? 'set' : '(none)';
+      const toRep = c.to?.repeating_due ? 'set' : '(none)';
+      return `Scheduling: due ${fromDue} -> ${toDue}; repeat ${fromRep} -> ${toRep}`;
+    }
+    return `Scheduling: due ${fromDue} -> ${toDue}`;
+  }
+
+  return JSON.stringify(c || {}, null, 2);
+}
+
+function renderTaskHistoryUi(state, taskId) {
+  const t = state.data.tasks[taskId];
+  const listEl = document.getElementById('task-history-list');
+  if (!listEl) return;
+  if (!t) {
+    listEl.innerHTML = '<div class="task-history-empty">Task not found</div>';
+    return;
+  }
+
+  const history = Array.isArray(t.history) ? t.history.slice().reverse() : [];
+  if (!history.length) {
+    listEl.innerHTML = '<div class="task-history-empty">No history recorded yet.</div>';
+    return;
+  }
+
+  listEl.innerHTML = history.map(h => {
+    const at = h.at ? new Date(h.at).toLocaleString() : '';
+    const type = esc(formatHistoryTypeLabel(h.type));
+    const summary = esc(formatHistorySummary(h.type, h.changes));
+    return `<div class="task-history-row"><div class="task-history-head"><span class="task-history-type">${type}</span><span class="task-history-at">${at}</span></div><pre class="task-history-changes">${summary}</pre></div>`;
+  }).join('');
+}
+
+function openTaskHistoryUi(app, state, taskId) {
+  const id = taskId || state.selId;
+  if (!id) {
+    app.toast('Select a task first');
+    return;
+  }
+  if (!state.data.tasks[id]) {
+    app.toast('Task not found');
+    return;
+  }
+  state.selId = id;
+  renderTaskHistoryUi(state, id);
+  app.openModal('ov-task-history');
+}
+
 
 'use strict';
 
@@ -2882,7 +3418,7 @@ function bindGlobalEvents(app, state) {
 function handleGlobalKey(app, state, e) {
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');
@@ -2928,6 +3464,13 @@ function handleGlobalKey(app, state, e) {
   }
 
   if (inIn) return;
+
+  // Continue pending two-key sequences (e.g. tj) before single-key navigation handlers.
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && state.kbuf && /^[a-z]$/i.test(e.key)) {
+    e.preventDefault();
+    app.twoKey(e);
+    return;
+  }
 
   if ((e.key === 'ArrowDown' || e.key === 'j') && !e.shiftKey && !e.ctrlKey) {
     e.preventDefault();
@@ -3126,7 +3669,12 @@ function handleGlobalKey(app, state, e) {
     e.preventDefault();
     if (state.selId) {
       app.pushUndo(app.snap());
-      state.data.tasks[state.selId].color = +e.key;
+      const t = state.data.tasks[state.selId];
+      const before = Number(t.color || 0);
+      t.color = +e.key;
+      if (before !== Number(t.color || 0)) {
+        logTaskHistory(t, 'priority', { from: before, to: Number(t.color || 0) });
+      }
       app.save();
       app.renderList();
     }
@@ -3164,11 +3712,16 @@ function handleTwoKeySequence(app, state, e) {
       if (state.selId) {
         app.pushUndo(app.snap());
         const t = state.data.tasks[state.selId];
+        const before = { due: t.due || '', due_asap: !!t.due_asap, repeating_due: t.repeating_due ? 'set' : '' };
         const ts = Date.now();
         if (t.due || t.due_asap) {
           t.due = '';
           t.due_asap = false;
           state.lastCdAt = ts;
+          logTaskHistory(t, 'scheduling', {
+            from: before,
+            to: { due: t.due || '', due_asap: !!t.due_asap, repeating_due: t.repeating_due ? 'set' : '' }
+          });
           app.save();
           app.render();
           app.toast(t.repeating_due ? 'Due cleared (press cd again to delete repeating)' : 'Due cleared');
@@ -3176,6 +3729,10 @@ function handleTwoKeySequence(app, state, e) {
         }
         if (t.repeating_due && (ts - state.lastCdAt) < 2000) {
           t.repeating_due = null;
+          logTaskHistory(t, 'scheduling', {
+            from: before,
+            to: { due: t.due || '', due_asap: !!t.due_asap, repeating_due: '' }
+          });
           app.save();
           app.render();
           app.toast('Repeating removed');
@@ -3191,13 +3748,27 @@ function handleTwoKeySequence(app, state, e) {
     'dr': () => { if (state.selId) app.openRepeatModal(); },
     'df': () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); app.toast(`Dates: ${state.data.settings.relativeDates ? 'relative' : 'exact'}`); },
     'tt': () => { if (state.selId) app.openTagsModal(state.selId); },
+    'th': () => { if (state.selId) app.openTaskHistory(state.selId); },
+    'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
     'ct': () => { if (state.selId) app.dispatch('task.clearTags', { taskId: state.selId }); },
     'gt': () => app.showPage('tags'),
     'nn': () => { if (state.selId) app.openNotesModal(state.selId); },
     'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
     'sn': () => { state.showNotes = !state.showNotes; app.render(); app.toast(`Notes ${state.showNotes ? 'visible' : 'hidden'}`); },
     'ae': () => app.assignTask(),
-    'ca': () => { if (state.selId) { app.pushUndo(app.snap()); state.data.tasks[state.selId].assignees = []; app.save(); app.render(); } },
+    'ca': () => {
+      if (state.selId) {
+        app.pushUndo(app.snap());
+        const t = state.data.tasks[state.selId];
+        const before = [...(t.assignees || [])];
+        t.assignees = [];
+        if (before.length) {
+          logTaskHistory(t, 'assignment', { from: before, to: [] });
+        }
+        app.save();
+        app.render();
+      }
+    },
     'hc': () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); app.syncSettings(); app.toast(`Completed: ${state.data.settings.showCompleted ? 'visible' : 'hidden'}`); },
     'hf': () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); app.toast(`Future due: ${state.data.settings.hideFuture ? 'hidden' : 'visible'}`); },
     'sd': () => app.toggleDetails(),
@@ -3519,6 +4090,14 @@ function bindTaskListEvents(app, state) {
       app.openNotesModal(id);
       return;
     }
+    if (a === 'json') {
+      app.openTaskJson(id);
+      return;
+    }
+    if (a === 'hist') {
+      app.openTaskHistory(id);
+      return;
+    }
 
     const ts = Date.now();
     const isPlainClick = !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
@@ -3829,6 +4408,12 @@ function buildTaskItemUi(app, state, id, depth, list) {
   }
   if (t.assignees && t.assignees.length) metaH += t.assignees.map(a => `<span class="tass">@${esc(a)}</span>`).join('');
   if (t.comments_count > 0) metaH += `<span class="tni" data-id="${id}" data-a="notes">💬 ${t.comments_count}</span>`;
+  if (state.data.settings.showTaskJsonChip !== false) {
+    metaH += `<span class="tjson" data-id="${id}" data-a="json">{ }</span>`;
+  }
+  if (state.data.settings.showTaskHistoryChip !== false) {
+    metaH += `<span class="thist" data-id="${id}" data-a="hist">H</span>`;
+  }
 
   const detailH = `<div class="tdetail" id="dtl-${id}">Created: ${(t.created_at || '').slice(0,10)}${t.updated_at ? ` · Updated: ${t.updated_at.slice(0,10)}` : ''}${t.completed_at ? ` · Done: ${t.completed_at.slice(0,10)}` : ''}</div>`;
   let notesH = '';
@@ -3876,6 +4461,8 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Add tags', s: 'tt', fn: () => { if (state.selId) app.openTagsModal(state.selId); } },
     { l: 'Clear tags', s: 'ct', fn: () => { if (state.selId) app.dispatch('task.clearTags', { taskId: state.selId }); } },
     { l: 'Add note', s: 'nn', fn: () => { if (state.selId) app.openNotesModal(state.selId); } },
+    { l: 'Edit task JSON', s: 'tj', fn: () => { if (state.selId) app.openTaskJson(state.selId); } },
+    { l: 'View task history', s: 'th', fn: () => { if (state.selId) app.openTaskHistory(state.selId); } },
     { l: 'Clear notes', s: 'cn', fn: () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); } },
     { l: 'Show/hide all notes', s: 'sn', fn: () => { state.showNotes = !state.showNotes; app.render(); } },
     { l: 'Assign task', s: 'ae', fn: () => app.assignTask() },
@@ -4041,6 +4628,8 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-bc', s.showBreadcrumbs);
   syncCheckbox('s-rel', s.relativeDates);
   syncCheckbox('s-hf', s.hideFuture);
+  syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);
+  syncCheckbox('s-histchip', s.showTaskHistoryChip !== false);
   const styleEl = document.getElementById('s-style');
   if (styleEl) styleEl.value = s.listStyle || 'none';
 
@@ -4580,6 +5169,10 @@ const App={
   addNote(internal,payload){ addNoteUi(this, S, internal, payload); },
   delNote(tid,nid,internal){ deleteNoteUi(this, S, tid, nid, internal); },
   clearNotes(taskId,internal){ clearNotesUi(this, S, taskId, internal); },
+
+  openTaskJson(id){ openTaskJsonModalUi(this, S, id); },
+  saveTaskJson(){ saveTaskJsonUi(this, S); },
+  openTaskHistory(id){ openTaskHistoryUi(this, S, id); },
 
   // â”€ Assign â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   assignTask(internal,payload){

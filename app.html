@@ -178,6 +178,37 @@
   </div>
 </div>
 
+<!-- Task JSON -->
+<div id="ov-task-json" class="ov hidden">
+  <div class="modal" style="max-width:760px">
+    <div class="mh"><span class="mt">Task JSON</span><span class="mx" onclick="App.closeModal('ov-task-json')">✕</span></div>
+    <div class="mb">
+      <div class="fg">
+        <label>Edit task properties as JSON</label>
+        <textarea id="task-json-input" rows="16" style="font-family:var(--mono);font-size:12px"></textarea>
+      </div>
+      <div id="task-json-error" class="task-json-error"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-task-json')">Cancel</button>
+      <button class="btn btn-p" onclick="App.saveTaskJson()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task History -->
+<div id="ov-task-history" class="ov hidden">
+  <div class="modal" style="max-width:760px">
+    <div class="mh"><span class="mt">Task History</span><span class="mx" onclick="App.closeModal('ov-task-history')">✕</span></div>
+    <div class="mb">
+      <div id="task-history-list" class="task-history-list"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-task-history')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Move -->
 <div id="ov-move" class="ov hidden">
   <div class="modal">
@@ -327,6 +358,10 @@
           <label class="tog-sw"><input type="checkbox" id="s-rel" onchange="App.setSetting('relativeDates',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Hide Future Due Tasks</div><div class="ssd">Only show overdue / ASAP / today / tomorrow</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-hf" onchange="App.setSetting('hideFuture',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Show Task JSON Chip</div><div class="ssd">Display { } action next to each task</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-jsonchip" onchange="App.setSetting('showTaskJsonChip',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Show Task History Chip</div><div class="ssd">Display H action next to each task</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-histchip" onchange="App.setSetting('showTaskHistoryChip',this.checked)"><span class="tslider"></span></label></div>
       </div>
       <div style="margin-bottom:18px">
         <div class="sst">List Style</div>

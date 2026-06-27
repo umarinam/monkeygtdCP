@@ -13,8 +13,12 @@ function assignTaskDomain(app, state, internal, payload) {
   if (!t) return;
 
   app.pushUndo(app.snap());
+  const before = [...(t.assignees || [])];
   t.assignees = [...new Set([...(t.assignees || []), payload.name])];
   t.updated_at = now();
+  if (JSON.stringify(before) !== JSON.stringify(t.assignees || [])) {
+    logTaskHistory(t, 'assignment', { from: before, to: t.assignees || [] });
+  }
   app.save();
   app.render();
   app.toast(`Assigned to @${payload.name}`);

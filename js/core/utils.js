@@ -63,10 +63,24 @@ const parseSmart = raw => {
   return r;
 };
 
+const ensureTaskHistory = task => {
+  if (!task) return [];
+  if (!Array.isArray(task.history)) task.history = [];
+  return task.history;
+};
+
+const logTaskHistory = (task, type, changes) => {
+  if (!task || !type || !changes) return;
+  const history = ensureTaskHistory(task);
+  history.push({ at: now(), type, changes });
+  if (history.length > 200) history.shift();
+};
+
 const mkTask = (o={}) => ({
   id:uid(),content:'',status:0,checklist_id:'',parent_id:'',position:0,deleted:false,
   tasks:[],tags:{},tags_as_text:'',color:0,due:'',due_asap:false,repeating_due:null,
   assignees:[],attachments:[],links:[],notes:[],comments_count:0,
+  history:[],
   update_line:'',updated_at:now(),created_at:now(),completed_at:'',_collapsed:false,...o
 });
 

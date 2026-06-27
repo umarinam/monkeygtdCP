@@ -153,12 +153,37 @@ function doImportDomain(app, state, payload) {
       for (const t of tasks) {
         const id = uid();
         state.data.tasks[id] = { ...mkTask(), ...t, id, checklist_id: state.listId };
+        logTaskHistory(state.data.tasks[id], 'creation', {
+          source: 'import-json',
+          listId: state.listId,
+          parentId: state.data.tasks[id].parent_id || ''
+        });
         ids.push(id);
       }
     } else if (fmt === 'text') {
       ids = importTextDomain(state, raw, list, uid, mkTask);
+      for (const id of ids) {
+        const t = state.data.tasks[id];
+        if (t) {
+          logTaskHistory(t, 'creation', {
+            source: 'import-text',
+            listId: state.listId,
+            parentId: t.parent_id || ''
+          });
+        }
+      }
     } else if (fmt === 'opml') {
       ids = importOpmlDomain(state, raw, list, uid, mkTask);
+      for (const id of ids) {
+        const t = state.data.tasks[id];
+        if (t) {
+          logTaskHistory(t, 'creation', {
+            source: 'import-opml',
+            listId: state.listId,
+            parentId: t.parent_id || ''
+          });
+        }
+      }
     }
 
     if (pos === 'top') list.root_tasks = [...ids, ...list.root_tasks];
@@ -166,7 +191,19 @@ function doImportDomain(app, state, payload) {
     else if (pos === 'under' && state.selId) {
       const parent = state.data.tasks[state.selId];
       parent.tasks = [...(parent.tasks || []), ...ids];
-      for (const id of ids) state.data.tasks[id].parent_id = state.selId;
+      for (const id of ids) {
+        const t = state.data.tasks[id];
+        if (!t) continue;
+        const beforeParent = t.parent_id || '';
+        t.parent_id = state.selId;
+        if (beforeParent !== (t.parent_id || '')) {
+          logTaskHistory(t, 'structure', {
+            action: 'import-under-parent',
+            from: { parent_id: beforeParent },
+            to: { parent_id: t.parent_id || '' }
+          });
+        }
+      }
     }
     else if (pos === 'replace') list.root_tasks = ids;
     else list.root_tasks = [...list.root_tasks, ...ids];

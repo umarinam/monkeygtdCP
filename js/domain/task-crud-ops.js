@@ -34,6 +34,11 @@ function addTaskDomain(app, state, afterId, asChild, content) {
   }
 
   state.data.tasks[task.id] = task;
+  logTaskHistory(task, 'creation', {
+    source: 'manual',
+    listId: task.checklist_id,
+    parentId: task.parent_id || ''
+  });
   app.save();
   return task.id;
 }
@@ -61,8 +66,12 @@ function deleteTaskDomain(app, state, id) {
   const softDelete = tid => {
     const task = state.data.tasks[tid];
     if (!task) return;
+    const wasDeleted = !!task.deleted;
     task.deleted = true;
     task._deleted_at = now();
+    if (!wasDeleted) {
+      logTaskHistory(task, 'deletion', { action: 'soft-delete' });
+    }
     (task.tasks || []).forEach(softDelete);
   };
 
@@ -90,6 +99,15 @@ function saveEditDomain(app, state, id, value) {
   if (!t) return;
 
   app.pushUndo(app.snap());
+  const before = {
+    content: t.content,
+    tags_as_text: t.tags_as_text || '',
+    assignees: JSON.stringify(t.assignees || []),
+    due: t.due || '',
+    due_asap: !!t.due_asap,
+    color: Number(t.color || 0)
+  };
+
   const parsed = parseSmart(value);
   t.content = parsed.content || t.content;
   if (parsed.due) {
@@ -106,12 +124,33 @@ function saveEditDomain(app, state, id, value) {
   t.assignees = [...new Set([...(t.assignees || []), ...parsed.assignees])];
   t.updated_at = now();
 
+  if (before.content !== t.content) {
+    logTaskHistory(t, 'title', { from: before.content, to: t.content });
+  }
+  if (before.tags_as_text !== (t.tags_as_text || '')) {
+    logTaskHistory(t, 'tags', { from: before.tags_as_text, to: t.tags_as_text || '' });
+  }
+  if (before.assignees !== JSON.stringify(t.assignees || [])) {
+    logTaskHistory(t, 'assignment', { from: JSON.parse(before.assignees), to: t.assignees || [] });
+  }
+  if (before.due !== (t.due || '') || before.due_asap !== !!t.due_asap) {
+    logTaskHistory(t, 'scheduling', {
+      from: { due: before.due, due_asap: before.due_asap },
+      to: { due: t.due || '', due_asap: !!t.due_asap }
+    });
+  }
+  if (before.color !== Number(t.color || 0)) {
+    logTaskHistory(t, 'priority', { from: before.color, to: Number(t.color || 0) });
+  }
+
   if (state.data.settings.autoCloseParent && t.parent_id) app.checkAutoClose(t.parent_id);
   app.save();
 }
 
 function advanceRecurringTaskDomain(state, task) {
   if (!task || !task.repeating_due) return;
+
+  const before = { due: task.due || '', due_asap: !!task.due_asap };
 
   const r = task.repeating_due;
   const interval = Math.max(1, parseInt(r.interval || 1, 10) || 1);
@@ -147,12 +186,21 @@ function advanceRecurringTaskDomain(state, task) {
   task.due = dateStr(next);
   task.due_asap = false;
   task.update_line = 'repeated';
+  if (before.due !== (task.due || '') || before.due_asap !== !!task.due_asap) {
+    logTaskHistory(task, 'scheduling', {
+      from: before,
+      to: { due: task.due || '', due_asap: !!task.due_asap },
+      source: 'recurring'
+    });
+  }
 }
 
 function toggleStatusDomain(app, state, id) {
   app.pushUndo(app.snap());
   const t = state.data.tasks[id];
   if (!t) return;
+
+  const before = Number(t.status || 0);
 
   if (t.status === 0) {
     t.status = 1;
@@ -167,6 +215,9 @@ function toggleStatusDomain(app, state, id) {
   }
 
   t.updated_at = now();
+  if (before !== Number(t.status || 0)) {
+    logTaskHistory(t, 'status', { from: before, to: Number(t.status || 0) });
+  }
   if (state.data.settings.autoCloseParent && t.parent_id) app.checkAutoClose(t.parent_id);
   app.save();
   app.render();
@@ -177,9 +228,15 @@ function invalidateDomain(app, state, id) {
   const t = state.data.tasks[id];
   if (!t) return;
 
+  const before = Number(t.status || 0);
+
   t.status = t.status === 2 ? 0 : 2;
   t.updated_at = now();
   if (t.status === 2) t.completed_at = now();
+
+  if (before !== Number(t.status || 0)) {
+    logTaskHistory(t, 'status', { from: before, to: Number(t.status || 0) });
+  }
 
   app.save();
   app.render();

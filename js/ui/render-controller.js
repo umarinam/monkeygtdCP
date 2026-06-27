@@ -37,6 +37,14 @@ function bindTaskListEvents(app, state) {
       app.openNotesModal(id);
       return;
     }
+    if (a === 'json') {
+      app.openTaskJson(id);
+      return;
+    }
+    if (a === 'hist') {
+      app.openTaskHistory(id);
+      return;
+    }
 
     const ts = Date.now();
     const isPlainClick = !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
@@ -347,6 +355,12 @@ function buildTaskItemUi(app, state, id, depth, list) {
   }
   if (t.assignees && t.assignees.length) metaH += t.assignees.map(a => `<span class="tass">@${esc(a)}</span>`).join('');
   if (t.comments_count > 0) metaH += `<span class="tni" data-id="${id}" data-a="notes">💬 ${t.comments_count}</span>`;
+  if (state.data.settings.showTaskJsonChip !== false) {
+    metaH += `<span class="tjson" data-id="${id}" data-a="json">{ }</span>`;
+  }
+  if (state.data.settings.showTaskHistoryChip !== false) {
+    metaH += `<span class="thist" data-id="${id}" data-a="hist">H</span>`;
+  }
 
   const detailH = `<div class="tdetail" id="dtl-${id}">Created: ${(t.created_at || '').slice(0,10)}${t.updated_at ? ` · Updated: ${t.updated_at.slice(0,10)}` : ''}${t.completed_at ? ` · Done: ${t.completed_at.slice(0,10)}` : ''}</div>`;
   let notesH = '';

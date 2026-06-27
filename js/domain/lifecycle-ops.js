@@ -19,6 +19,12 @@ function restoreSelectedDomain(app, state, taskIds) {
     list.root_tasks.unshift(task.id);
     task.parent_id = '';
     task.checklist_id = state.listId;
+    logTaskHistory(task, 'deletion', { action: 'restore' });
+    logTaskHistory(task, 'creation', {
+      source: 'restore',
+      listId: task.checklist_id,
+      parentId: task.parent_id || ''
+    });
   }
 
   app.save();
@@ -35,6 +41,7 @@ function wipeCompletedDomain(app, state, walkTasksFn, skipChildren) {
 
   walkTasksFn(list.root_tasks || [], state.data.tasks, task => {
     if (task.status !== 0) {
+      logTaskHistory(task, 'deletion', { action: 'wipe-completed' });
       task.deleted = true;
       return skipChildren;
     }
@@ -61,8 +68,12 @@ function resetCompletedDomain(app, state, walkTasksFn) {
 
   walkTasksFn(list.root_tasks || [], state.data.tasks, task => {
     if (task.status !== 0) {
+      const before = Number(task.status || 0);
       task.status = 0;
       task.completed_at = '';
+      if (before !== 0) {
+        logTaskHistory(task, 'status', { from: before, to: 0, source: 'reset-completed' });
+      }
     }
   });
 
@@ -86,7 +97,13 @@ function extractBranchDomain(app, state, walkTasksFn, uidFn, mkListFn, sibListFn
   state.data.lists[listId] = list;
 
   walkTasksFn(task.tasks || [], state.data.tasks, t => {
+    const before = { checklist_id: t.checklist_id || '', parent_id: t.parent_id || '' };
     t.checklist_id = listId;
+    logTaskHistory(t, 'structure', {
+      action: 'extract-branch-rehome',
+      from: before,
+      to: { checklist_id: t.checklist_id || '', parent_id: t.parent_id || '' }
+    });
   });
 
   const siblings = sibListFn(state.selId);
@@ -97,6 +114,7 @@ function extractBranchDomain(app, state, walkTasksFn, uidFn, mkListFn, sibListFn
 
   task.deleted = true;
   task.tasks = [];
+  logTaskHistory(task, 'deletion', { action: 'extract-branch-source-removed', targetListId: listId });
 
   app.save();
   app.render();

@@ -48,7 +48,7 @@ function bindGlobalEvents(app, state) {
 function handleGlobalKey(app, state, e) {
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');
@@ -94,6 +94,13 @@ function handleGlobalKey(app, state, e) {
   }
 
   if (inIn) return;
+
+  // Continue pending two-key sequences (e.g. tj) before single-key navigation handlers.
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && state.kbuf && /^[a-z]$/i.test(e.key)) {
+    e.preventDefault();
+    app.twoKey(e);
+    return;
+  }
 
   if ((e.key === 'ArrowDown' || e.key === 'j') && !e.shiftKey && !e.ctrlKey) {
     e.preventDefault();
@@ -292,7 +299,12 @@ function handleGlobalKey(app, state, e) {
     e.preventDefault();
     if (state.selId) {
       app.pushUndo(app.snap());
-      state.data.tasks[state.selId].color = +e.key;
+      const t = state.data.tasks[state.selId];
+      const before = Number(t.color || 0);
+      t.color = +e.key;
+      if (before !== Number(t.color || 0)) {
+        logTaskHistory(t, 'priority', { from: before, to: Number(t.color || 0) });
+      }
       app.save();
       app.renderList();
     }
@@ -330,11 +342,16 @@ function handleTwoKeySequence(app, state, e) {
       if (state.selId) {
         app.pushUndo(app.snap());
         const t = state.data.tasks[state.selId];
+        const before = { due: t.due || '', due_asap: !!t.due_asap, repeating_due: t.repeating_due ? 'set' : '' };
         const ts = Date.now();
         if (t.due || t.due_asap) {
           t.due = '';
           t.due_asap = false;
           state.lastCdAt = ts;
+          logTaskHistory(t, 'scheduling', {
+            from: before,
+            to: { due: t.due || '', due_asap: !!t.due_asap, repeating_due: t.repeating_due ? 'set' : '' }
+          });
           app.save();
           app.render();
           app.toast(t.repeating_due ? 'Due cleared (press cd again to delete repeating)' : 'Due cleared');
@@ -342,6 +359,10 @@ function handleTwoKeySequence(app, state, e) {
         }
         if (t.repeating_due && (ts - state.lastCdAt) < 2000) {
           t.repeating_due = null;
+          logTaskHistory(t, 'scheduling', {
+            from: before,
+            to: { due: t.due || '', due_asap: !!t.due_asap, repeating_due: '' }
+          });
           app.save();
           app.render();
           app.toast('Repeating removed');
@@ -357,13 +378,27 @@ function handleTwoKeySequence(app, state, e) {
     'dr': () => { if (state.selId) app.openRepeatModal(); },
     'df': () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); app.toast(`Dates: ${state.data.settings.relativeDates ? 'relative' : 'exact'}`); },
     'tt': () => { if (state.selId) app.openTagsModal(state.selId); },
+    'th': () => { if (state.selId) app.openTaskHistory(state.selId); },
+    'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
     'ct': () => { if (state.selId) app.dispatch('task.clearTags', { taskId: state.selId }); },
     'gt': () => app.showPage('tags'),
     'nn': () => { if (state.selId) app.openNotesModal(state.selId); },
     'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
     'sn': () => { state.showNotes = !state.showNotes; app.render(); app.toast(`Notes ${state.showNotes ? 'visible' : 'hidden'}`); },
     'ae': () => app.assignTask(),
-    'ca': () => { if (state.selId) { app.pushUndo(app.snap()); state.data.tasks[state.selId].assignees = []; app.save(); app.render(); } },
+    'ca': () => {
+      if (state.selId) {
+        app.pushUndo(app.snap());
+        const t = state.data.tasks[state.selId];
+        const before = [...(t.assignees || [])];
+        t.assignees = [];
+        if (before.length) {
+          logTaskHistory(t, 'assignment', { from: before, to: [] });
+        }
+        app.save();
+        app.render();
+      }
+    },
     'hc': () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); app.syncSettings(); app.toast(`Completed: ${state.data.settings.showCompleted ? 'visible' : 'hidden'}`); },
     'hf': () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); app.toast(`Future due: ${state.data.settings.hideFuture ? 'hidden' : 'visible'}`); },
     'sd': () => app.toggleDetails(),
