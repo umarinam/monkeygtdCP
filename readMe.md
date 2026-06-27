@@ -1,5 +1,19 @@
 Write a single HTML file using localStorage and JavaScript as a full-featured task manager and outliner app modelled after Checkvist (https://checkvist.com). The app must support all of the following capabilities.
 
+## GitHub Pages Hosting
+
+This repository includes a GitHub Actions workflow at `.github/workflows/pages.yml` that publishes `monkeygtd-standalone.html` as the site `index.html` on pushes to `master`.
+
+![Deploy GitHub Pages](https://github.com/umarinam/monkeygtdCP/actions/workflows/pages.yml/badge.svg)
+
+Live URL: https://umarinam.github.io/monkeygtdCP/
+
+One-time setup in GitHub repository settings:
+1. Open Settings > Pages.
+2. Under Build and deployment, set Source to GitHub Actions.
+
+After that, every push to `master` deploys the latest standalone app.
+
 
 ---
 
