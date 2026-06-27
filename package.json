@@ -7,6 +7,7 @@
     "test": "node scripts/run-tests.cjs",
     "test:unit": "node scripts/run-tests.cjs --suite=unit",
     "test:integration": "node scripts/run-tests.cjs --suite=integration",
+    "check:standalone": "node scripts/check-standalone-up-to-date.cjs",
     "check:test-policy": "node scripts/check-tests-required.cjs",
     "test:ci": "node scripts/check-tests-required.cjs && node scripts/run-tests.cjs"
   },

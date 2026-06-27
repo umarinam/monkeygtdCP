@@ -39,6 +39,22 @@ jobs:
       - name: Run integration tests
         run: npm run test:integration --if-present
 
+  standalone-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify standalone bundle is up to date
+        run: npm run check:standalone
+
   test-policy:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
