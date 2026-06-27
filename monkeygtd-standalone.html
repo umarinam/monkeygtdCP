@@ -52,6 +52,11 @@ body.zen #topbar{display:none}
 .tbtn{padding:4px 8px;border:none;background:none;color:var(--muted);cursor:pointer;
       border-radius:var(--r);font-size:13px;display:flex;align-items:center;gap:4px}
 .tbtn:hover{background:var(--bg-hover);color:var(--text)}
+.m-sync-btn{display:none}
+
+@media (max-width: 768px){
+     .m-sync-btn{display:inline-flex}
+}
 
 /* â”€â”€ Breadcrumbs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #breadcrumbs{padding:5px 16px;background:var(--bg-alt);border-bottom:1px solid var(--border);
@@ -319,6 +324,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
       <span id="search-x" onclick="App.clearSearch()">✕</span>
     </div>
     <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+      <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncGistNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
       <button class="tbtn" onclick="App.showPage('tags')" title="Tags (gt)">🏷</button>
       <button class="tbtn" onclick="App.openSettings()" title="Settings (oo)">⚙</button>

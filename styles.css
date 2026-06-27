@@ -45,6 +45,11 @@ body.zen #topbar{display:none}
 .tbtn{padding:4px 8px;border:none;background:none;color:var(--muted);cursor:pointer;
       border-radius:var(--r);font-size:13px;display:flex;align-items:center;gap:4px}
 .tbtn:hover{background:var(--bg-hover);color:var(--text)}
+.m-sync-btn{display:none}
+
+@media (max-width: 768px){
+     .m-sync-btn{display:inline-flex}
+}
 
 /* â”€â”€ Breadcrumbs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #breadcrumbs{padding:5px 16px;background:var(--bg-alt);border-bottom:1px solid var(--border);
