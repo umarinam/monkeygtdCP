@@ -131,18 +131,24 @@ function updateInlineAutocompleteUi(app, S, id, el) {
   const caret = el.selectionStart || 0;
   const before = el.value.slice(0, caret);
   const m = before.match(/(^|\s)([#@])([\w-]*)$/);
-  if (!m) {
+  const wm = before.match(/\[\[([^\]]*)$/);
+  if (!m && !wm) {
     app.hideInlineAutocomplete();
     return;
   }
 
   const prevType = S.iac.type;
   const prevQuery = S.iac.query;
-  const type = m[2] === '#' ? 'tag' : 'assign';
-  const q = (m[3] || '').toLowerCase();
-  const start = caret - (m[3] || '').length;
+  const type = m ? (m[2] === '#' ? 'tag' : 'assign') : 'wiki';
+  const rawQ = m ? (m[3] || '') : (wm[1] || '');
+  const q = rawQ.toLowerCase();
+  const start = caret - rawQ.length;
   const end = caret;
-  const items = type === 'tag' ? app.getTagSuggestions(q) : app.getAssigneeSuggestions(q);
+  const items = type === 'tag'
+    ? app.getTagSuggestions(q)
+    : type === 'assign'
+      ? app.getAssigneeSuggestions(q)
+      : getWikiSuggestionsUi(S, q);
   if (!items.length) {
     app.hideInlineAutocomplete();
     return;
@@ -172,6 +178,25 @@ function getAssigneeSuggestionsUi(S, q) {
   return [...set].filter(a => !q || a.toLowerCase().includes(q)).sort().slice(0, 8);
 }
 
+function getWikiSuggestionsUi(S, q) {
+  const norm = s => String(s || '').trim().toLowerCase();
+  const out = new Set();
+  const tasks = Object.values(S.data.tasks || {}).filter(t => t && !t.deleted && String(t.content || '').trim());
+
+  for (const t of tasks) {
+    const list = (S.data.lists || {})[t.checklist_id] || null;
+    const title = String(t.content || '').trim().replace(/\s+/g, ' ');
+    if (!title) continue;
+    out.add(title);
+    if (list && list.name) out.add(`${String(list.name).trim()}::${title}`);
+  }
+
+  return [...out]
+    .filter(v => !q || norm(v).includes(q))
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, 8);
+}
+
 function renderInlineAutocompleteUi(app, S) {
   if (!S.iac.open || !S.iac.taskId) return;
   const box = document.getElementById(`iac-${S.iac.taskId}`);
@@ -179,7 +204,7 @@ function renderInlineAutocompleteUi(app, S) {
   box.innerHTML = S.iac.items
     .map(
       (item, i) =>
-        `<div class="iaci${i === S.iac.index ? ' on' : ''}" data-idx="${i}"><span>${S.iac.type === 'tag' ? '#' : '@'}${esc(item)}</span><span class="iacp">${S.iac.type === 'tag' ? 'tag' : 'assignee'}</span></div>`
+        `<div class="iaci${i === S.iac.index ? ' on' : ''}" data-idx="${i}"><span>${S.iac.type === 'tag' ? '#' : S.iac.type === 'assign' ? '@' : '[['}${esc(item)}${S.iac.type === 'wiki' ? ']]' : ''}</span><span class="iacp">${S.iac.type === 'tag' ? 'tag' : S.iac.type === 'assign' ? 'assignee' : 'wiki link'}</span></div>`
     )
     .join('');
   box.classList.add('on');
@@ -209,7 +234,7 @@ function acceptInlineAutocompleteUi(app, S, forceIdx) {
   }
   const idx = Number.isInteger(forceIdx) ? forceIdx : S.iac.index;
   const picked = S.iac.items[idx];
-  const insert = `${picked} `;
+  const insert = S.iac.type === 'wiki' ? `${picked}]] ` : `${picked} `;
   el.value = el.value.slice(0, S.iac.start) + insert + el.value.slice(S.iac.end);
   const caret = S.iac.start + insert.length;
   el.focus();

@@ -4,6 +4,17 @@ function bindTaskListEvents(app, state) {
   const tl = document.getElementById('task-list');
 
   tl.onclick = e => {
+    const internalLink = e.target.closest('a[href^="#task-"]');
+    if (internalLink) {
+      const href = internalLink.getAttribute('href') || '';
+      const taskId = href.replace(/^#task-/, '');
+      if (taskId) {
+        e.preventDefault();
+        app.jumpTo(taskId);
+        return;
+      }
+    }
+
     const ti = e.target.closest('.ti');
     if (!ti) return;
     if (e.target.closest('.edit-area')) return;
@@ -304,6 +315,50 @@ function buildTaskTreeUi(app, state, ids, depth, list) {
   return list2.map(id => buildTaskItemUi(app, state, id, depth, list)).join('');
 }
 
+function resolveWikiTargetTaskId(state, rawTarget) {
+  const target = String(rawTarget || '').trim();
+  if (!target) return '';
+
+  const tasks = Object.values(state.data.tasks || {}).filter(t => t && !t.deleted);
+  const norm = s => String(s || '').trim().toLowerCase();
+
+  if (state.data.tasks[target]) return target;
+  if (target.startsWith('#task-')) {
+    const id = target.slice('#task-'.length);
+    if (state.data.tasks[id]) return id;
+  }
+
+  const listSep = target.includes('::') ? '::' : (target.includes('/') ? '/' : '');
+  if (listSep) {
+    const parts = target.split(listSep);
+    const listName = parts[0];
+    const taskText = parts.slice(1).join(listSep).trim();
+    const list = Object.values(state.data.lists || {}).find(l => norm(l.name) === norm(listName));
+    if (list && taskText) {
+      const listTasks = tasks.filter(t => t.checklist_id === list.id);
+      const exact = listTasks.find(t => norm(t.content) === norm(taskText));
+      if (exact) return exact.id;
+      const partial = listTasks.find(t => norm(t.content).includes(norm(taskText)));
+      if (partial) return partial.id;
+    }
+  }
+
+  const exactGlobal = tasks.find(t => norm(t.content) === norm(target));
+  if (exactGlobal) return exactGlobal.id;
+  const partialGlobal = tasks.find(t => norm(t.content).includes(norm(target)));
+  return partialGlobal ? partialGlobal.id : '';
+}
+
+function applyWikiLinksInContent(state, content) {
+  return String(content || '').replace(/\[\[([^\]]+)\]\]/g, (full, rawLabel) => {
+    const label = String(rawLabel || '').replace(/[\r\n\[\]]/g, ' ').trim();
+    if (!label) return full;
+    const targetId = resolveWikiTargetTaskId(state, label);
+    if (!targetId) return full;
+    return `[${label}](#task-${targetId})`;
+  });
+}
+
 function buildTaskItemUi(app, state, id, depth, list) {
   const t = state.data.tasks[id];
   if (!t || t.deleted) return '';
@@ -326,7 +381,8 @@ function buildTaskItemUi(app, state, id, depth, list) {
   const ckd = t.status === 1 ? 'checked' : '';
   const cb = `<input type="checkbox" class="tcb" data-id="${id}" data-a="sts" ${ckd}>`;
   const disp = t.content.replace(/^\[\*\]\s*/, '').replace(/^\[\d\]\s*/, '');
-  let rendered = md(disp);
+  const wikiAwareContent = applyWikiLinksInContent(state, disp);
+  let rendered = md(wikiAwareContent);
 
   if (state.filter) {
     const words = state.filter

@@ -96,6 +96,158 @@ test('buildTaskItemUi shows JSON chip by default and hides when setting is false
   assert.equal(hiddenHtml.includes('data-a="hist"'), false);
 });
 
+test('buildTaskItemUi resolves cross-list wiki links to internal task permalinks', () => {
+  const { buildTaskItemUi } = loadRenderController();
+  const app = { sibIdx: () => 1 };
+
+  const state = {
+    data: {
+      settings: { showTaskJsonChip: true, showTaskHistoryChip: true },
+      tasks: {
+        t1: {
+          id: 't1',
+          content: 'See [[Remote Task]] and [[Work::Cross Item]]',
+          status: 0,
+          color: 0,
+          tasks: [],
+          tags_as_text: '',
+          assignees: [],
+          comments_count: 0,
+          due: '',
+          due_asap: false,
+          repeating_due: null,
+          created_at: '2026-06-01T00:00:00.000Z',
+          updated_at: '2026-06-01T00:00:00.000Z'
+        },
+        t2: {
+          id: 't2',
+          content: 'Remote Task',
+          status: 0,
+          color: 0,
+          tasks: [],
+          tags_as_text: '',
+          assignees: [],
+          comments_count: 0,
+          due: '',
+          due_asap: false,
+          repeating_due: null,
+          checklist_id: 'l2',
+          created_at: '2026-06-01T00:00:00.000Z',
+          updated_at: '2026-06-01T00:00:00.000Z'
+        },
+        t3: {
+          id: 't3',
+          content: 'Cross Item',
+          status: 0,
+          color: 0,
+          tasks: [],
+          tags_as_text: '',
+          assignees: [],
+          comments_count: 0,
+          due: '',
+          due_asap: false,
+          repeating_due: null,
+          checklist_id: 'l2',
+          created_at: '2026-06-01T00:00:00.000Z',
+          updated_at: '2026-06-01T00:00:00.000Z'
+        }
+      },
+      lists: {
+        l1: { id: 'l1', name: 'Inbox', style: 'none', root_tasks: ['t1'] },
+        l2: { id: 'l2', name: 'Work', style: 'none', root_tasks: ['t2', 't3'] }
+      }
+    },
+    selId: 't1',
+    msel: new Set(),
+    editId: null,
+    filter: '',
+    showNotes: false
+  };
+
+  state.data.tasks.t1.checklist_id = 'l1';
+
+  const html = buildTaskItemUi(app, state, 't1', 0, state.data.lists.l1);
+
+  assert.equal(html.includes('[Remote Task](#task-t2)'), true);
+  assert.equal(html.includes('[Work::Cross Item](#task-t3)'), true);
+});
+
+test('bindTaskListEvents navigates to internal task links in rendered content', () => {
+  const sourcePath = path.join(process.cwd(), 'js/ui/render-controller.js');
+  const source = fs.readFileSync(sourcePath, 'utf8');
+
+  const taskListEl = {
+    onclick: null,
+    addEventListener: () => {}
+  };
+
+  const sandbox = {
+    console,
+    md: (s) => s,
+    esc: (s) => String(s),
+    getDueCls: () => '',
+    fmtDue: () => '',
+    document: {
+      getElementById: () => taskListEl,
+      querySelectorAll: () => []
+    },
+    requestAnimationFrame: (fn) => fn()
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(`${source}\n;globalThis.__renderExports = { bindTaskListEvents };`, sandbox, { filename: 'render-controller.js' });
+  const { bindTaskListEvents } = sandbox.__renderExports;
+
+  const calls = { jumpTo: '' };
+  const app = {
+    jumpTo: (id) => { calls.jumpTo = id; },
+    toggleCollapse: () => {},
+    toggleStatus: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    filterTag: () => {},
+    openNotesModal: () => {},
+    openTaskJson: () => {},
+    openTaskHistory: () => {},
+    startEdit: () => {},
+    renderList: () => {},
+    syncSB: () => {},
+    pushUndo: () => {},
+    snap: () => ({}),
+    moveBefore: () => {}
+  };
+
+  const state = {
+    lastClickId: '',
+    lastClickAt: 0,
+    selId: null,
+    msel: new Set()
+  };
+
+  bindTaskListEvents(app, state);
+
+  let prevented = false;
+  taskListEl.onclick({
+    target: {
+      closest: (sel) => {
+        if (sel === 'a[href^="#task-"]') {
+          return { getAttribute: () => '#task-target123' };
+        }
+        if (sel === '.ti') return { dataset: { id: 't1' } };
+        return null;
+      }
+    },
+    preventDefault: () => { prevented = true; },
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    altKey: false
+  });
+
+  assert.equal(prevented, true);
+  assert.equal(calls.jumpTo, 'target123');
+});
+
 test('handleTwoKeySequence opens task JSON editor with tj shortcut', () => {
   const { handleTwoKeySequence } = loadKeyboardController();
   const calls = { openTaskJson: 0 };
