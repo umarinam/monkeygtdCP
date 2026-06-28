@@ -13,6 +13,24 @@ const isAllowedLinkUrl = (url='') => {
   const val = String(url || '').trim();
   return !!val;
 };
+const FA_TOKEN_ICONS = {
+  envelope: '✉',
+  outlook: '✉',
+  onenote: '🗒',
+  calendar: '📅',
+  link: '🔗',
+  task: '☑',
+  file: '📄',
+  github: '🐙'
+};
+const renderLinkLabel = (label='') => {
+  const raw = String(label || '').trim();
+  const m = raw.match(/^fa:([a-z0-9-]+)$/i);
+  if (!m) return raw;
+  const name = m[1].toLowerCase();
+  const glyph = FA_TOKEN_ICONS[name] || '🔗';
+  return `<span class="fa-token" data-fa="${name}" title="${name}" aria-label="${name}">${glyph}</span>`;
+};
 const getDueCls = t => {
   if(t.due_asap) return 'asap';
   if(!t.due) return '';
@@ -42,16 +60,20 @@ const md = text => {
   h = h.replace(/\*(.+?)\*/g,'<em>$1</em>');
   h = h.replace(/_(.+?)_/g,'<em>$1</em>');
   h = h.replace(/~~(.+?)~~/g,'<del>$1</del>');
+  const linkSlots = [];
   h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
     const cleanUrl = String(url || '').trim();
     if (!isAllowedLinkUrl(cleanUrl)) return `[${label}](${cleanUrl})`;
-    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    const html = `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${renderLinkLabel(label)}</a>`;
+    const idx = linkSlots.push(html) - 1;
+    return `__MGTD_LINK_${idx}__`;
   });
   h = h.replace(/(?<!["'=])\b([a-z][a-z0-9+.-]*:[^\s<>"]+)/gi, (_m, rawUrl) => {
     const cleanUrl = String(rawUrl || '').trim();
     if (!isAllowedLinkUrl(cleanUrl)) return cleanUrl;
     return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
   });
+  h = h.replace(/__MGTD_LINK_(\d+)__/g, (_m, idx) => linkSlots[Number(idx)] || '');
   h = h.replace(/\n/g,'<br>');
   return h;
 };

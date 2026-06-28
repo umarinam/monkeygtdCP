@@ -283,6 +283,8 @@ label{display:block;margin-bottom:4px;font-size:12px;font-weight:500;color:var(-
 .task-history-at{font-size:11px;color:var(--muted)}
 .task-history-changes{margin:0;background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--r);padding:8px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;word-break:break-word}
 
+.fa-token{display:inline-flex;align-items:center;justify-content:center;min-width:1.2em;height:1.2em;line-height:1;font-size:1em;vertical-align:text-bottom}
+
 /* â”€â”€ Misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .empty{padding:48px 24px;text-align:center;color:var(--muted)}
 .empty-t{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px}

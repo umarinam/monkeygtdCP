@@ -39,3 +39,12 @@ test('md preserves markdown link label for outlook protocol links', () => {
   assert.equal(html.includes('>My Email</a>'), true);
   assert.equal(html.includes('href="outlook:00000000F8774E51F57D274398F5CCA2CB3B913F0700234F456FBC8AF54BA08AB663CA86D36900000746B0DE0000E141C43A8481914698BF8E74F56BD1850009A742D4630000"'), true);
 });
+
+test('md supports fa token labels in markdown links', () => {
+  const md = loadMd();
+  const html = md('[fa:envelope](outlook:inbox) [fa:onenote](onenote:https://example)');
+  assert.equal(html.includes('data-fa="envelope"'), true);
+  assert.equal(html.includes('data-fa="onenote"'), true);
+  assert.equal(html.includes('href="outlook:inbox"'), true);
+  assert.equal(html.includes('href="onenote:https://example"'), true);
+});
