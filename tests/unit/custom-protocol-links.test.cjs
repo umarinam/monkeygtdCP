@@ -32,3 +32,10 @@ test('md markdown links allow internal task anchors and arbitrary schemes', () =
   assert.equal(html.includes('href="mailto:test@example.com"'), true);
   assert.equal(html.includes('href="foo:bar"'), true);
 });
+
+test('md preserves markdown link label for outlook protocol links', () => {
+  const md = loadMd();
+  const html = md('Outlooks [My Email](outlook:00000000F8774E51F57D274398F5CCA2CB3B913F0700234F456FBC8AF54BA08AB663CA86D36900000746B0DE0000E141C43A8481914698BF8E74F56BD1850009A742D4630000)');
+  assert.equal(html.includes('>My Email</a>'), true);
+  assert.equal(html.includes('href="outlook:00000000F8774E51F57D274398F5CCA2CB3B913F0700234F456FBC8AF54BA08AB663CA86D36900000746B0DE0000E141C43A8481914698BF8E74F56BD1850009A742D4630000"'), true);
+});

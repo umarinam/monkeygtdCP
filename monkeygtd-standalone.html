@@ -846,7 +846,7 @@ const md = text => {
     if (!isAllowedLinkUrl(cleanUrl)) return `[${label}](${cleanUrl})`;
     return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
   });
-  h = h.replace(/\b([a-z][a-z0-9+.-]*:[^\s<>"]+)/gi, (_m, rawUrl) => {
+  h = h.replace(/(?<!["'=])\b([a-z][a-z0-9+.-]*:[^\s<>"\])]+)/gi, (_m, rawUrl) => {
     const cleanUrl = String(rawUrl || '').trim();
     if (!isAllowedLinkUrl(cleanUrl)) return cleanUrl;
     return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
