@@ -808,6 +808,10 @@ const tomorrowS = () => { const d=new Date(); d.setDate(d.getDate()+1); return d
 const nextMonday = () => { const d=new Date(),day=d.getDay(),dd=day===0?1:8-day; d.setDate(d.getDate()+dd); return dateStr(d); };
 const dispDate = iso => { if(!iso)return''; const[y,m,d]=iso.split('-'); return`${d}/${m}/${y}`; };
 const cmpDate = (a,b) => (!a&&!b)?0:!a?1:!b?-1:a<b?-1:a>b?1:0;
+const isAllowedLinkUrl = (url='') => {
+  const val = String(url || '').trim();
+  return !!val;
+};
 const getDueCls = t => {
   if(t.due_asap) return 'asap';
   if(!t.due) return '';
@@ -837,8 +841,16 @@ const md = text => {
   h = h.replace(/\*(.+?)\*/g,'<em>$1</em>');
   h = h.replace(/_(.+?)_/g,'<em>$1</em>');
   h = h.replace(/~~(.+?)~~/g,'<del>$1</del>');
-  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>');
-  h = h.replace(/https?:\/\/[^\s<>"]+/g, u=>`<a href="${u}" target="_blank">${u}</a>`);
+  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
+    const cleanUrl = String(url || '').trim();
+    if (!isAllowedLinkUrl(cleanUrl)) return `[${label}](${cleanUrl})`;
+    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+  });
+  h = h.replace(/\b([a-z][a-z0-9+.-]*:[^\s<>"]+)/gi, (_m, rawUrl) => {
+    const cleanUrl = String(rawUrl || '').trim();
+    if (!isAllowedLinkUrl(cleanUrl)) return cleanUrl;
+    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
+  });
   h = h.replace(/\n/g,'<br>');
   return h;
 };
