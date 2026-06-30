@@ -124,7 +124,7 @@ test('showPageUi and gk shortcut support kanban navigation', () => {
   assert.equal(calls.syncSB, 1);
 
   const shortcutState = {
-    selId: null,
+    selId: 't1',
     kbuf: '',
     kbtimer: null
   };
