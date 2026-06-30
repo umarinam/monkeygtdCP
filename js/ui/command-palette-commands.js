@@ -50,6 +50,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Settings', s: 'oo', fn: () => app.openSettings() },
     { l: 'Lists home', s: 'gh', fn: () => app.showPage('home') },
     { l: 'Due page', s: 'gd', fn: () => app.showPage('due') },
+    { l: 'Kanban page', s: 'gk', fn: () => app.showPage('kanban') },
     { l: 'Tags page', s: 'gt', fn: () => app.showPage('tags') },
     { l: 'New list', fn: () => { app.showPage('home'); app.createList(); } },
     ...app.select('cp.listTargets').map(l => ({ l: `Go to: ${l.name}`, fn: () => app.openList(l.id) }))

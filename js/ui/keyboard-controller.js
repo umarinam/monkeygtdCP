@@ -382,6 +382,7 @@ function handleTwoKeySequence(app, state, e) {
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
     'ct': () => { if (state.selId) app.dispatch('task.clearTags', { taskId: state.selId }); },
     'gt': () => app.showPage('tags'),
+    'gk': () => app.showPage('kanban'),
     'nn': () => { if (state.selId) app.openNotesModal(state.selId); },
     'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
     'sn': () => { state.showNotes = !state.showNotes; app.render(); app.toast(`Notes ${state.showNotes ? 'visible' : 'hidden'}`); },
@@ -443,7 +444,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;

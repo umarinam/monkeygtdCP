@@ -140,7 +140,7 @@ body.zen #topbar{display:none}
 .ph{font-size:20px;font-weight:700;margin-bottom:18px}
 
 /* â”€â”€ Due & Tags pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-#due-page,#tags-page{padding:16px}
+#due-page,#tags-page,#kanban-page{padding:16px}
 .dsec{margin-bottom:22px}
 .dsec-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
         color:var(--muted);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
@@ -152,6 +152,16 @@ body.zen #topbar{display:none}
      font-size:13px;background:var(--bg-alt)}
 .tci:hover{background:var(--bg-hover);border-color:var(--accent)}
 .tc2{font-size:11px;color:var(--muted);margin-left:4px}
+.kanban-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:start}
+.kanban-col{border:1px solid var(--border);border-radius:var(--r);background:var(--bg-alt);min-height:180px}
+.kanban-col-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
+  padding:10px 12px;border-bottom:1px solid var(--border)}
+.kanban-col-b{padding:8px;display:flex;flex-direction:column;gap:8px}
+.kanban-card{display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--r);padding:8px;cursor:pointer}
+.kanban-card:hover{background:var(--bg-hover)}
+.kanban-card-c{word-break:break-word;line-height:1.45}
+.kanban-empty{font-size:12px;color:var(--muted);padding:8px}
 
 /* â”€â”€ Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;
@@ -296,4 +306,3 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
-

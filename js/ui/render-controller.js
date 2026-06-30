@@ -118,10 +118,10 @@ function scrollToSelectedTask(state) {
 
 function showPageUi(app, state, p) {
   state.page = p;
-  ['home-page', 'list-page', 'due-page', 'tags-page'].forEach(id => {
+  ['home-page', 'list-page', 'due-page', 'kanban-page', 'tags-page'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
-  const map = { home: 'home-page', list: 'list-page', due: 'due-page', tags: 'tags-page' };
+  const map = { home: 'home-page', list: 'list-page', due: 'due-page', kanban: 'kanban-page', tags: 'tags-page' };
   document.getElementById(map[p]).classList.remove('hidden');
   renderCurrentPageUi(app, state);
 }
@@ -130,6 +130,7 @@ function renderCurrentPageUi(app, state) {
   if (state.page === 'home') app.renderHome();
   else if (state.page === 'list') app.renderList();
   else if (state.page === 'due') app.renderDue();
+  else if (state.page === 'kanban') app.renderKanban();
   else if (state.page === 'tags') app.renderTags();
   app.syncSB();
 }
@@ -255,6 +256,49 @@ function renderTagsUi(app) {
   if (!tags.length) {
     document.getElementById('tags-c').innerHTML = '<div class="empty"><div class="empty-t">No tags yet</div></div>';
     return;
+  }
+
+  function renderKanbanUi(app, state) {
+    const list = state.data.lists[state.listId];
+    if (!list) {
+      app.showPage('home');
+      return;
+    }
+
+    const order = [];
+    const walk = (ids) => {
+      for (const id of ids || []) {
+        const t = state.data.tasks[id];
+        if (!t || t.deleted) continue;
+        order.push(t);
+        walk(t.tasks || []);
+      }
+    };
+    walk(list.root_tasks || []);
+
+    if (!order.length) {
+      document.getElementById('kanban-c').innerHTML = '<div class="empty"><div class="empty-t">No tasks yet</div><div class="empty-d">Add tasks in list view to populate your Kanban board.</div></div>';
+      return;
+    }
+
+    const groups = [
+      { title: 'Open', cls: 'open', items: order.filter(t => Number(t.status || 0) === 0), empty: 'No open tasks' },
+      { title: 'Done', cls: 'done', items: order.filter(t => Number(t.status || 0) === 1), empty: 'No done tasks' },
+      { title: 'Invalid', cls: 'invalid', items: order.filter(t => Number(t.status || 0) === 2), empty: 'No invalid tasks' }
+    ];
+
+    document.getElementById('kanban-c').innerHTML = `<div class="kanban-grid">${groups.map(group => {
+      return `<section class="kanban-col ${group.cls}">
+        <div class="kanban-col-h">${group.title} (${group.items.length})</div>
+        <div class="kanban-col-b">${group.items.length
+          ? group.items.map(t => `<div class="kanban-card" onclick="App.jumpTo('${t.id}')">
+              <input type="checkbox" ${Number(t.status || 0) === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
+              <div class="kanban-card-c">${esc((t.content || '').slice(0, 140))}</div>
+            </div>`).join('')
+          : `<div class="kanban-empty">${group.empty}</div>`}
+        </div>
+      </section>`;
+    }).join('')}</div>`;
   }
   document.getElementById('tags-c').innerHTML = `<div class="tag-cloud">${tags.map(tg => `<span class="tci" onclick="App.filterTag('${esc(tg)}')">#${esc(tg)}<span class="tc2">${map[tg]}</span></span>`).join('')}</div>`;
 }

@@ -22,6 +22,7 @@
     <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
       <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncGistNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
+      <button class="tbtn" onclick="App.showPage('kanban')" title="Kanban (gk)">🧩</button>
       <button class="tbtn" onclick="App.showPage('tags')" title="Tags (gt)">🏷</button>
       <button class="tbtn" onclick="App.openSettings()" title="Settings (oo)">⚙</button>
     </div>
@@ -49,6 +50,11 @@
     <!-- Due page -->
     <div id="due-page" class="page hidden">
       <div style="padding:16px"><div class="ph">Due Tasks</div><div id="due-c"></div></div>
+    </div>
+
+    <!-- Kanban page -->
+    <div id="kanban-page" class="page hidden">
+      <div style="padding:16px"><div class="ph">Kanban</div><div id="kanban-c"></div></div>
     </div>
 
     <!-- Tags page -->
@@ -474,4 +480,3 @@
 <script src="js/app.js"></script>
 </body>
 </html>
-
