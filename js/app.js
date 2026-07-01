@@ -7,6 +7,7 @@ const S={
   dragSrc:null, listMode:'create', listEditId:null,
   cpIdx:0, cpItems:[], cpMode:'', sortField:'alpha', calDate:new Date(),
   reportStart:'', reportEnd:'',
+  reportFilters:{ added:true, modified:true, completed:true, deleted:true, untouched:true },
   showNotes:false, clipboard:null,
   lastClickId:'', lastClickAt:0,
   lastCdAt:0,
@@ -107,6 +108,11 @@ const App={
   renderDue(){ renderDueUi(this, S); },
 
   renderReport(){ renderReportUi(this, S); },
+  toggleReportFilter(key){
+    if (!S.reportFilters || !(key in S.reportFilters)) return;
+    S.reportFilters[key] = !S.reportFilters[key];
+    this.renderReport();
+  },
 
   renderKanban(){ renderKanbanUi(this, S); },
 

@@ -136,6 +136,39 @@ function renderCurrentPageUi(app, state) {
   app.syncSB();
 }
 
+function ensureReportFilters(state) {
+  if (!state.reportFilters) {
+    state.reportFilters = { added: true, modified: true, completed: true, deleted: true, untouched: true };
+    return state.reportFilters;
+  }
+
+  for (const key of ['added', 'modified', 'completed', 'deleted', 'untouched']) {
+    if (typeof state.reportFilters[key] !== 'boolean') state.reportFilters[key] = true;
+  }
+
+  return state.reportFilters;
+}
+
+function filterReportRows(rows, filters) {
+  return (rows || []).filter(r => !!filters[r.statusKey]);
+}
+
+function buildReportLegendUi(filters, counts) {
+  const items = [
+    ['added', 'Added'],
+    ['modified', 'Modified'],
+    ['completed', 'Completed'],
+    ['deleted', 'Deleted'],
+    ['untouched', 'Untouched']
+  ];
+
+  return items.map(([key, label]) => {
+    const activeCls = filters[key] ? ' active' : ' off';
+    const cnt = Number(counts[key] || 0);
+    return `<button class="report-pill rp-${key}${activeCls}" onclick="App.toggleReportFilter('${key}')">${label} (${cnt})</button>`;
+  }).join('');
+}
+
 function renderReportUi(app, state) {
   const startEl = document.getElementById('report-start');
   const endEl = document.getElementById('report-end');
@@ -148,6 +181,15 @@ function renderReportUi(app, state) {
   state.reportEnd = end;
 
   const rows = app.select('report.rows', { start, end });
+  const filters = ensureReportFilters(state);
+  const counts = rows.reduce((acc, row) => {
+    acc[row.statusKey] = (acc[row.statusKey] || 0) + 1;
+    return acc;
+  }, { added: 0, modified: 0, completed: 0, deleted: 0, untouched: 0 });
+  const legendEl = document.getElementById('report-legend');
+  if (legendEl) legendEl.innerHTML = buildReportLegendUi(filters, counts);
+
+  const filteredRows = filterReportRows(rows, filters);
   const list = state.data.lists[state.listId];
   if (!list) {
     document.getElementById('report-c').innerHTML = '<div class="empty"><div class="empty-t">No active list</div></div>';
@@ -155,12 +197,12 @@ function renderReportUi(app, state) {
   }
 
   const title = `<div class="report-head">${esc(list.name)} · ${esc(start)} to ${esc(end)}</div>`;
-  if (!rows.length) {
+  if (!filteredRows.length) {
     document.getElementById('report-c').innerHTML = `${title}<div class="empty"><div class="empty-t">No items found</div></div>`;
     return;
   }
 
-  const html = rows.map(r => {
+  const html = filteredRows.map(r => {
     const indent = Math.max(0, Number(r.depth || 0)) * 18;
     const deletedMark = r.statusKey === 'deleted' ? '<span class="report-deleted-mark">deleted</span>' : '';
     return `<div class="report-row rk-${r.statusKey}" style="padding-left:${indent + 10}px">
