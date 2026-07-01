@@ -9,16 +9,68 @@ function taskTextDomain(state, t, d) {
   return s;
 }
 
+function canCopyChildTask(state, task) {
+  if (!task || task.deleted) return false;
+  if (state.data?.settings?.showCompleted === false && task.status !== 0) return false;
+  if (state.data?.settings?.hideFuture) {
+    if (task.due_asap) return true;
+    if (!task.due) return true;
+    const dueClass = getDueCls(task);
+    return ['ov', 'tod', 'tom', ''].includes(dueClass);
+  }
+  return true;
+}
+
+function cloneVisibleBranchDomain(state, taskId, includeChildren) {
+  const src = state.data.tasks[taskId];
+  if (!src) return null;
+
+  const clone = JSON.parse(JSON.stringify(src));
+  const shouldIncludeChildren = includeChildren && !src._collapsed;
+  if (!shouldIncludeChildren) {
+    clone.tasks = [];
+    return clone;
+  }
+
+  const visibleChildIds = [];
+  for (const childId of (src.tasks || [])) {
+    const child = state.data.tasks[childId];
+    if (!canCopyChildTask(state, child)) continue;
+    visibleChildIds.push(childId);
+  }
+  clone.tasks = visibleChildIds;
+  return clone;
+}
+
+function taskTextFromSnapshotDomain(snapshot, tasksById, depth) {
+  let out = '  '.repeat(depth) + (snapshot.content || '');
+  for (const childId of (snapshot.tasks || [])) {
+    const child = tasksById[childId];
+    if (!child) continue;
+    out += '\n' + taskTextFromSnapshotDomain(child, tasksById, depth + 1);
+  }
+  return out;
+}
+
 function copyDomain(app, state) {
   const ids = state.msel.size ? [...state.msel] : (state.selId ? [state.selId] : []);
   if (!ids.length) return;
 
-  state.clipboard = ids.map(id => JSON.parse(JSON.stringify(state.data.tasks[id])));
+  const copiedTasks = {};
+  const copyOne = (taskId, includeChildren) => {
+    const cloned = cloneVisibleBranchDomain(state, taskId, includeChildren);
+    if (!cloned) return null;
+    copiedTasks[cloned.id] = cloned;
+    for (const childId of (cloned.tasks || [])) {
+      copyOne(childId, true);
+    }
+    return cloned;
+  };
+
+  state.clipboard = ids.map(id => copyOne(id, true)).filter(Boolean);
+
   navigator.clipboard?.writeText(
-    ids.map(id => {
-      const t = state.data.tasks[id];
-      return t ? taskTextDomain(state, t, 0) : '';
-    }).join('\n')
+    state.clipboard.map(t => taskTextFromSnapshotDomain(t, copiedTasks, 0)).join('\n')
   ).catch(() => {});
 
   app.toast(`Copied ${ids.length} task(s)`);
