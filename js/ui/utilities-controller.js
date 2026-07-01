@@ -107,6 +107,7 @@ function showShortcutsUi(app) {
       ['Shift+Shift', 'Command palette'],
       ['gh', 'Lists home'],
       ['gd', 'Due page'],
+      ['gr', 'Reporting page'],
       ['gt', 'Tags page'],
       ['hc', 'Hide/show completed'],
       ['df', 'Toggle relative dates'],

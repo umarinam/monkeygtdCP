@@ -6,6 +6,7 @@ const S={
   msel:new Set(), filter:'', undos:[], kbuf:'', kbtimer:null,
   dragSrc:null, listMode:'create', listEditId:null,
   cpIdx:0, cpItems:[], cpMode:'', sortField:'alpha', calDate:new Date(),
+  reportStart:'', reportEnd:'',
   showNotes:false, clipboard:null,
   lastClickId:'', lastClickAt:0,
   lastCdAt:0,
@@ -19,6 +20,10 @@ const App={
   init(){
     let d=DB.get(); if(!d){d=seedData();DB.save(d);}
     S.data=d; S.listId=d.currentListId||Object.keys(d.lists)[0];
+    S.reportEnd=todayS();
+    const reportStartDate=new Date();
+    reportStartDate.setDate(reportStartDate.getDate()-7);
+    S.reportStart=dateStr(reportStartDate);
     S.data.settings = S.data.settings || {};
     const gs=d.settings;
     if(gs.darkMode) document.documentElement.setAttribute('data-theme','dark');
@@ -100,6 +105,8 @@ const App={
 
   // â”€ Due page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   renderDue(){ renderDueUi(this, S); },
+
+  renderReport(){ renderReportUi(this, S); },
 
   renderKanban(){ renderKanbanUi(this, S); },
 

@@ -193,6 +193,73 @@ function registerAppQueries(app, deps) {
     return { open, total, done: total - open };
   });
 
+  app.queryService.register('report.rows', payload => {
+    const data = getData();
+    const start = String(payload.start || '').trim();
+    const end = String(payload.end || '').trim();
+    const startMs = Date.parse(`${start}T00:00:00.000Z`);
+    const endMs = Date.parse(`${end}T23:59:59.999Z`);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return [];
+
+    const inRange = iso => {
+      const ms = Date.parse(String(iso || ''));
+      return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
+    };
+
+    const list = data.lists[state.listId];
+    if (!list) return [];
+
+    const rows = [];
+    const seenIds = new Set();
+
+    const classify = (task, deletedAt) => {
+      const history = Array.isArray(task.history) ? task.history : [];
+      const added = inRange(task.created_at) || history.some(h => h?.type === 'creation' && inRange(h.at));
+      const deleted = !!deletedAt && inRange(deletedAt)
+        || history.some(h => h?.type === 'deletion' && inRange(h.at));
+      const completed = inRange(task.completed_at)
+        || history.some(h => h?.type === 'status' && Number(h?.changes?.to) === 1 && inRange(h.at));
+      const modified = inRange(task.updated_at)
+        || history.some(h => ['title', 'tags', 'assignment', 'scheduling', 'priority', 'notes', 'structure'].includes(h?.type) && inRange(h.at));
+
+      if (deleted) return 'deleted';
+      if (completed) return 'completed';
+      if (added) return 'added';
+      if (modified) return 'modified';
+      return 'untouched';
+    };
+
+    const addRow = (task, depth, deletedAt) => {
+      if (!task || seenIds.has(task.id)) return;
+      seenIds.add(task.id);
+      rows.push({
+        id: task.id,
+        content: task.content || '',
+        depth: Math.max(0, depth || 0),
+        statusKey: classify(task, deletedAt)
+      });
+    };
+
+    const walkList = (ids, depth) => {
+      for (const id of ids || []) {
+        const t = data.tasks[id];
+        if (!t || t.deleted) continue;
+        addRow(t, depth, '');
+        walkList(t.tasks || [], depth + 1);
+      }
+    };
+
+    walkList(list.root_tasks || [], 0);
+
+    for (const item of (data.deletedItems || [])) {
+      const snap = item?.snapshot;
+      if (!snap || snap.checklist_id !== state.listId) continue;
+      addRow(snap, 0, item.deletedAt || snap._deleted_at || '');
+    }
+
+    return rows;
+  });
+
   app.queryService.register('cp.listTargets', () => {
     const data = getData();
     return Object.values(data.lists)

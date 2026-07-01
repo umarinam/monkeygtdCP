@@ -140,7 +140,7 @@ body.zen #topbar{display:none}
 .ph{font-size:20px;font-weight:700;margin-bottom:18px}
 
 /* â”€â”€ Due & Tags pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-#due-page,#tags-page,#kanban-page{padding:16px}
+#due-page,#report-page,#tags-page,#kanban-page{padding:16px}
 .dsec{margin-bottom:22px}
 .dsec-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
         color:var(--muted);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
@@ -162,6 +162,32 @@ body.zen #topbar{display:none}
 .kanban-card:hover{background:var(--bg-hover)}
 .kanban-card-c{word-break:break-word;line-height:1.45}
 .kanban-empty{font-size:12px;color:var(--muted);padding:8px}
+
+.report-controls{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px}
+.report-legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.report-pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:var(--bg-alt)}
+.rp-added{color:#15803d;border-color:#86efac;background:#f0fdf4}
+.rp-modified{color:#1d4ed8;border-color:#93c5fd;background:#eff6ff}
+.rp-completed{color:#374151;border-color:#9ca3af;background:#f3f4f6}
+.rp-deleted{color:#b91c1c;border-color:#fca5a5;background:#fef2f2}
+.rp-untouched{color:#6b7280;border-color:#d1d5db;background:#f9fafb}
+.report-head{font-size:13px;color:var(--muted);margin-bottom:8px}
+.report-list{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--bg)}
+.report-row{display:flex;align-items:center;gap:8px;min-height:30px;padding:5px 10px;border-bottom:1px solid var(--border)}
+.report-row:last-child{border-bottom:none}
+.report-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.report-content{word-break:break-word}
+.report-deleted-mark{margin-left:auto;font-size:11px;color:inherit;opacity:.8}
+.rk-added{color:#15803d}
+.rk-modified{color:#1d4ed8}
+.rk-completed{color:#374151}
+.rk-deleted{color:#b91c1c}
+.rk-untouched{color:#9ca3af}
+[data-theme=dark] .rp-added{background:#052e16;border-color:#166534;color:#4ade80}
+[data-theme=dark] .rp-modified{background:#172554;border-color:#1d4ed8;color:#60a5fa}
+[data-theme=dark] .rp-completed{background:#1f2937;border-color:#4b5563;color:#d1d5db}
+[data-theme=dark] .rp-deleted{background:#450a0a;border-color:#991b1b;color:#fca5a5}
+[data-theme=dark] .rp-untouched{background:#111827;border-color:#374151;color:#9ca3af}
 
 /* â”€â”€ Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;

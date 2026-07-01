@@ -118,10 +118,10 @@ function scrollToSelectedTask(state) {
 
 function showPageUi(app, state, p) {
   state.page = p;
-  ['home-page', 'list-page', 'due-page', 'kanban-page', 'tags-page'].forEach(id => {
+  ['home-page', 'list-page', 'due-page', 'report-page', 'kanban-page', 'tags-page'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
-  const map = { home: 'home-page', list: 'list-page', due: 'due-page', kanban: 'kanban-page', tags: 'tags-page' };
+  const map = { home: 'home-page', list: 'list-page', due: 'due-page', report: 'report-page', kanban: 'kanban-page', tags: 'tags-page' };
   document.getElementById(map[p]).classList.remove('hidden');
   renderCurrentPageUi(app, state);
 }
@@ -130,9 +130,47 @@ function renderCurrentPageUi(app, state) {
   if (state.page === 'home') app.renderHome();
   else if (state.page === 'list') app.renderList();
   else if (state.page === 'due') app.renderDue();
+  else if (state.page === 'report') app.renderReport();
   else if (state.page === 'kanban') app.renderKanban();
   else if (state.page === 'tags') app.renderTags();
   app.syncSB();
+}
+
+function renderReportUi(app, state) {
+  const startEl = document.getElementById('report-start');
+  const endEl = document.getElementById('report-end');
+  if (startEl && !startEl.value) startEl.value = state.reportStart || todayS();
+  if (endEl && !endEl.value) endEl.value = state.reportEnd || todayS();
+
+  const start = (startEl && startEl.value) || state.reportStart || todayS();
+  const end = (endEl && endEl.value) || state.reportEnd || todayS();
+  state.reportStart = start;
+  state.reportEnd = end;
+
+  const rows = app.select('report.rows', { start, end });
+  const list = state.data.lists[state.listId];
+  if (!list) {
+    document.getElementById('report-c').innerHTML = '<div class="empty"><div class="empty-t">No active list</div></div>';
+    return;
+  }
+
+  const title = `<div class="report-head">${esc(list.name)} · ${esc(start)} to ${esc(end)}</div>`;
+  if (!rows.length) {
+    document.getElementById('report-c').innerHTML = `${title}<div class="empty"><div class="empty-t">No items found</div></div>`;
+    return;
+  }
+
+  const html = rows.map(r => {
+    const indent = Math.max(0, Number(r.depth || 0)) * 18;
+    const deletedMark = r.statusKey === 'deleted' ? '<span class="report-deleted-mark">deleted</span>' : '';
+    return `<div class="report-row rk-${r.statusKey}" style="padding-left:${indent + 10}px">
+      <span class="report-dot"></span>
+      <span class="report-content">${esc(r.content || '(untitled)')}</span>
+      ${deletedMark}
+    </div>`;
+  }).join('');
+
+  document.getElementById('report-c').innerHTML = `${title}<div class="report-list">${html}</div>`;
 }
 
 function sibIndexUi(state, id) {

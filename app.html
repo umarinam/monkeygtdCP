@@ -22,6 +22,7 @@
     <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
       <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncGistNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
+      <button class="tbtn" onclick="App.showPage('report')" title="Reporting (gr)">📊</button>
       <button class="tbtn" onclick="App.showPage('kanban')" title="Kanban (gk)">🧩</button>
       <button class="tbtn" onclick="App.showPage('tags')" title="Tags (gt)">🏷</button>
       <button class="tbtn" onclick="App.openSettings()" title="Settings (oo)">⚙</button>
@@ -50,6 +51,32 @@
     <!-- Due page -->
     <div id="due-page" class="page hidden">
       <div style="padding:16px"><div class="ph">Due Tasks</div><div id="due-c"></div></div>
+    </div>
+
+    <!-- Reporting page -->
+    <div id="report-page" class="page hidden">
+      <div style="padding:16px">
+        <div class="ph">Reporting</div>
+        <div class="report-controls">
+          <div class="fg" style="margin:0;min-width:180px">
+            <label for="report-start">Start date</label>
+            <input id="report-start" type="date" onchange="App.renderReport()">
+          </div>
+          <div class="fg" style="margin:0;min-width:180px">
+            <label for="report-end">End date</label>
+            <input id="report-end" type="date" onchange="App.renderReport()">
+          </div>
+          <button class="btn btn-sm" onclick="App.renderReport()">Apply</button>
+        </div>
+        <div class="report-legend">
+          <span class="report-pill rp-added">Added</span>
+          <span class="report-pill rp-modified">Modified</span>
+          <span class="report-pill rp-completed">Completed</span>
+          <span class="report-pill rp-deleted">Deleted</span>
+          <span class="report-pill rp-untouched">Untouched</span>
+        </div>
+        <div id="report-c"></div>
+      </div>
     </div>
 
     <!-- Kanban page -->
