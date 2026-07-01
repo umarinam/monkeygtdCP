@@ -733,6 +733,8 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           <label class="tog-sw"><input type="checkbox" id="s-rel" onchange="App.setSetting('relativeDates',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Hide Future Due Tasks</div><div class="ssd">Only show overdue / ASAP / today / tomorrow</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-hf" onchange="App.setSetting('hideFuture',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Copy Only Visible Subtasks</div><div class="ssd">When on, Copy skips hidden descendants (completed, future, collapsed)</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-copy-visible" onchange="App.setSetting('copyOnlyVisibleSubtasks',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Show Task JSON Chip</div><div class="ssd">Display { } action next to each task</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-jsonchip" onchange="App.setSetting('showTaskJsonChip',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Show Task History Chip</div><div class="ssd">Display H action next to each task</div></div>
@@ -1020,7 +1022,7 @@ const seedData = () => {
     lists:{[lid]:list},tasks,
     settings:{darkMode:false,zenMode:false,showCompleted:true,moveCompletedDown:false,
               relativeDates:false,hideFuture:false,showBreadcrumbs:true,autoCloseParent:true,
-              listStyle:'none',showNotes:false,
+              listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,
               gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5},
     deletedItems:[],currentListId:lid
   };
@@ -1526,6 +1528,14 @@ function canCopyChildTask(state, task) {
 function cloneVisibleBranchDomain(state, taskId, includeChildren) {
   const src = state.data.tasks[taskId];
   if (!src) return null;
+
+  const onlyVisibleSubtasks = state.data?.settings?.copyOnlyVisibleSubtasks !== false;
+
+  if (!onlyVisibleSubtasks) {
+    const fullClone = JSON.parse(JSON.stringify(src));
+    if (!includeChildren) fullClone.tasks = [];
+    return fullClone;
+  }
 
   const clone = JSON.parse(JSON.stringify(src));
   const shouldIncludeChildren = includeChildren && !src._collapsed;
@@ -5094,6 +5104,7 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-bc', s.showBreadcrumbs);
   syncCheckbox('s-rel', s.relativeDates);
   syncCheckbox('s-hf', s.hideFuture);
+  syncCheckbox('s-copy-visible', s.copyOnlyVisibleSubtasks !== false);
   syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);
   syncCheckbox('s-histchip', s.showTaskHistoryChip !== false);
   const styleEl = document.getElementById('s-style');

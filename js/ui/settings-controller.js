@@ -25,6 +25,7 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-bc', s.showBreadcrumbs);
   syncCheckbox('s-rel', s.relativeDates);
   syncCheckbox('s-hf', s.hideFuture);
+  syncCheckbox('s-copy-visible', s.copyOnlyVisibleSubtasks !== false);
   syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);
   syncCheckbox('s-histchip', s.showTaskHistoryChip !== false);
   const styleEl = document.getElementById('s-style');

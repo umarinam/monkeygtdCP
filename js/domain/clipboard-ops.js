@@ -25,6 +25,14 @@ function cloneVisibleBranchDomain(state, taskId, includeChildren) {
   const src = state.data.tasks[taskId];
   if (!src) return null;
 
+  const onlyVisibleSubtasks = state.data?.settings?.copyOnlyVisibleSubtasks !== false;
+
+  if (!onlyVisibleSubtasks) {
+    const fullClone = JSON.parse(JSON.stringify(src));
+    if (!includeChildren) fullClone.tasks = [];
+    return fullClone;
+  }
+
   const clone = JSON.parse(JSON.stringify(src));
   const shouldIncludeChildren = includeChildren && !src._collapsed;
   if (!shouldIncludeChildren) {
