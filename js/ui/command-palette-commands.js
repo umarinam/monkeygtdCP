@@ -48,6 +48,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Toggle relative dates', s: 'df', fn: () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); } },
     { l: 'Zen mode', s: 'om', fn: () => app.setZen(!state.data.settings.zenMode) },
     { l: 'Settings', s: 'oo', fn: () => app.openSettings() },
+    { l: 'Keyboard shortcuts', s: '?', fn: () => app.showShortcuts() },
     { l: 'Lists home', s: 'gh', fn: () => app.showPage('home') },
     { l: 'Due page', s: 'gd', fn: () => app.showPage('due') },
     { l: 'Kanban page', s: 'gk', fn: () => app.showPage('kanban') },
