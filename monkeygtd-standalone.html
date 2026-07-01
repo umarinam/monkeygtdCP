@@ -147,7 +147,7 @@ body.zen #topbar{display:none}
 .ph{font-size:20px;font-weight:700;margin-bottom:18px}
 
 /* â”€â”€ Due & Tags pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-#due-page,#tags-page{padding:16px}
+#due-page,#tags-page,#kanban-page{padding:16px}
 .dsec{margin-bottom:22px}
 .dsec-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
         color:var(--muted);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
@@ -159,6 +159,16 @@ body.zen #topbar{display:none}
      font-size:13px;background:var(--bg-alt)}
 .tci:hover{background:var(--bg-hover);border-color:var(--accent)}
 .tc2{font-size:11px;color:var(--muted);margin-left:4px}
+.kanban-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:start}
+.kanban-col{border:1px solid var(--border);border-radius:var(--r);background:var(--bg-alt);min-height:180px}
+.kanban-col-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
+  padding:10px 12px;border-bottom:1px solid var(--border)}
+.kanban-col-b{padding:8px;display:flex;flex-direction:column;gap:8px}
+.kanban-card{display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--r);padding:8px;cursor:pointer}
+.kanban-card:hover{background:var(--bg-hover)}
+.kanban-card-c{word-break:break-word;line-height:1.45}
+.kanban-empty{font-size:12px;color:var(--muted);padding:8px}
 
 /* â”€â”€ Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;
@@ -304,7 +314,6 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 
-
 </style>
 </head>
 <body>
@@ -323,6 +332,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
     <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
       <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncGistNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
+      <button class="tbtn" onclick="App.showPage('kanban')" title="Kanban (gk)">🧩</button>
       <button class="tbtn" onclick="App.showPage('tags')" title="Tags (gt)">🏷</button>
       <button class="tbtn" onclick="App.openSettings()" title="Settings (oo)">⚙</button>
     </div>
@@ -350,6 +360,11 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
     <!-- Due page -->
     <div id="due-page" class="page hidden">
       <div style="padding:16px"><div class="ph">Due Tasks</div><div id="due-c"></div></div>
+    </div>
+
+    <!-- Kanban page -->
+    <div id="kanban-page" class="page hidden">
+      <div style="padding:16px"><div class="ph">Kanban</div><div id="kanban-c"></div></div>
     </div>
 
     <!-- Tags page -->
@@ -623,6 +638,14 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
       <button class="btn" onclick="App.closeModal('ov-restore')">Close</button>
       <button class="btn btn-p" onclick="App.restoreSel()">Restore Selected</button>
     </div>
+  </div>
+</div>
+
+<!-- Keyboard shortcuts -->
+<div id="ov-shortcuts" class="ov hidden" onclick="if(event.target===this)App.closeModal('ov-shortcuts')">
+  <div class="modal" style="max-width:520px">
+    <div class="mh"><span class="mt">Keyboard Shortcuts</span><span class="mx" onclick="App.closeModal('ov-shortcuts')">✕</span></div>
+    <div class="mb" style="max-height:65vh;overflow-y:auto"><div id="shortcuts-r"></div></div>
   </div>
 </div>
 
@@ -3477,7 +3500,7 @@ function bindGlobalEvents(app, state) {
 function handleGlobalKey(app, state, e) {
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history shortcuts'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');
@@ -3493,6 +3516,11 @@ function handleGlobalKey(app, state, e) {
   if (e.key === '/' && !inIn) {
     e.preventDefault();
     document.getElementById('search').focus();
+    return;
+  }
+  if (e.key === '?' && !inIn) {
+    e.preventDefault();
+    app.showShortcuts();
     return;
   }
   if (state.editId) return;
@@ -3811,6 +3839,7 @@ function handleTwoKeySequence(app, state, e) {
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
     'ct': () => { if (state.selId) app.dispatch('task.clearTags', { taskId: state.selId }); },
     'gt': () => app.showPage('tags'),
+    'gk': () => app.showPage('kanban'),
     'nn': () => { if (state.selId) app.openNotesModal(state.selId); },
     'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
     'sn': () => { state.showNotes = !state.showNotes; app.render(); app.toast(`Notes ${state.showNotes ? 'visible' : 'hidden'}`); },
@@ -3872,7 +3901,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;
@@ -4255,10 +4284,10 @@ function scrollToSelectedTask(state) {
 
 function showPageUi(app, state, p) {
   state.page = p;
-  ['home-page', 'list-page', 'due-page', 'tags-page'].forEach(id => {
+  ['home-page', 'list-page', 'due-page', 'kanban-page', 'tags-page'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
-  const map = { home: 'home-page', list: 'list-page', due: 'due-page', tags: 'tags-page' };
+  const map = { home: 'home-page', list: 'list-page', due: 'due-page', kanban: 'kanban-page', tags: 'tags-page' };
   document.getElementById(map[p]).classList.remove('hidden');
   renderCurrentPageUi(app, state);
 }
@@ -4267,6 +4296,7 @@ function renderCurrentPageUi(app, state) {
   if (state.page === 'home') app.renderHome();
   else if (state.page === 'list') app.renderList();
   else if (state.page === 'due') app.renderDue();
+  else if (state.page === 'kanban') app.renderKanban();
   else if (state.page === 'tags') app.renderTags();
   app.syncSB();
 }
@@ -4394,6 +4424,49 @@ function renderTagsUi(app) {
     return;
   }
   document.getElementById('tags-c').innerHTML = `<div class="tag-cloud">${tags.map(tg => `<span class="tci" onclick="App.filterTag('${esc(tg)}')">#${esc(tg)}<span class="tc2">${map[tg]}</span></span>`).join('')}</div>`;
+}
+
+function renderKanbanUi(app, state) {
+  const list = state.data.lists[state.listId];
+  if (!list) {
+    app.showPage('home');
+    return;
+  }
+
+  const order = [];
+  const walk = (ids) => {
+    for (const id of ids || []) {
+      const t = state.data.tasks[id];
+      if (!t || t.deleted) continue;
+      order.push(t);
+      walk(t.tasks || []);
+    }
+  };
+  walk(list.root_tasks || []);
+
+  if (!order.length) {
+    document.getElementById('kanban-c').innerHTML = '<div class="empty"><div class="empty-t">No tasks yet</div><div class="empty-d">Add tasks in list view to populate your Kanban board.</div></div>';
+    return;
+  }
+
+  const groups = [
+    { title: 'Open', cls: 'open', items: order.filter(t => Number(t.status || 0) === 0), empty: 'No open tasks' },
+    { title: 'Done', cls: 'done', items: order.filter(t => Number(t.status || 0) === 1), empty: 'No done tasks' },
+    { title: 'Invalid', cls: 'invalid', items: order.filter(t => Number(t.status || 0) === 2), empty: 'No invalid tasks' }
+  ];
+
+  document.getElementById('kanban-c').innerHTML = `<div class="kanban-grid">${groups.map(group => {
+    return `<section class="kanban-col ${group.cls}">
+      <div class="kanban-col-h">${group.title} (${group.items.length})</div>
+      <div class="kanban-col-b">${group.items.length
+        ? group.items.map(t => `<div class="kanban-card" onclick="App.jumpTo('${t.id}')">
+            <input type="checkbox" ${Number(t.status || 0) === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
+            <div class="kanban-card-c">${esc((t.content || '').slice(0, 140))}</div>
+          </div>`).join('')
+        : `<div class="kanban-empty">${group.empty}</div>`}
+      </div>
+    </section>`;
+  }).join('')}</div>`;
 }
 
 function renderListUi(app, state) {
@@ -4632,8 +4705,10 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Toggle relative dates', s: 'df', fn: () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); } },
     { l: 'Zen mode', s: 'om', fn: () => app.setZen(!state.data.settings.zenMode) },
     { l: 'Settings', s: 'oo', fn: () => app.openSettings() },
+    { l: 'Keyboard shortcuts', s: '?', fn: () => app.showShortcuts() },
     { l: 'Lists home', s: 'gh', fn: () => app.showPage('home') },
     { l: 'Due page', s: 'gd', fn: () => app.showPage('due') },
+    { l: 'Kanban page', s: 'gk', fn: () => app.showPage('kanban') },
     { l: 'Tags page', s: 'gt', fn: () => app.showPage('tags') },
     { l: 'New list', fn: () => { app.showPage('home'); app.createList(); } },
     ...app.select('cp.listTargets').map(l => ({ l: `Go to: ${l.name}`, fn: () => app.openList(l.id) }))
@@ -5011,6 +5086,93 @@ function jumpToUi(app, S, id) {
   setTimeout(() => app.scrollSel(), 80);
 }
 
+function showShortcutsUi(app) {
+  const groups = [
+    { heading: 'Navigation', items: [
+      ['j / ↓', 'Move down'],
+      ['k / ↑', 'Move up'],
+      ['←', 'Collapse / go to parent'],
+      ['→', 'Expand / go to first child'],
+      ['Home / End', 'First / last task'],
+      ['PageUp / PageDown', 'Jump 10 tasks'],
+      ['Shift+→ / Shift+←', 'Hoist (focus) / un-focus'],
+      ['Ctrl+Shift+→ / ←', 'Expand all / collapse all'],
+    ]},
+    { heading: 'Editing', items: [
+      ['Enter', 'Add task below'],
+      ['Shift+Enter', 'Add child task'],
+      ['Alt+Enter', 'Add task above'],
+      ['F2 / double-click', 'Edit task'],
+      ['Delete', 'Delete task'],
+      ['Tab / Shift+Tab', 'Indent / un-indent'],
+      ['Ctrl+↑ / Ctrl+↓', 'Move task up / down'],
+      ['Ctrl+Z / uu', 'Undo'],
+      ['Ctrl+D', 'Duplicate task'],
+    ]},
+    { heading: 'Status & Due', items: [
+      ['Space', 'Toggle completed'],
+      ['Shift+Space', 'Mark invalidated'],
+      ['dd', 'Set due date…'],
+      ['td', 'Due today'],
+      ['tm', 'Due tomorrow'],
+      ['as', 'Due ASAP'],
+      ['cd', 'Clear due date'],
+      ['dr', 'Repeating due settings'],
+    ]},
+    { heading: 'Tags & Notes', items: [
+      ['tt', 'Add tags'],
+      ['ct', 'Clear tags'],
+      ['nn', 'Add note'],
+      ['cn', 'Clear notes'],
+      ['sn', 'Show/hide all notes'],
+    ]},
+    { heading: 'Copy & Clipboard', items: [
+      ['Ctrl+C', 'Copy'],
+      ['Ctrl+X', 'Cut'],
+      ['Ctrl+V', 'Paste'],
+      ['Ctrl+A', 'Select all visible'],
+    ]},
+    { heading: 'View & Navigation', items: [
+      ['/', 'Focus search'],
+      ['Shift+Shift', 'Command palette'],
+      ['gh', 'Lists home'],
+      ['gd', 'Due page'],
+      ['gt', 'Tags page'],
+      ['hc', 'Hide/show completed'],
+      ['df', 'Toggle relative dates'],
+      ['om', 'Zen mode'],
+      ['oo', 'Settings'],
+      ['?', 'Show this shortcuts list'],
+    ]},
+    { heading: 'List & Data', items: [
+      ['mm', 'Move to list'],
+      ['ss', 'Sort'],
+      ['ex', 'Export'],
+      ['im', 'Import'],
+      ['rd', 'Restore deleted'],
+      ['wc', 'Word count'],
+      ['xx', 'Extract branch as new list'],
+      ['wipe', 'Wipe completed'],
+      ['reset', 'Reset completed'],
+    ]},
+    { heading: 'Gist Sync', items: [
+      ['sg', 'Sync now (bidirectional)'],
+      ['sp', 'Pull from Gist'],
+      ['sh', 'Push to Gist'],
+    ]},
+  ];
+
+  const html = groups.map(g => {
+    const rows = g.items.map(([k, d]) =>
+      `<tr><td style="padding:3px 14px 3px 0;white-space:nowrap"><kbd style="background:var(--bg2);border:1px solid var(--bd);border-radius:3px;padding:1px 5px;font-size:11px;font-family:monospace">${k}</kbd></td><td style="padding:3px 0;color:var(--fg)">${d}</td></tr>`
+    ).join('');
+    return `<div style="margin-bottom:14px"><div class="sst" style="margin-bottom:6px">${g.heading}</div><table style="border-collapse:collapse;width:100%">${rows}</table></div>`;
+  }).join('');
+
+  document.getElementById('shortcuts-r').innerHTML = html;
+  app.openModal('ov-shortcuts');
+}
+
 
 'use strict';
 
@@ -5184,6 +5346,8 @@ const App={
 
   // â”€ Due page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   renderDue(){ renderDueUi(this, S); },
+
+  renderKanban(){ renderKanbanUi(this, S); },
 
   // â”€ Tags page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   renderTags(){ renderTagsUi(this); },
@@ -5388,6 +5552,7 @@ const App={
 
   // â”€ Word count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   showWC(){ showWCUi(this, S); },
+  showShortcuts(){ showShortcutsUi(this); },
 
   showStorageUsage(){ showStorageUsageUi(this, S); },
 
@@ -5506,7 +5671,6 @@ App.init();
 
 
 
-
 </script>
 
 
@@ -5540,4 +5704,3 @@ App.init();
 
 </body>
 </html>
-
