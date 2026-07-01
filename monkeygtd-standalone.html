@@ -147,7 +147,7 @@ body.zen #topbar{display:none}
 .ph{font-size:20px;font-weight:700;margin-bottom:18px}
 
 /* â”€â”€ Due & Tags pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-#due-page,#tags-page,#kanban-page{padding:16px}
+#due-page,#report-page,#tags-page,#kanban-page{padding:16px}
 .dsec{margin-bottom:22px}
 .dsec-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
         color:var(--muted);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
@@ -169,6 +169,35 @@ body.zen #topbar{display:none}
 .kanban-card:hover{background:var(--bg-hover)}
 .kanban-card-c{word-break:break-word;line-height:1.45}
 .kanban-empty{font-size:12px;color:var(--muted);padding:8px}
+
+.report-controls{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px}
+.report-legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.report-pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:var(--bg-alt);cursor:pointer}
+.report-pill.off{opacity:.4;filter:grayscale(.3)}
+.rp-added{color:#15803d;border-color:#86efac;background:#f0fdf4}
+.rp-modified{color:#1d4ed8;border-color:#93c5fd;background:#eff6ff}
+.rp-completed{color:#374151;border-color:#9ca3af;background:#f3f4f6}
+.rp-deleted{color:#b91c1c;border-color:#fca5a5;background:#fef2f2}
+.rp-untouched{color:#6b7280;border-color:#d1d5db;background:#f9fafb}
+.report-head{font-size:13px;color:var(--muted);margin-bottom:8px}
+.report-list{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--bg)}
+.report-row{display:flex;align-items:center;gap:8px;min-height:30px;padding:5px 10px;border-bottom:1px solid var(--border)}
+.report-row:last-child{border-bottom:none}
+.report-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.report-content{word-break:break-word;user-select:text;cursor:text}
+.report-list,.report-row{user-select:text}
+.report-deleted-mark{margin-left:auto;font-size:11px;color:inherit;opacity:.8}
+.rk-added{color:#15803d}
+.rk-modified{color:#1d4ed8}
+.rk-completed{color:#374151}
+.rk-deleted{color:#b91c1c}
+.rk-untouched{color:#9ca3af}
+.report-pill:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+[data-theme=dark] .rp-added{background:#052e16;border-color:#166534;color:#4ade80}
+[data-theme=dark] .rp-modified{background:#172554;border-color:#1d4ed8;color:#60a5fa}
+[data-theme=dark] .rp-completed{background:#1f2937;border-color:#4b5563;color:#d1d5db}
+[data-theme=dark] .rp-deleted{background:#450a0a;border-color:#991b1b;color:#fca5a5}
+[data-theme=dark] .rp-untouched{background:#111827;border-color:#374151;color:#9ca3af}
 
 /* â”€â”€ Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;
@@ -332,6 +361,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
     <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
       <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncGistNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
+      <button class="tbtn" onclick="App.showPage('report')" title="Reporting (gr)">📊</button>
       <button class="tbtn" onclick="App.showPage('kanban')" title="Kanban (gk)">🧩</button>
       <button class="tbtn" onclick="App.showPage('tags')" title="Tags (gt)">🏷</button>
       <button class="tbtn" onclick="App.openSettings()" title="Settings (oo)">⚙</button>
@@ -360,6 +390,26 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
     <!-- Due page -->
     <div id="due-page" class="page hidden">
       <div style="padding:16px"><div class="ph">Due Tasks</div><div id="due-c"></div></div>
+    </div>
+
+    <!-- Reporting page -->
+    <div id="report-page" class="page hidden">
+      <div style="padding:16px">
+        <div class="ph">Reporting</div>
+        <div class="report-controls">
+          <div class="fg" style="margin:0;min-width:180px">
+            <label for="report-start">Start date</label>
+            <input id="report-start" type="date" onchange="App.renderReport()">
+          </div>
+          <div class="fg" style="margin:0;min-width:180px">
+            <label for="report-end">End date</label>
+            <input id="report-end" type="date" onchange="App.renderReport()">
+          </div>
+          <button class="btn btn-sm" onclick="App.renderReport()">Apply</button>
+        </div>
+        <div id="report-legend" class="report-legend"></div>
+        <div id="report-c"></div>
+      </div>
     </div>
 
     <!-- Kanban page -->
@@ -1170,6 +1220,73 @@ function registerAppQueries(app, deps) {
       if (task.status === 0) open++;
     });
     return { open, total, done: total - open };
+  });
+
+  app.queryService.register('report.rows', payload => {
+    const data = getData();
+    const start = String(payload.start || '').trim();
+    const end = String(payload.end || '').trim();
+    const startMs = Date.parse(`${start}T00:00:00.000Z`);
+    const endMs = Date.parse(`${end}T23:59:59.999Z`);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return [];
+
+    const inRange = iso => {
+      const ms = Date.parse(String(iso || ''));
+      return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
+    };
+
+    const list = data.lists[state.listId];
+    if (!list) return [];
+
+    const rows = [];
+    const seenIds = new Set();
+
+    const classify = (task, deletedAt) => {
+      const history = Array.isArray(task.history) ? task.history : [];
+      const added = inRange(task.created_at) || history.some(h => h?.type === 'creation' && inRange(h.at));
+      const deleted = !!deletedAt && inRange(deletedAt)
+        || history.some(h => h?.type === 'deletion' && inRange(h.at));
+      const completed = inRange(task.completed_at)
+        || history.some(h => h?.type === 'status' && Number(h?.changes?.to) === 1 && inRange(h.at));
+      const modified = inRange(task.updated_at)
+        || history.some(h => ['title', 'tags', 'assignment', 'scheduling', 'priority', 'notes', 'structure'].includes(h?.type) && inRange(h.at));
+
+      if (deleted) return 'deleted';
+      if (completed) return 'completed';
+      if (added) return 'added';
+      if (modified) return 'modified';
+      return 'untouched';
+    };
+
+    const addRow = (task, depth, deletedAt) => {
+      if (!task || seenIds.has(task.id)) return;
+      seenIds.add(task.id);
+      rows.push({
+        id: task.id,
+        content: task.content || '',
+        depth: Math.max(0, depth || 0),
+        statusKey: classify(task, deletedAt)
+      });
+    };
+
+    const walkList = (ids, depth) => {
+      for (const id of ids || []) {
+        const t = data.tasks[id];
+        if (!t || t.deleted) continue;
+        addRow(t, depth, '');
+        walkList(t.tasks || [], depth + 1);
+      }
+    };
+
+    walkList(list.root_tasks || [], 0);
+
+    for (const item of (data.deletedItems || [])) {
+      const snap = item?.snapshot;
+      if (!snap || snap.checklist_id !== state.listId) continue;
+      addRow(snap, 0, item.deletedAt || snap._deleted_at || '');
+    }
+
+    return rows;
   });
 
   app.queryService.register('cp.listTargets', () => {
@@ -3839,6 +3956,7 @@ function handleTwoKeySequence(app, state, e) {
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
     'ct': () => { if (state.selId) app.dispatch('task.clearTags', { taskId: state.selId }); },
     'gt': () => app.showPage('tags'),
+    'gr': () => app.showPage('report'),
     'gk': () => app.showPage('kanban'),
     'nn': () => { if (state.selId) app.openNotesModal(state.selId); },
     'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
@@ -3901,7 +4019,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;
@@ -4284,10 +4402,10 @@ function scrollToSelectedTask(state) {
 
 function showPageUi(app, state, p) {
   state.page = p;
-  ['home-page', 'list-page', 'due-page', 'kanban-page', 'tags-page'].forEach(id => {
+  ['home-page', 'list-page', 'due-page', 'report-page', 'kanban-page', 'tags-page'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
-  const map = { home: 'home-page', list: 'list-page', due: 'due-page', kanban: 'kanban-page', tags: 'tags-page' };
+  const map = { home: 'home-page', list: 'list-page', due: 'due-page', report: 'report-page', kanban: 'kanban-page', tags: 'tags-page' };
   document.getElementById(map[p]).classList.remove('hidden');
   renderCurrentPageUi(app, state);
 }
@@ -4296,9 +4414,89 @@ function renderCurrentPageUi(app, state) {
   if (state.page === 'home') app.renderHome();
   else if (state.page === 'list') app.renderList();
   else if (state.page === 'due') app.renderDue();
+  else if (state.page === 'report') app.renderReport();
   else if (state.page === 'kanban') app.renderKanban();
   else if (state.page === 'tags') app.renderTags();
   app.syncSB();
+}
+
+function ensureReportFilters(state) {
+  if (!state.reportFilters) {
+    state.reportFilters = { added: true, modified: true, completed: true, deleted: true, untouched: true };
+    return state.reportFilters;
+  }
+
+  for (const key of ['added', 'modified', 'completed', 'deleted', 'untouched']) {
+    if (typeof state.reportFilters[key] !== 'boolean') state.reportFilters[key] = true;
+  }
+
+  return state.reportFilters;
+}
+
+function filterReportRows(rows, filters) {
+  return (rows || []).filter(r => !!filters[r.statusKey]);
+}
+
+function buildReportLegendUi(filters, counts) {
+  const items = [
+    ['added', 'Added'],
+    ['modified', 'Modified'],
+    ['completed', 'Completed'],
+    ['deleted', 'Deleted'],
+    ['untouched', 'Untouched']
+  ];
+
+  return items.map(([key, label]) => {
+    const activeCls = filters[key] ? ' active' : ' off';
+    const cnt = Number(counts[key] || 0);
+    return `<button class="report-pill rp-${key}${activeCls}" onclick="App.toggleReportFilter('${key}')">${label} (${cnt})</button>`;
+  }).join('');
+}
+
+function renderReportUi(app, state) {
+  const startEl = document.getElementById('report-start');
+  const endEl = document.getElementById('report-end');
+  if (startEl && !startEl.value) startEl.value = state.reportStart || todayS();
+  if (endEl && !endEl.value) endEl.value = state.reportEnd || todayS();
+
+  const start = (startEl && startEl.value) || state.reportStart || todayS();
+  const end = (endEl && endEl.value) || state.reportEnd || todayS();
+  state.reportStart = start;
+  state.reportEnd = end;
+
+  const rows = app.select('report.rows', { start, end });
+  const filters = ensureReportFilters(state);
+  const counts = rows.reduce((acc, row) => {
+    acc[row.statusKey] = (acc[row.statusKey] || 0) + 1;
+    return acc;
+  }, { added: 0, modified: 0, completed: 0, deleted: 0, untouched: 0 });
+  const legendEl = document.getElementById('report-legend');
+  if (legendEl) legendEl.innerHTML = buildReportLegendUi(filters, counts);
+
+  const filteredRows = filterReportRows(rows, filters);
+  const list = state.data.lists[state.listId];
+  if (!list) {
+    document.getElementById('report-c').innerHTML = '<div class="empty"><div class="empty-t">No active list</div></div>';
+    return;
+  }
+
+  const title = `<div class="report-head">${esc(list.name)} · ${esc(start)} to ${esc(end)}</div>`;
+  if (!filteredRows.length) {
+    document.getElementById('report-c').innerHTML = `${title}<div class="empty"><div class="empty-t">No items found</div></div>`;
+    return;
+  }
+
+  const html = filteredRows.map(r => {
+    const indent = Math.max(0, Number(r.depth || 0)) * 18;
+    const deletedMark = r.statusKey === 'deleted' ? '<span class="report-deleted-mark">deleted</span>' : '';
+    return `<div class="report-row rk-${r.statusKey}" style="padding-left:${indent + 10}px">
+      <span class="report-dot"></span>
+      <span class="report-content">${esc(r.content || '(untitled)')}</span>
+      ${deletedMark}
+    </div>`;
+  }).join('');
+
+  document.getElementById('report-c').innerHTML = `${title}<div class="report-list">${html}</div>`;
 }
 
 function sibIndexUi(state, id) {
@@ -4708,6 +4906,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Keyboard shortcuts', s: '?', fn: () => app.showShortcuts() },
     { l: 'Lists home', s: 'gh', fn: () => app.showPage('home') },
     { l: 'Due page', s: 'gd', fn: () => app.showPage('due') },
+    { l: 'Reporting page', s: 'gr', fn: () => app.showPage('report') },
     { l: 'Kanban page', s: 'gk', fn: () => app.showPage('kanban') },
     { l: 'Tags page', s: 'gt', fn: () => app.showPage('tags') },
     { l: 'New list', fn: () => { app.showPage('home'); app.createList(); } },
@@ -5137,6 +5336,7 @@ function showShortcutsUi(app) {
       ['Shift+Shift', 'Command palette'],
       ['gh', 'Lists home'],
       ['gd', 'Due page'],
+      ['gr', 'Reporting page'],
       ['gt', 'Tags page'],
       ['hc', 'Hide/show completed'],
       ['df', 'Toggle relative dates'],
@@ -5252,6 +5452,8 @@ const S={
   msel:new Set(), filter:'', undos:[], kbuf:'', kbtimer:null,
   dragSrc:null, listMode:'create', listEditId:null,
   cpIdx:0, cpItems:[], cpMode:'', sortField:'alpha', calDate:new Date(),
+  reportStart:'', reportEnd:'',
+  reportFilters:{ added:true, modified:true, completed:true, deleted:true, untouched:true },
   showNotes:false, clipboard:null,
   lastClickId:'', lastClickAt:0,
   lastCdAt:0,
@@ -5265,6 +5467,10 @@ const App={
   init(){
     let d=DB.get(); if(!d){d=seedData();DB.save(d);}
     S.data=d; S.listId=d.currentListId||Object.keys(d.lists)[0];
+    S.reportEnd=todayS();
+    const reportStartDate=new Date();
+    reportStartDate.setDate(reportStartDate.getDate()-7);
+    S.reportStart=dateStr(reportStartDate);
     S.data.settings = S.data.settings || {};
     const gs=d.settings;
     if(gs.darkMode) document.documentElement.setAttribute('data-theme','dark');
@@ -5346,6 +5552,13 @@ const App={
 
   // â”€ Due page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   renderDue(){ renderDueUi(this, S); },
+
+  renderReport(){ renderReportUi(this, S); },
+  toggleReportFilter(key){
+    if (!S.reportFilters || !(key in S.reportFilters)) return;
+    S.reportFilters[key] = !S.reportFilters[key];
+    this.renderReport();
+  },
 
   renderKanban(){ renderKanbanUi(this, S); },
 
