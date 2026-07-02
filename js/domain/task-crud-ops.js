@@ -195,6 +195,26 @@ function advanceRecurringTaskDomain(state, task) {
   }
 }
 
+function closeDescendantsOnParentDoneDomain(state, taskId) {
+  const stamp = now();
+  const markDone = (id) => {
+    const task = state.data.tasks[id];
+    if (!task || task.deleted) return;
+    const was = Number(task.status || 0);
+    if (was !== 1) {
+      task.status = 1;
+      task.completed_at = stamp;
+      task.updated_at = stamp;
+      logTaskHistory(task, 'status', { from: was, to: 1, source: 'parent-close' });
+    }
+    for (const childId of (task.tasks || [])) markDone(childId);
+  };
+
+  const parent = state.data.tasks[taskId];
+  if (!parent) return;
+  for (const childId of (parent.tasks || [])) markDone(childId);
+}
+
 function toggleStatusDomain(app, state, id) {
   app.pushUndo(app.snap());
   const t = state.data.tasks[id];
@@ -217,6 +237,9 @@ function toggleStatusDomain(app, state, id) {
   t.updated_at = now();
   if (before !== Number(t.status || 0)) {
     logTaskHistory(t, 'status', { from: before, to: Number(t.status || 0) });
+    if (state.data.settings.closeChildrenOnParentDone && Number(t.status || 0) === 1) {
+      closeDescendantsOnParentDoneDomain(state, t.id);
+    }
   }
   if (state.data.settings.autoCloseParent && t.parent_id) app.checkAutoClose(t.parent_id);
   app.save();

@@ -22,6 +22,7 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-showdone', s.showCompleted);
   syncCheckbox('s-mvdown', s.moveCompletedDown);
   syncCheckbox('s-autoclose', s.autoCloseParent);
+  syncCheckbox('s-close-children', s.closeChildrenOnParentDone === true);
   syncCheckbox('s-bc', s.showBreadcrumbs);
   syncCheckbox('s-rel', s.relativeDates);
   syncCheckbox('s-hf', s.hideFuture);
