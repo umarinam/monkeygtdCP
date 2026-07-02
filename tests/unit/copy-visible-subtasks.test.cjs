@@ -96,3 +96,38 @@ test('copyDomain includes hidden completed subtasks when visible-only copy is di
   assert.equal(copiedText.includes('Open Child'), true);
   assert.equal(copiedText.includes('Done Child'), true);
 });
+
+test('copyDomain prefixes copied text with status markers when enabled', async () => {
+  let copiedText = '';
+  const { copyDomain } = loadClipboardOps({
+    navigator: {
+      clipboard: {
+        writeText: (txt) => {
+          copiedText = String(txt || '');
+          return Promise.resolve();
+        }
+      }
+    }
+  });
+
+  const state = {
+    selId: 'p1',
+    msel: new Set(),
+    clipboard: null,
+    data: {
+      settings: { showCompleted: true, copyStatusPrefix: true },
+      tasks: {
+        p1: { id: 'p1', content: 'Parent', status: 0, deleted: false, _collapsed: false, tasks: ['c1', 'c2'] },
+        c1: { id: 'c1', content: 'Open Child', status: 0, deleted: false, _collapsed: false, tasks: [] },
+        c2: { id: 'c2', content: 'Done Child', status: 1, deleted: false, _collapsed: false, tasks: [] }
+      }
+    }
+  };
+
+  const app = { toast: () => {} };
+  copyDomain(app, state);
+
+  assert.equal(copiedText.includes('[ ] Parent'), true);
+  assert.equal(copiedText.includes('  [ ] Open Child'), true);
+  assert.equal(copiedText.includes('  [X] Done Child'), true);
+});

@@ -735,6 +735,8 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           <label class="tog-sw"><input type="checkbox" id="s-hf" onchange="App.setSetting('hideFuture',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Copy Only Visible Subtasks</div><div class="ssd">When on, Copy skips hidden descendants (completed, future, collapsed)</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-copy-visible" onchange="App.setSetting('copyOnlyVisibleSubtasks',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Copy Task Status Prefix</div><div class="ssd">Prefix copied lines with [X] for completed and [ ] for others</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-copy-status" onchange="App.setSetting('copyStatusPrefix',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Show Task JSON Chip</div><div class="ssd">Display { } action next to each task</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-jsonchip" onchange="App.setSetting('showTaskJsonChip',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Show Task History Chip</div><div class="ssd">Display H action next to each task</div></div>
@@ -1022,7 +1024,7 @@ const seedData = () => {
     lists:{[lid]:list},tasks,
     settings:{darkMode:false,zenMode:false,showCompleted:true,moveCompletedDown:false,
               relativeDates:false,hideFuture:false,showBreadcrumbs:true,autoCloseParent:true,
-              listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,
+              listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,copyStatusPrefix:false,
               gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5},
     deletedItems:[],currentListId:lid
   };
@@ -1554,12 +1556,17 @@ function cloneVisibleBranchDomain(state, taskId, includeChildren) {
   return clone;
 }
 
-function taskTextFromSnapshotDomain(snapshot, tasksById, depth) {
-  let out = '  '.repeat(depth) + (snapshot.content || '');
+function taskCopyPrefixDomain(state, task) {
+  if (state.data?.settings?.copyStatusPrefix !== true) return '';
+  return task?.status === 1 ? '[X] ' : '[ ] ';
+}
+
+function taskTextFromSnapshotDomain(state, snapshot, tasksById, depth) {
+  let out = '  '.repeat(depth) + taskCopyPrefixDomain(state, snapshot) + (snapshot.content || '');
   for (const childId of (snapshot.tasks || [])) {
     const child = tasksById[childId];
     if (!child) continue;
-    out += '\n' + taskTextFromSnapshotDomain(child, tasksById, depth + 1);
+    out += '\n' + taskTextFromSnapshotDomain(state, child, tasksById, depth + 1);
   }
   return out;
 }
@@ -1582,7 +1589,7 @@ function copyDomain(app, state) {
   state.clipboard = ids.map(id => copyOne(id, true)).filter(Boolean);
 
   navigator.clipboard?.writeText(
-    state.clipboard.map(t => taskTextFromSnapshotDomain(t, copiedTasks, 0)).join('\n')
+    state.clipboard.map(t => taskTextFromSnapshotDomain(state, t, copiedTasks, 0)).join('\n')
   ).catch(() => {});
 
   app.toast(`Copied ${ids.length} task(s)`);
@@ -5105,6 +5112,7 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-rel', s.relativeDates);
   syncCheckbox('s-hf', s.hideFuture);
   syncCheckbox('s-copy-visible', s.copyOnlyVisibleSubtasks !== false);
+  syncCheckbox('s-copy-status', s.copyStatusPrefix === true);
   syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);
   syncCheckbox('s-histchip', s.showTaskHistoryChip !== false);
   const styleEl = document.getElementById('s-style');

@@ -50,12 +50,17 @@ function cloneVisibleBranchDomain(state, taskId, includeChildren) {
   return clone;
 }
 
-function taskTextFromSnapshotDomain(snapshot, tasksById, depth) {
-  let out = '  '.repeat(depth) + (snapshot.content || '');
+function taskCopyPrefixDomain(state, task) {
+  if (state.data?.settings?.copyStatusPrefix !== true) return '';
+  return task?.status === 1 ? '[X] ' : '[ ] ';
+}
+
+function taskTextFromSnapshotDomain(state, snapshot, tasksById, depth) {
+  let out = '  '.repeat(depth) + taskCopyPrefixDomain(state, snapshot) + (snapshot.content || '');
   for (const childId of (snapshot.tasks || [])) {
     const child = tasksById[childId];
     if (!child) continue;
-    out += '\n' + taskTextFromSnapshotDomain(child, tasksById, depth + 1);
+    out += '\n' + taskTextFromSnapshotDomain(state, child, tasksById, depth + 1);
   }
   return out;
 }
@@ -78,7 +83,7 @@ function copyDomain(app, state) {
   state.clipboard = ids.map(id => copyOne(id, true)).filter(Boolean);
 
   navigator.clipboard?.writeText(
-    state.clipboard.map(t => taskTextFromSnapshotDomain(t, copiedTasks, 0)).join('\n')
+    state.clipboard.map(t => taskTextFromSnapshotDomain(state, t, copiedTasks, 0)).join('\n')
   ).catch(() => {});
 
   app.toast(`Copied ${ids.length} task(s)`);
