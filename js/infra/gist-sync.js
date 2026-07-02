@@ -20,7 +20,8 @@ function gistGetConfig(state) {
   return {
     token: gistGetToken(state),
     gistId: (s.gistId || '').trim(),
-    filename: (s.gistFilename || 'monkeygtd-backup.json').trim() || 'monkeygtd-backup.json'
+    filename: (s.gistFilename || 'monkeygtd-backup.json').trim() || 'monkeygtd-backup.json',
+    inboxFilename: (s.gistInboxFilename || 'monkeygtd-inbox.ndjson').trim() || 'monkeygtd-inbox.ndjson'
   };
 }
 
@@ -52,6 +53,11 @@ function gistPickFile(meta, filename) {
   return firstJson || Object.values(meta.files)[0] || null;
 }
 
+function gistPickExactFile(meta, filename) {
+  if (!meta?.files) return null;
+  return meta.files[filename] || null;
+}
+
 async function gistReadFileContent(file) {
   if (!file) throw new Error('No file found in gist');
   if (!file.truncated) return file.content || '';
@@ -77,7 +83,7 @@ function gistParsePayload(raw) {
 
 function gistPreserveSyncSettings(state, previousSettings) {
   const current = state.data.settings || {};
-  const preservedKeys = ['gistToken', 'gistId', 'gistFilename', 'gistLastSyncAt', 'gistLastLocalSaveAt'];
+  const preservedKeys = ['gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastLocalSaveAt'];
   for (const key of preservedKeys) {
     if (!current[key] && previousSettings[key]) {
       current[key] = previousSettings[key];
@@ -90,6 +96,180 @@ function gistResolveRemoteVsLocal(remoteMs, localMs) {
   if (remoteMs > localMs) return 'pull';
   if (localMs > remoteMs) return 'push';
   return 'noop';
+}
+
+function gistRequestId(raw, idx) {
+  const base = String(raw || '').trim();
+  if (!base) return `req-${idx}`;
+  let hash = 0;
+  for (let i = 0; i < base.length; i++) {
+    hash = ((hash << 5) - hash) + base.charCodeAt(i);
+    hash |= 0;
+  }
+  return `req-${idx}-${Math.abs(hash)}`;
+}
+
+function gistParseInboxLines(raw) {
+  const lines = String(raw || '').split(/\r?\n/);
+  const items = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    try {
+      const req = JSON.parse(line);
+      items.push({ ok: true, line, req, idx: i });
+    } catch {
+      items.push({ ok: false, line, idx: i });
+    }
+  }
+  return items;
+}
+
+function gistBuildTaskRecord(parent, content) {
+  const text = String(content || '').trim();
+  if (!text) return null;
+
+  const fallbackId = `gq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  const base = (typeof mkTask === 'function')
+    ? mkTask({ content: text, checklist_id: parent.checklist_id || '', parent_id: parent.id })
+    : {
+      id: fallbackId,
+      content: text,
+      status: 0,
+      checklist_id: parent.checklist_id || '',
+      parent_id: parent.id,
+      tasks: [],
+      tags: {},
+      tags_as_text: '',
+      color: 0,
+      due: '',
+      due_asap: false,
+      assignees: [],
+      notes: [],
+      comments_count: 0,
+      history: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: '',
+      deleted: false,
+      _collapsed: false
+    };
+
+  if (typeof parseSmart === 'function') {
+    const parsed = parseSmart(text);
+    base.content = parsed.content || base.content;
+    if (parsed.tags?.length) {
+      for (const tg of parsed.tags) base.tags[tg] = { isPrivate: false };
+      base.tags_as_text = parsed.tags.join(',');
+    }
+    if (parsed.due) base.due = parsed.due;
+    if (parsed.due_asap) base.due_asap = true;
+    if (parsed.color) base.color = parsed.color;
+    if (parsed.assignees?.length) base.assignees = parsed.assignees;
+  }
+
+  return base;
+}
+
+function gistApplyInboxRequest(state, req) {
+  if (!req || req.action !== 'addChild') return { applied: false, reason: 'unsupported-action' };
+  const parentId = String(req.parentTaskId || '').trim();
+  if (!parentId) return { applied: false, reason: 'missing-parent' };
+
+  const parent = state.data?.tasks?.[parentId];
+  if (!parent || parent.deleted) return { applied: false, reason: 'parent-not-found' };
+
+  const task = gistBuildTaskRecord(parent, req.content);
+  if (!task) return { applied: false, reason: 'empty-content' };
+
+  state.data.tasks = state.data.tasks || {};
+  state.data.tasks[task.id] = task;
+  parent.tasks = [...(parent.tasks || []), task.id];
+
+  if (typeof logTaskHistory === 'function') {
+    logTaskHistory(task, 'creation', {
+      source: 'gist-inbox',
+      listId: task.checklist_id || '',
+      parentId: parent.id,
+      requestId: String(req.id || '').trim()
+    });
+  }
+
+  return { applied: true, taskId: task.id };
+}
+
+async function gistPatchSingleFile(config, filename, content) {
+  const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(config.gistId)}`, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      Authorization: `token ${config.token}`
+    },
+    body: JSON.stringify({
+      files: {
+        [filename]: { content }
+      }
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error(`Gist queue write failed (${res.status})`);
+  }
+}
+
+async function gistProcessInboxRemote(state, config, meta) {
+  const file = gistPickExactFile(meta, config.inboxFilename);
+  if (!file) return { applied: 0, failed: 0, queueUpdated: false, label: config.inboxFilename };
+
+  const raw = await gistReadFileContent(file);
+  const parsed = gistParseInboxLines(raw);
+  if (!parsed.length) return { applied: 0, failed: 0, queueUpdated: false, label: file.filename || config.inboxFilename };
+
+  const settings = state.data.settings = state.data.settings || {};
+  const processed = Array.isArray(settings.gistProcessedInboxIds) ? settings.gistProcessedInboxIds : [];
+  const processedSet = new Set(processed);
+  const keepLines = [];
+  let applied = 0;
+  let failed = 0;
+
+  for (const item of parsed) {
+    const rid = item.ok ? (String(item.req.id || '').trim() || gistRequestId(item.line, item.idx)) : gistRequestId(item.line, item.idx);
+    if (processedSet.has(rid)) {
+      continue;
+    }
+
+    if (!item.ok) {
+      failed++;
+      continue;
+    }
+
+    const result = gistApplyInboxRequest(state, item.req);
+    if (result.applied) {
+      processedSet.add(rid);
+      applied++;
+      continue;
+    }
+
+    keepLines.push(item.line);
+    failed++;
+  }
+
+  settings.gistProcessedInboxIds = Array.from(processedSet).slice(-500);
+
+  const normalizedExisting = parsed.filter(p => p.ok).map(p => p.line).join('\n');
+  const nextRaw = keepLines.join('\n');
+  const queueUpdated = normalizedExisting !== nextRaw;
+  if (queueUpdated) {
+    await gistPatchSingleFile(config, config.inboxFilename, nextRaw);
+  }
+
+  return {
+    applied,
+    failed,
+    queueUpdated,
+    label: file.filename || config.inboxFilename
+  };
 }
 
 function gistGetAutoSyncSettings(state) {
@@ -141,8 +321,10 @@ async function syncFromGistRemote(app, state, options) {
     const raw = await gistReadFileContent(file);
     const payload = gistParsePayload(raw);
 
-    const remoteAt = payload.exportedAt || meta.updated_at || '';
-    const remoteMs = gistIsoToMs(remoteAt);
+    const remoteDataMs = gistIsoToMs(payload.exportedAt);
+    const remoteMetaMs = gistIsoToMs(meta.updated_at);
+    const remoteAt = remoteDataMs >= remoteMetaMs ? (payload.exportedAt || '') : (meta.updated_at || '');
+    const remoteMs = Math.max(remoteDataMs, remoteMetaMs);
     const localMs = Math.max(
       gistIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
       gistIsoToMs(state.data?.settings?.gistLastSyncAt)
@@ -166,12 +348,15 @@ async function syncFromGistRemote(app, state, options) {
     state.msel.clear();
     state.data.settings.gistLastSyncAt = remoteAt || new Date().toISOString();
 
+    const inbox = await gistProcessInboxRemote(state, config, meta);
+
     app.save();
     app.render();
     app.syncSettings();
 
     const label = file?.filename || config.filename;
-    gistSetStatus(`Pulled ${label}`, false);
+    const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued` : '';
+    gistSetStatus(`Pulled ${label}${inboxLabel}`, false);
     if (!opts.silent) app.toast('Gist sync: pulled latest');
     return true;
   } catch (err) {
@@ -261,8 +446,18 @@ async function syncGistBidirectionalRemote(app, state, options) {
     const raw = await gistReadFileContent(file);
     const payload = gistParsePayload(raw);
 
-    const remoteAt = payload.exportedAt || meta.updated_at || '';
-    const remoteMs = gistIsoToMs(remoteAt);
+    const inbox = await gistProcessInboxRemote(state, config, meta);
+    if (inbox.applied > 0) {
+      app.save();
+      app.render();
+      app.syncSettings();
+      if (!opts.silent) app.toast(`Gist inbox: added ${inbox.applied} task(s)`);
+    }
+
+    const remoteDataMs = gistIsoToMs(payload.exportedAt);
+    const remoteMetaMs = gistIsoToMs(meta.updated_at);
+    const remoteAt = remoteDataMs >= remoteMetaMs ? (payload.exportedAt || '') : (meta.updated_at || '');
+    const remoteMs = Math.max(remoteDataMs, remoteMetaMs);
     const localMs = Math.max(
       gistIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
       gistIsoToMs(state.data?.settings?.gistLastSyncAt)

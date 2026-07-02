@@ -14,6 +14,31 @@ One-time setup in GitHub repository settings:
 
 After that, every push to `master` deploys the latest standalone app.
 
+## CLI Task Capture via Gist Queue
+
+If you already have Gist sync configured in the app, you can enqueue a child task from command line by parent task id.
+
+One-time environment setup (Windows cmd):
+
+```bat
+set MGTD_GIST_ID=your_gist_id
+set MGTD_GIST_TOKEN=your_github_token
+```
+
+Quick command (from repo root):
+
+```bat
+scripts\send-task.cmd PARENT_TASK_ID Your new child task text
+```
+
+PowerShell equivalent:
+
+```powershell
+./scripts/send-task.ps1 PARENT_TASK_ID Your new child task text
+```
+
+Then click "Sync now" in the app (or wait for auto-sync) to apply queued tasks.
+
 
 ---
 
