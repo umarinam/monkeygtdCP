@@ -127,17 +127,19 @@ function toggleRepeatWeekdaysUi() {
 function openRepeatModalUi(app, state) {
   if (!state.selId) return;
   const t = state.data.tasks[state.selId];
+  const baseStart = t.due || todayS();
   const r = t.repeating_due || {
     freq: 'weekly',
     interval: 1,
-    weekdays: [new Date((t.due || todayS()) + 'T00:00:00').getDay()],
+    weekdays: [new Date(baseStart + 'T00:00:00').getDay()],
     repeatFrom: 'due',
     paused: false,
-    startDate: t.due || todayS()
+    startDate: baseStart
   };
   document.getElementById('rep-freq').value = r.freq || 'weekly';
   document.getElementById('rep-int').value = String(r.interval || 1);
   document.getElementById('rep-from').value = r.repeatFrom || 'due';
+  document.getElementById('rep-start').value = r.startDate || baseStart;
   document.getElementById('rep-paused').checked = !!r.paused;
   document.querySelectorAll('.rep-wd').forEach(cb => cb.checked = false);
   (r.weekdays || []).forEach(day => {
@@ -156,6 +158,7 @@ function saveRepeatSettingsUi(app, state) {
   const freq = document.getElementById('rep-freq').value;
   const interval = Math.max(1, parseInt(document.getElementById('rep-int').value, 10) || 1);
   const repeatFrom = document.getElementById('rep-from').value;
+  const startDate = document.getElementById('rep-start').value || todayS();
   const paused = document.getElementById('rep-paused').checked;
   const weekdays = [...document.querySelectorAll('.rep-wd:checked')].map(x => Number(x.value));
   t.repeating_due = {
@@ -164,10 +167,11 @@ function saveRepeatSettingsUi(app, state) {
     weekdays: freq === 'weekly' ? weekdays : [],
     repeatFrom,
     paused,
-    startDate: t.due || todayS(),
+    startDate,
     reopenDays: 0
   };
-  if (!t.due && !t.due_asap) t.due = todayS();
+  t.due = startDate;
+  t.due_asap = false;
   t.updated_at = now();
   logTaskHistory(t, 'scheduling', {
     from: { repeating_due: before },
