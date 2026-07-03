@@ -50,6 +50,31 @@ function extractBranchDomainUi(app, S) {
 function jumpToUi(app, S, id) {
   const t = S.data.tasks[id];
   if (!t) return;
+
+  // Ensure target path is visible even when ancestors were collapsed.
+  let p = t.parent_id;
+  while (p) {
+    const parent = S.data.tasks[p];
+    if (!parent) break;
+    parent._collapsed = false;
+    p = parent.parent_id;
+  }
+
+  // If current hoist would hide the target, clear it before navigation.
+  if (S.hoistId) {
+    let inHoistPath = false;
+    let cursor = id;
+    while (cursor) {
+      if (cursor === S.hoistId) {
+        inHoistPath = true;
+        break;
+      }
+      const node = S.data.tasks[cursor];
+      cursor = node ? node.parent_id : '';
+    }
+    if (!inHoistPath) S.hoistId = null;
+  }
+
   S.listId = t.checklist_id;
   S.selId = id;
   app.showPage('list');
