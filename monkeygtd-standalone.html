@@ -80,6 +80,16 @@ body.zen #topbar{display:none}
 .tc code{font-family:var(--mono);font-size:12px;background:var(--bg-alt);padding:1px 4px;border-radius:3px}
 .tc del{text-decoration:line-through;color:var(--muted)}
 .tc a{color:var(--link)}
+.ti.priority-1 .tc{color:var(--p1)}
+.ti.priority-2 .tc{color:var(--p2)}
+.ti.priority-3 .tc{color:var(--p3)}
+.ti.priority-4 .tc{color:var(--p4)}
+.ti.priority-5 .tc{color:var(--p5)}
+.ti.priority-6 .tc{color:var(--p6)}
+.ti.priority-7 .tc{color:var(--p7)}
+.ti.priority-8 .tc{color:var(--p8)}
+.ti.priority-9 .tc{color:var(--p9)}
+.ti[class*="priority-"] .tc a{color:inherit}
 .ti.s1 .tc{text-decoration:line-through;color:var(--muted)}
 .ti.s2 .tc{text-decoration:line-through;color:var(--muted);opacity:.5}
 .tmeta{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -496,6 +506,10 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           <option value="due">Due date</option>
           <option value="completion">Completion date</option>
         </select>
+      </div>
+      <div class="fg">
+        <label>Start date</label>
+        <input id="rep-start" type="date">
       </div>
       <div class="fg">
         <label class="cb-lbl"><input type="checkbox" id="rep-paused"> Paused</label>
@@ -3233,17 +3247,19 @@ function toggleRepeatWeekdaysUi() {
 function openRepeatModalUi(app, state) {
   if (!state.selId) return;
   const t = state.data.tasks[state.selId];
+  const baseStart = t.due || todayS();
   const r = t.repeating_due || {
     freq: 'weekly',
     interval: 1,
-    weekdays: [new Date((t.due || todayS()) + 'T00:00:00').getDay()],
+    weekdays: [new Date(baseStart + 'T00:00:00').getDay()],
     repeatFrom: 'due',
     paused: false,
-    startDate: t.due || todayS()
+    startDate: baseStart
   };
   document.getElementById('rep-freq').value = r.freq || 'weekly';
   document.getElementById('rep-int').value = String(r.interval || 1);
   document.getElementById('rep-from').value = r.repeatFrom || 'due';
+  document.getElementById('rep-start').value = r.startDate || baseStart;
   document.getElementById('rep-paused').checked = !!r.paused;
   document.querySelectorAll('.rep-wd').forEach(cb => cb.checked = false);
   (r.weekdays || []).forEach(day => {
@@ -3262,6 +3278,7 @@ function saveRepeatSettingsUi(app, state) {
   const freq = document.getElementById('rep-freq').value;
   const interval = Math.max(1, parseInt(document.getElementById('rep-int').value, 10) || 1);
   const repeatFrom = document.getElementById('rep-from').value;
+  const startDate = document.getElementById('rep-start').value || todayS();
   const paused = document.getElementById('rep-paused').checked;
   const weekdays = [...document.querySelectorAll('.rep-wd:checked')].map(x => Number(x.value));
   t.repeating_due = {
@@ -3270,10 +3287,11 @@ function saveRepeatSettingsUi(app, state) {
     weekdays: freq === 'weekly' ? weekdays : [],
     repeatFrom,
     paused,
-    startDate: t.due || todayS(),
+    startDate,
     reopenDays: 0
   };
-  if (!t.due && !t.due_asap) t.due = todayS();
+  t.due = startDate;
+  t.due_asap = false;
   t.updated_at = now();
   logTaskHistory(t, 'scheduling', {
     from: { repeating_due: before },
@@ -5572,6 +5590,31 @@ function extractBranchDomainUi(app, S) {
 function jumpToUi(app, S, id) {
   const t = S.data.tasks[id];
   if (!t) return;
+
+  // Ensure target path is visible even when ancestors were collapsed.
+  let p = t.parent_id;
+  while (p) {
+    const parent = S.data.tasks[p];
+    if (!parent) break;
+    parent._collapsed = false;
+    p = parent.parent_id;
+  }
+
+  // If current hoist would hide the target, clear it before navigation.
+  if (S.hoistId) {
+    let inHoistPath = false;
+    let cursor = id;
+    while (cursor) {
+      if (cursor === S.hoistId) {
+        inHoistPath = true;
+        break;
+      }
+      const node = S.data.tasks[cursor];
+      cursor = node ? node.parent_id : '';
+    }
+    if (!inHoistPath) S.hoistId = null;
+  }
+
   S.listId = t.checklist_id;
   S.selId = id;
   app.showPage('list');
