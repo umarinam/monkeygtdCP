@@ -10,6 +10,17 @@ param(
   [string]$InboxFile = 'monkeygtd-inbox.ndjson'
 )
 
+if ($TextParts.Length -gt 0) {
+  $first = [string]$TextParts[0]
+  if ($first -eq $ParentTaskId -or $first -eq "#task-$ParentTaskId") {
+    if ($TextParts.Length -gt 1) {
+      $TextParts = $TextParts[1..($TextParts.Length - 1)]
+    } else {
+      $TextParts = @()
+    }
+  }
+}
+
 $content = ($TextParts -join ' ').Trim()
 if ([string]::IsNullOrWhiteSpace($content)) {
   throw 'Task text is required after ParentTaskId.'
