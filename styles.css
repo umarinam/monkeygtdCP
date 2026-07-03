@@ -73,6 +73,16 @@ body.zen #topbar{display:none}
 .tc code{font-family:var(--mono);font-size:12px;background:var(--bg-alt);padding:1px 4px;border-radius:3px}
 .tc del{text-decoration:line-through;color:var(--muted)}
 .tc a{color:var(--link)}
+.ti.priority-1 .tc{color:var(--p1)}
+.ti.priority-2 .tc{color:var(--p2)}
+.ti.priority-3 .tc{color:var(--p3)}
+.ti.priority-4 .tc{color:var(--p4)}
+.ti.priority-5 .tc{color:var(--p5)}
+.ti.priority-6 .tc{color:var(--p6)}
+.ti.priority-7 .tc{color:var(--p7)}
+.ti.priority-8 .tc{color:var(--p8)}
+.ti.priority-9 .tc{color:var(--p9)}
+.ti[class*="priority-"] .tc a{color:inherit}
 .ti.s1 .tc{text-decoration:line-through;color:var(--muted)}
 .ti.s2 .tc{text-decoration:line-through;color:var(--muted);opacity:.5}
 .tmeta{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap}
