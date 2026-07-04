@@ -22,6 +22,19 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Clear notes', s: 'cn', fn: () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); } },
     { l: 'Show/hide all notes', s: 'sn', fn: () => { state.showNotes = !state.showNotes; app.render(); } },
     { l: 'Assign task', s: 'ae', fn: () => app.assignTask() },
+    { l: 'Clear assignees', s: 'ca', fn: () => {
+      if (!state.selId) return;
+      app.pushUndo(app.snap());
+      const t = state.data.tasks[state.selId];
+      if (!t) return;
+      const before = [...(t.assignees || [])];
+      t.assignees = [];
+      if (before.length) {
+        logTaskHistory(t, 'assignment', { from: before, to: [] });
+      }
+      app.save();
+      app.render();
+    } },
     { l: 'Indent', s: 'Tab', fn: () => { if (state.selId) app.indent(state.selId); } },
     { l: 'Un-indent', s: 'Shift+Tab', fn: () => { if (state.selId) app.unindent(state.selId); } },
     { l: 'Move task up', s: 'Ctrl+Up', fn: () => { if (state.selId) app.moveUp(state.selId); } },
@@ -45,6 +58,23 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Pull from Gist', s: 'sp', fn: () => app.syncFromGist() },
     { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
     { l: 'Hide/show completed', s: 'hc', fn: () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); } },
+    { l: 'Hide/show future due', s: 'hf', fn: () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); } },
+    { l: 'Toggle details', s: 'sd', fn: () => app.toggleDetails() },
+    { l: 'Show branch progress', s: 'pc', fn: () => { if (state.selId) app.showProgress(state.selId); } },
+    { l: 'Expand/collapse all', s: 'ec', fn: () => app.toggleEC() },
+    { l: 'Toggle multi-select for task', s: 'st', fn: () => {
+      if (!state.selId) return;
+      state.msel.has(state.selId) ? state.msel.delete(state.selId) : state.msel.add(state.selId);
+      app.renderList();
+    } },
+    { l: 'Open first URL in task', s: 'gg', fn: () => {
+      if (!state.selId) return;
+      const t = state.data.tasks[state.selId];
+      const m = (t && t.content ? t.content.match(/https?:\/\/\S+/) : null);
+      if (m) window.open(m[0], '_blank');
+    } },
+    { l: 'Open lists picker', s: 'll', fn: () => app.openCP('lists') },
+    { l: 'Copy task permalink', s: 'tc / lc', fn: () => app.copyPermalink() },
     { l: 'Toggle relative dates', s: 'df', fn: () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); } },
     { l: 'Zen mode', s: 'om', fn: () => app.setZen(!state.data.settings.zenMode) },
     { l: 'Settings', s: 'oo', fn: () => app.openSettings() },
