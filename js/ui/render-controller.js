@@ -383,12 +383,34 @@ function renderKanbanUi(app, state) {
   }).join('')}</div>`;
 }
 
+function ensureSelectionVisibleUi(app, state) {
+  const visible = app.visible();
+
+  if (!visible.length) {
+    state.selId = null;
+    if (state.msel) state.msel.clear();
+    return;
+  }
+
+  if (state.selId && !visible.includes(state.selId)) {
+    state.selId = visible[0];
+  }
+
+  if (state.msel && state.msel.size) {
+    for (const id of Array.from(state.msel)) {
+      if (!visible.includes(id)) state.msel.delete(id);
+    }
+  }
+}
+
 function renderListUi(app, state) {
   const list = state.data.lists[state.listId];
   if (!list) {
     app.showPage('home');
     return;
   }
+
+  ensureSelectionVisibleUi(app, state);
 
   document.getElementById('list-title').textContent = list.name;
   app.renderBreadcrumbs();

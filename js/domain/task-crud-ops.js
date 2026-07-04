@@ -63,6 +63,38 @@ function deleteTaskDomain(app, state, id) {
   const t = state.data.tasks[id];
   if (!t) return;
 
+  const collectSubtreeIds = (tid, set) => {
+    const task = state.data.tasks[tid];
+    if (!task || set.has(tid)) return;
+    set.add(tid);
+    (task.tasks || []).forEach(cid => collectSubtreeIds(cid, set));
+  };
+
+  const subtreeIds = new Set();
+  collectSubtreeIds(id, subtreeIds);
+
+  const visBeforeDelete = app.visible();
+  const idxBeforeDelete = visBeforeDelete.indexOf(id);
+  let nextSel = null;
+  if (idxBeforeDelete > -1) {
+    for (let i = idxBeforeDelete + 1; i < visBeforeDelete.length; i++) {
+      const cand = visBeforeDelete[i];
+      if (!subtreeIds.has(cand)) {
+        nextSel = cand;
+        break;
+      }
+    }
+    if (!nextSel) {
+      for (let i = idxBeforeDelete - 1; i >= 0; i--) {
+        const cand = visBeforeDelete[i];
+        if (!subtreeIds.has(cand)) {
+          nextSel = cand;
+          break;
+        }
+      }
+    }
+  }
+
   const softDelete = tid => {
     const task = state.data.tasks[tid];
     if (!task) return;
@@ -86,9 +118,7 @@ function deleteTaskDomain(app, state, id) {
   state.data.deletedItems.push({ taskId: id, snapshot: JSON.parse(JSON.stringify(t)), deletedAt: now() });
   if (state.data.deletedItems.length > 100) state.data.deletedItems.shift();
 
-  const vis = app.visible();
-  const idx = vis.indexOf(id);
-  state.selId = vis[idx + 1] || vis[idx - 1] || null;
+  state.selId = nextSel;
 
   app.save();
   app.render();

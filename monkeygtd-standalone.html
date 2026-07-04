@@ -1760,6 +1760,38 @@ function deleteTaskDomain(app, state, id) {
   const t = state.data.tasks[id];
   if (!t) return;
 
+  const collectSubtreeIds = (tid, set) => {
+    const task = state.data.tasks[tid];
+    if (!task || set.has(tid)) return;
+    set.add(tid);
+    (task.tasks || []).forEach(cid => collectSubtreeIds(cid, set));
+  };
+
+  const subtreeIds = new Set();
+  collectSubtreeIds(id, subtreeIds);
+
+  const visBeforeDelete = app.visible();
+  const idxBeforeDelete = visBeforeDelete.indexOf(id);
+  let nextSel = null;
+  if (idxBeforeDelete > -1) {
+    for (let i = idxBeforeDelete + 1; i < visBeforeDelete.length; i++) {
+      const cand = visBeforeDelete[i];
+      if (!subtreeIds.has(cand)) {
+        nextSel = cand;
+        break;
+      }
+    }
+    if (!nextSel) {
+      for (let i = idxBeforeDelete - 1; i >= 0; i--) {
+        const cand = visBeforeDelete[i];
+        if (!subtreeIds.has(cand)) {
+          nextSel = cand;
+          break;
+        }
+      }
+    }
+  }
+
   const softDelete = tid => {
     const task = state.data.tasks[tid];
     if (!task) return;
@@ -1783,9 +1815,7 @@ function deleteTaskDomain(app, state, id) {
   state.data.deletedItems.push({ taskId: id, snapshot: JSON.parse(JSON.stringify(t)), deletedAt: now() });
   if (state.data.deletedItems.length > 100) state.data.deletedItems.shift();
 
-  const vis = app.visible();
-  const idx = vis.indexOf(id);
-  state.selId = vis[idx + 1] || vis[idx - 1] || null;
+  state.selId = nextSel;
 
   app.save();
   app.render();
@@ -4975,12 +5005,34 @@ function renderKanbanUi(app, state) {
   }).join('')}</div>`;
 }
 
+function ensureSelectionVisibleUi(app, state) {
+  const visible = app.visible();
+
+  if (!visible.length) {
+    state.selId = null;
+    if (state.msel) state.msel.clear();
+    return;
+  }
+
+  if (state.selId && !visible.includes(state.selId)) {
+    state.selId = visible[0];
+  }
+
+  if (state.msel && state.msel.size) {
+    for (const id of Array.from(state.msel)) {
+      if (!visible.includes(id)) state.msel.delete(id);
+    }
+  }
+}
+
 function renderListUi(app, state) {
   const list = state.data.lists[state.listId];
   if (!list) {
     app.showPage('home');
     return;
   }
+
+  ensureSelectionVisibleUi(app, state);
 
   document.getElementById('list-title').textContent = list.name;
   app.renderBreadcrumbs();
@@ -5185,6 +5237,19 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Clear notes', s: 'cn', fn: () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); } },
     { l: 'Show/hide all notes', s: 'sn', fn: () => { state.showNotes = !state.showNotes; app.render(); } },
     { l: 'Assign task', s: 'ae', fn: () => app.assignTask() },
+    { l: 'Clear assignees', s: 'ca', fn: () => {
+      if (!state.selId) return;
+      app.pushUndo(app.snap());
+      const t = state.data.tasks[state.selId];
+      if (!t) return;
+      const before = [...(t.assignees || [])];
+      t.assignees = [];
+      if (before.length) {
+        logTaskHistory(t, 'assignment', { from: before, to: [] });
+      }
+      app.save();
+      app.render();
+    } },
     { l: 'Indent', s: 'Tab', fn: () => { if (state.selId) app.indent(state.selId); } },
     { l: 'Un-indent', s: 'Shift+Tab', fn: () => { if (state.selId) app.unindent(state.selId); } },
     { l: 'Move task up', s: 'Ctrl+Up', fn: () => { if (state.selId) app.moveUp(state.selId); } },
@@ -5208,6 +5273,23 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Pull from Gist', s: 'sp', fn: () => app.syncFromGist() },
     { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
     { l: 'Hide/show completed', s: 'hc', fn: () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); } },
+    { l: 'Hide/show future due', s: 'hf', fn: () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); } },
+    { l: 'Toggle details', s: 'sd', fn: () => app.toggleDetails() },
+    { l: 'Show branch progress', s: 'pc', fn: () => { if (state.selId) app.showProgress(state.selId); } },
+    { l: 'Expand/collapse all', s: 'ec', fn: () => app.toggleEC() },
+    { l: 'Toggle multi-select for task', s: 'st', fn: () => {
+      if (!state.selId) return;
+      state.msel.has(state.selId) ? state.msel.delete(state.selId) : state.msel.add(state.selId);
+      app.renderList();
+    } },
+    { l: 'Open first URL in task', s: 'gg', fn: () => {
+      if (!state.selId) return;
+      const t = state.data.tasks[state.selId];
+      const m = (t && t.content ? t.content.match(/https?:\/\/\S+/) : null);
+      if (m) window.open(m[0], '_blank');
+    } },
+    { l: 'Open lists picker', s: 'll', fn: () => app.openCP('lists') },
+    { l: 'Copy task permalink', s: 'tc / lc', fn: () => app.copyPermalink() },
     { l: 'Toggle relative dates', s: 'df', fn: () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); } },
     { l: 'Zen mode', s: 'om', fn: () => app.setZen(!state.data.settings.zenMode) },
     { l: 'Settings', s: 'oo', fn: () => app.openSettings() },
@@ -5653,6 +5735,7 @@ function showShortcutsUi(app) {
       ['as', 'Due ASAP'],
       ['cd', 'Clear due date'],
       ['dr', 'Repeating due settings'],
+      ['hf', 'Hide/show future due'],
     ]},
     { heading: 'Tags & Notes', items: [
       ['tt', 'Add tags'],
@@ -5660,6 +5743,8 @@ function showShortcutsUi(app) {
       ['nn', 'Add note'],
       ['cn', 'Clear notes'],
       ['sn', 'Show/hide all notes'],
+      ['tj', 'Edit task JSON'],
+      ['th', 'View task history'],
     ]},
     { heading: 'Copy & Clipboard', items: [
       ['Ctrl+C', 'Copy'],
@@ -5670,19 +5755,27 @@ function showShortcutsUi(app) {
     { heading: 'View & Navigation', items: [
       ['/', 'Focus search'],
       ['Shift+Shift', 'Command palette'],
+      ['ll', 'Open lists picker'],
       ['gh', 'Lists home'],
       ['gd', 'Due page'],
       ['gr', 'Reporting page'],
       ['gt', 'Tags page'],
+      ['gg', 'Open first URL in task'],
       ['hc', 'Hide/show completed'],
       ['df', 'Toggle relative dates'],
+      ['sd', 'Toggle details'],
+      ['pc', 'Show branch progress'],
       ['om', 'Zen mode'],
       ['oo', 'Settings'],
       ['?', 'Show this shortcuts list'],
     ]},
     { heading: 'List & Data', items: [
+      ['ca', 'Clear assignees'],
       ['mm', 'Move to list'],
       ['ss', 'Sort'],
+      ['ec', 'Expand/collapse all'],
+      ['st', 'Toggle multi-select for task'],
+      ['tc / lc', 'Copy task permalink'],
       ['ex', 'Export'],
       ['im', 'Import'],
       ['rd', 'Restore deleted'],
