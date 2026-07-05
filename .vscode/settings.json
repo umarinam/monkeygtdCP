@@ -2,6 +2,14 @@
     "chat.tools.terminal.autoApprove": {
         "git add": true,
         "git commit": true,
-        "git push": true
+        "git push": true,
+        "/^powershell -NoProfile -ExecutionPolicy Bypass -File \\.\\\\inline-html\\.ps1$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node \\.\\\\scripts\\\\check-standalone-up-to-date\\.cjs$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

@@ -11,7 +11,17 @@ const dispDate = iso => { if(!iso)return''; const[y,m,d]=iso.split('-'); return`
 const cmpDate = (a,b) => (!a&&!b)?0:!a?1:!b?-1:a<b?-1:a>b?1:0;
 const isAllowedLinkUrl = (url='') => {
   const val = String(url || '').trim();
-  return !!val;
+  if (!val) return false;
+  if (val.startsWith('#')) return true;
+
+  const m = val.match(/^([a-z][a-z0-9+.-]*):/i);
+  if (!m) return true;
+
+  const scheme = m[1].toLowerCase();
+  if (scheme === 'file' || scheme === 'javascript' || scheme === 'vbscript' || scheme === 'data') {
+    return false;
+  }
+  return true;
 };
 const FA_TOKEN_ICONS = {
   envelope: '✉',

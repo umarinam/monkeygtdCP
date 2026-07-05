@@ -19,10 +19,11 @@ test('md autolinks custom protocols', () => {
   assert.equal(html.includes('href="onenote:https://example"'), true);
 });
 
-test('md allows previously blocked protocols as links', () => {
+test('md does not link unsafe schemes', () => {
   const md = loadMd();
-  const html = md('Do not link javascript:alert(1)');
-  assert.equal(html.includes('href="javascript:alert(1)"'), true);
+  const html = md('Do not link javascript:alert(1) or file:///tmp/a.txt');
+  assert.equal(html.includes('href="javascript:alert(1)"'), false);
+  assert.equal(html.includes('href="file:///tmp/a.txt"'), false);
 });
 
 test('md markdown links allow internal task anchors and arbitrary schemes', () => {
