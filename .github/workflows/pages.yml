@@ -40,8 +40,14 @@ jobs:
           cp monkeygtd-standalone.html _site/index.html
           touch _site/.nojekyll
 
+      - name: Validate Pages artifact
+        shell: bash
+        run: |
+          test -f _site/index.html
+          ls -lah _site
+
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: _site
 
