@@ -115,6 +115,34 @@ const App={
   },
 
   renderKanban(){ renderKanbanUi(this, S); },
+  addKanbanTaskFromInput(inputId,parentTaskId){ addKanbanTaskFromInputUi(this, S, inputId, parentTaskId); },
+  setTaskStatus(id, targetStatus){
+    const t = S.data.tasks[id];
+    if (!t || t.deleted) return;
+
+    const cur = Number(t.status || 0);
+    const target = Number(targetStatus || 0);
+    if (cur === target) return;
+
+    if (target === 0) {
+      if (cur === 1) this.toggleStatus(id);
+      else if (cur === 2) this.invalidate(id);
+      return;
+    }
+
+    if (target === 1) {
+      if (cur === 0) this.toggleStatus(id);
+      else if (cur === 2) {
+        this.invalidate(id);
+        this.toggleStatus(id);
+      }
+      return;
+    }
+
+    if (target === 2) {
+      this.invalidate(id);
+    }
+  },
 
   // â”€ Tags page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   renderTags(){ renderTagsUi(this); },

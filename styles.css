@@ -163,6 +163,16 @@ body.zen #topbar{display:none}
 .tci:hover{background:var(--bg-hover);border-color:var(--accent)}
 .tc2{font-size:11px;color:var(--muted);margin-left:4px}
 .kanban-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:start}
+.kanban-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.kanban-toolbar input{flex:1;min-width:220px}
+.kanban-lanes{display:flex;flex-direction:column;gap:14px}
+.kanban-lane{border:1px solid var(--border);border-radius:var(--r);background:var(--bg);padding:10px}
+.kanban-lane-h{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.kanban-lane-title{font-weight:600;cursor:pointer}
+.kanban-lane-title:hover{text-decoration:underline}
+.kanban-lane-counts{display:flex;gap:8px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.kanban-lane-add{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.kanban-lane-add input{flex:1;min-width:220px}
 .kanban-col{border:1px solid var(--border);border-radius:var(--r);background:var(--bg-alt);min-height:180px}
 .kanban-col-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
   padding:10px 12px;border-bottom:1px solid var(--border)}
@@ -171,6 +181,15 @@ body.zen #topbar{display:none}
   border-radius:var(--r);padding:8px;cursor:pointer}
 .kanban-card:hover{background:var(--bg-hover)}
 .kanban-card-c{word-break:break-word;line-height:1.45}
+.kanban-card-meta{margin-top:4px}
+.kanban-card-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.kact{border:1px solid var(--border);background:var(--bg-alt);color:var(--muted);padding:1px 8px;border-radius:999px;font-size:11px;cursor:pointer}
+.kact:hover{background:var(--bg-hover);color:var(--text)}
+.kdue{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);color:var(--muted);border:1px solid var(--border);white-space:nowrap}
+.kdue.ov{color:#ef4444;border-color:#fca5a5;background:#fef2f2}
+.kdue.tod{color:#2563eb;border-color:#bfdbfe;background:#eff6ff}
+.kdue.tom{color:#059669;border-color:#a7f3d0;background:#ecfdf5}
+.kdue.asap{color:#d97706;border-color:#fde68a;background:#fffbeb}
 .kanban-empty{font-size:12px;color:var(--muted);padding:8px}
 
 .report-controls{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px}

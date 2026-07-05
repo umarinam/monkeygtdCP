@@ -53,17 +53,19 @@ test('app shell includes a kanban page entry and container', () => {
   assert.equal(/id="kanban-c"/.test(html), true);
 });
 
-test('renderKanbanUi renders status columns for active list tasks', () => {
+test('renderKanbanUi renders project swimlanes from top-level tasks', () => {
   const docNodes = { 'kanban-c': { innerHTML: '' } };
   const { renderKanbanUi } = loadRenderController(docNodes);
   const state = {
     listId: 'l1',
     data: {
-      lists: { l1: { id: 'l1', root_tasks: ['t1', 't2'] } },
+      lists: { l1: { id: 'l1', root_tasks: ['p1', 'p2'] } },
       tasks: {
-        t1: { id: 't1', content: 'Open task', status: 0, tasks: ['t1a'] },
-        t1a: { id: 't1a', content: 'Invalid child', status: 2, tasks: [] },
-        t2: { id: 't2', content: 'Done task', status: 1, tasks: [] }
+        p1: { id: 'p1', content: 'Project Alpha', status: 0, tasks: ['a1', 'a2'] },
+        a1: { id: 'a1', content: 'Alpha Open', status: 0, tasks: [] },
+        a2: { id: 'a2', content: 'Alpha Invalid', status: 2, tasks: [] },
+        p2: { id: 'p2', content: 'Project Beta', status: 0, tasks: ['b1'] },
+        b1: { id: 'b1', content: 'Beta Done', status: 1, tasks: [] }
       }
     }
   };
@@ -71,12 +73,20 @@ test('renderKanbanUi renders status columns for active list tasks', () => {
   const app = { showPage: () => {} };
   renderKanbanUi(app, state);
 
-  assert.equal(docNodes['kanban-c'].innerHTML.includes('Open (1)'), true);
-  assert.equal(docNodes['kanban-c'].innerHTML.includes('Done (1)'), true);
-  assert.equal(docNodes['kanban-c'].innerHTML.includes('Invalid (1)'), true);
-  assert.equal(docNodes['kanban-c'].innerHTML.includes('Open task'), true);
-  assert.equal(docNodes['kanban-c'].innerHTML.includes('Done task'), true);
-  assert.equal(docNodes['kanban-c'].innerHTML.includes('Invalid child'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('Project Alpha'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('Project Beta'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('Open 1'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('Done 1'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('Invalid 1'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('kanban-new-task-p1'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('kanban-new-task-p2'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes("App.setTaskStatus('a1',0)"), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes("App.setTaskStatus('b1',1)"), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes("App.setTaskStatus('a2',2)"), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('Alpha Open'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('Beta Done'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('Alpha Invalid'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('App.jumpTo(\'p1\')'), true);
 });
 
 test('renderKanbanUi shows empty state when active list has no tasks', () => {
@@ -90,7 +100,8 @@ test('renderKanbanUi shows empty state when active list has no tasks', () => {
     }
   };
   renderKanbanUi({ showPage: () => {} }, state);
-  assert.equal(docNodes['kanban-c'].innerHTML.includes('No tasks yet'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('No projects yet'), true);
+  assert.equal(docNodes['kanban-c'].innerHTML.includes('kanban-new-task'), true);
 });
 
 test('showPageUi and gk shortcut support kanban navigation', () => {

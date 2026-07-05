@@ -14,7 +14,7 @@
   <!-- Top bar -->
   <nav id="topbar">
     <button class="tbtn" onclick="App.showPage('home')" title="Lists (gh)">📋</button>
-    <div id="list-title" onclick="App.showPage('home')">MonkeyGTD</div>
+    <div id="list-title" onclick="App.showPage('list')">MonkeyGTD</div>
     <div id="search-wrap">
       <input id="search" type="text" placeholder="Search… (/)" autocomplete="off" spellcheck="false">
       <span id="search-x" onclick="App.clearSearch()">✕</span>
@@ -23,7 +23,7 @@
       <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncGistNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
       <button class="tbtn" onclick="App.showPage('report')" title="Reporting (gr)">📊</button>
-      <button class="tbtn" onclick="App.showPage('kanban')" title="Kanban (gk)">🧩</button>
+      <button class="tbtn" onclick="App.showPage('kanban')" title="Kanban Board (gk)">🗂</button>
       <button class="tbtn" onclick="App.showPage('tags')" title="Tags (gt)">🏷</button>
       <button class="tbtn" onclick="App.openSettings()" title="Settings (oo)">⚙</button>
     </div>
@@ -75,7 +75,13 @@
 
     <!-- Kanban page -->
     <div id="kanban-page" class="page hidden">
-      <div style="padding:16px"><div class="ph">Kanban</div><div id="kanban-c"></div></div>
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <div class="ph" style="margin-bottom:0">Kanban</div>
+          <button class="btn btn-sm" onclick="App.showPage('list')">Back to List</button>
+        </div>
+        <div id="kanban-c"></div>
+      </div>
     </div>
 
     <!-- Tags page -->

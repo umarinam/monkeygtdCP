@@ -347,40 +347,104 @@ function renderKanbanUi(app, state) {
     return;
   }
 
-  const order = [];
-  const walk = (ids) => {
-    for (const id of ids || []) {
-      const t = state.data.tasks[id];
-      if (!t || t.deleted) continue;
-      order.push(t);
-      walk(t.tasks || []);
-    }
-  };
-  walk(list.root_tasks || []);
+  const toolbar = `<div class="kanban-toolbar">
+    <input id="kanban-new-task" type="text" placeholder="Add a project lane and press Enter" onkeydown="if(event.key==='Enter'){App.addKanbanTaskFromInput('kanban-new-task','');}">
+    <button class="btn btn-sm btn-p" onclick="App.addKanbanTaskFromInput('kanban-new-task','')">Add Project</button>
+    <button class="btn btn-sm" onclick="App.showPage('list')">List View</button>
+  </div>`;
 
-  if (!order.length) {
-    document.getElementById('kanban-c').innerHTML = '<div class="empty"><div class="empty-t">No tasks yet</div><div class="empty-d">Add tasks in list view to populate your Kanban board.</div></div>';
+  const roots = (list.root_tasks || [])
+    .map(id => state.data.tasks[id])
+    .filter(t => t && !t.deleted);
+
+  if (!roots.length) {
+    document.getElementById('kanban-c').innerHTML = `${toolbar}<div class="empty"><div class="empty-t">No projects yet</div><div class="empty-d">Add your first project lane above to start using Kanban swimlanes.</div></div>`;
     return;
   }
 
-  const groups = [
-    { title: 'Open', cls: 'open', items: order.filter(t => Number(t.status || 0) === 0), empty: 'No open tasks' },
-    { title: 'Done', cls: 'done', items: order.filter(t => Number(t.status || 0) === 1), empty: 'No done tasks' },
-    { title: 'Invalid', cls: 'invalid', items: order.filter(t => Number(t.status || 0) === 2), empty: 'No invalid tasks' }
-  ];
+  const collectDescendants = (task) => {
+    const out = [];
+    const walk = (ids) => {
+      for (const id of (ids || [])) {
+        const t = state.data.tasks[id];
+        if (!t || t.deleted) continue;
+        out.push(t);
+        walk(t.tasks || []);
+      }
+    };
+    walk(task.tasks || []);
+    return out;
+  };
 
-  document.getElementById('kanban-c').innerHTML = `<div class="kanban-grid">${groups.map(group => {
-    return `<section class="kanban-col ${group.cls}">
-      <div class="kanban-col-h">${group.title} (${group.items.length})</div>
-      <div class="kanban-col-b">${group.items.length
-        ? group.items.map(t => `<div class="kanban-card" onclick="App.jumpTo('${t.id}')">
-            <input type="checkbox" ${Number(t.status || 0) === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
-            <div class="kanban-card-c">${esc((t.content || '').slice(0, 140))}</div>
-          </div>`).join('')
-        : `<div class="kanban-empty">${group.empty}</div>`}
+  const groupsFor = (tasks) => ([
+    { title: 'Open', cls: 'open', items: tasks.filter(t => Number(t.status || 0) === 0), empty: 'No open tasks' },
+    { title: 'Done', cls: 'done', items: tasks.filter(t => Number(t.status || 0) === 1), empty: 'No done tasks' },
+    { title: 'Invalid', cls: 'invalid', items: tasks.filter(t => Number(t.status || 0) === 2), empty: 'No invalid tasks' }
+  ]);
+
+  const laneHtml = roots.map(project => {
+    const laneTasks = collectDescendants(project);
+    const groups = groupsFor(laneTasks);
+    const inputId = `kanban-new-task-${project.id}`;
+    const openCount = groups[0].items.length;
+    const doneCount = groups[1].items.length;
+    const invalidCount = groups[2].items.length;
+
+    return `<section class="kanban-lane" data-project="${project.id}">
+      <div class="kanban-lane-h">
+        <div class="kanban-lane-title" onclick="App.jumpTo('${project.id}')">${esc((project.content || '(Untitled project)').slice(0, 140))}</div>
+        <div class="kanban-lane-counts">
+          <span>Open ${openCount}</span>
+          <span>Done ${doneCount}</span>
+          <span>Invalid ${invalidCount}</span>
+        </div>
       </div>
+      <div class="kanban-lane-add">
+        <input id="${inputId}" type="text" placeholder="Add task in this project" onkeydown="if(event.key==='Enter'){App.addKanbanTaskFromInput('${inputId}','${project.id}');}">
+        <button class="btn btn-sm" onclick="App.addKanbanTaskFromInput('${inputId}','${project.id}')">Add</button>
+      </div>
+      <div class="kanban-grid">${groups.map(group => {
+        return `<section class="kanban-col ${group.cls}">
+          <div class="kanban-col-h">${group.title} (${group.items.length})</div>
+          <div class="kanban-col-b">${group.items.length
+            ? group.items.map(t => `<div class="kanban-card" onclick="App.jumpTo('${t.id}')">
+                <input type="checkbox" ${Number(t.status || 0) === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
+                <div style="flex:1;min-width:0">
+                  <div class="kanban-card-c">${esc((t.content || '').slice(0, 140))}</div>
+                  ${(t.due || t.due_asap) ? `<div class="kanban-card-meta"><span class="kdue ${getDueCls(t)}">${fmtDue(t, state.data.settings.relativeDates)}</span></div>` : ''}
+                  <div class="kanban-card-actions" onclick="event.stopPropagation();">
+                    <button class="kact" onclick="App.setTaskStatus('${t.id}',0)">Open</button>
+                    <button class="kact" onclick="App.setTaskStatus('${t.id}',1)">Done</button>
+                    <button class="kact" onclick="App.setTaskStatus('${t.id}',2)">Invalid</button>
+                  </div>
+                </div>
+              </div>`).join('')
+            : `<div class="kanban-empty">${group.empty}</div>`}
+          </div>
+        </section>`;
+      }).join('')}</div>
     </section>`;
-  }).join('')}</div>`;
+  }).join('');
+
+  document.getElementById('kanban-c').innerHTML = `${toolbar}<div class="kanban-lanes">${laneHtml}</div>`;
+}
+
+function addKanbanTaskFromInputUi(app, state, inputId, parentTaskId) {
+  const input = document.getElementById(inputId || 'kanban-new-task');
+  if (!input) return;
+  const content = String(input.value || '').trim();
+  if (!content) {
+    app.toast('Enter a task first');
+    return;
+  }
+  const parent = String(parentTaskId || '').trim();
+  const id = parent
+    ? app.addTask(parent, true, content)
+    : app.addTask('', false, content);
+  state.selId = id;
+  input.value = '';
+  app.renderKanban();
+  app.toast('Task added');
 }
 
 function ensureSelectionVisibleUi(app, state) {
