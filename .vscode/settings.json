@@ -10,6 +10,14 @@
         "/^node \\.\\\\scripts\\\\check-standalone-up-to-date\\.cjs$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^node -e \"const fs=require\\('fs'\\),path=require\\('path'\\),vm=require\\('vm'\\);const utils=fs\\.readFileSync\\(path\\.join\\(process\\.cwd\\(\\),'js/core/utils\\.js'\\),'utf8'\\);const util=fs\\.readFileSync\\(path\\.join\\(process\\.cwd\\(\\),'js/ui/utilities-controller\\.js'\\),'utf8'\\);const sandbox=\\{console,JSON,Math,Date,prompt:\\(\\)=> '\\[Mail\\]\\(mailto:bob@example\\.com\\)'\\};vm\\.createContext\\(sandbox\\);vm\\.runInContext\\(utils,sandbox\\);vm\\.runInContext\\(util,sandbox\\);vm\\.runInContext\\('globalThis\\.__exports=\\{mkTask,addEmailLinkUi\\};',sandbox\\);const \\{mkTask,addEmailLinkUi\\}=sandbox\\.__exports;const t=mkTask\\(\\{id:'t1',checklist_id:'l1',content:'Task'\\}\\);const state=\\{selId:'t1',data:\\{tasks:\\{t1:t\\}\\}\\};const app=\\{pushUndo:\\(\\)=>\\{\\},snap:\\(\\)=>\\(\\{\\}\\),save:\\(\\)=>\\{\\},render:\\(\\)=>\\{\\},toast:\\(\\)=>\\{\\}\\};addEmailLinkUi\\(app,state\\);console\\.log\\(t\\.content\\);\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^powershell -NoProfile -ExecutionPolicy Bypass -File \\.\\\\inline-html\\.ps1; node \\.\\\\scripts\\\\check-standalone-up-to-date\\.cjs$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

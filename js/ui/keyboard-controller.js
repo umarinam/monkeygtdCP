@@ -390,6 +390,8 @@ function handleTwoKeySequence(app, state, e) {
     'gr': () => app.showPage('report'),
     'gk': () => app.showPage('kanban'),
     'nn': () => { if (state.selId) app.openNotesModal(state.selId); },
+    'no': () => { if (state.selId) app.addOneNoteLink(); },
+    'ne': () => { if (state.selId) app.addEmailLink(); },
     'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
     'sn': () => { state.showNotes = !state.showNotes; app.render(); app.toast(`Notes ${state.showNotes ? 'visible' : 'hidden'}`); },
     'ae': () => app.assignTask(),

@@ -81,6 +81,114 @@ function jumpToUi(app, S, id) {
   setTimeout(() => app.scrollSel(), 80);
 }
 
+function addOneNoteLinkUi(app, S) {
+  if (!S.selId) {
+    app.toast('Select a task first');
+    return;
+  }
+
+  const t = S.data.tasks[S.selId];
+  if (!t || t.deleted) {
+    app.toast('Task not found');
+    return;
+  }
+
+  const raw = prompt('Paste OneNote link:', '');
+  if (raw === null) return;
+
+  let link = String(raw || '').trim();
+  const mdMatch = link.match(/^\[[^\]]*\]\(([^)]+)\)$/);
+  if (mdMatch) link = String(mdMatch[1] || '').trim();
+
+  const legacyMatch = link.match(/\|\s*([a-z][a-z0-9+.-]*:[^\]\s]+)\s*\]?$/i);
+  if (legacyMatch) link = String(legacyMatch[1] || '').trim();
+
+  if (link.startsWith('<') && link.endsWith('>')) {
+    link = link.slice(1, -1).trim();
+  }
+
+  if (!link) {
+    app.toast('Link not added');
+    return;
+  }
+
+  if (!isAllowedLinkUrl(link)) {
+    app.toast('Unsupported link format');
+    return;
+  }
+
+  const token = `[fa:onenote](${link})`;
+  if (String(t.content || '').includes(token)) {
+    app.toast('OneNote link already exists');
+    return;
+  }
+
+  app.pushUndo(app.snap());
+  const before = String(t.content || '');
+  const sep = before && !/\s$/.test(before) ? ' ' : '';
+  t.content = `${before}${sep}${token}`.trim();
+  t.updated_at = now();
+  logTaskHistory(t, 'title', { from: before, to: t.content, source: 'onenote-link' });
+  app.save();
+  app.render();
+  app.toast('OneNote link added');
+}
+
+function addEmailLinkUi(app, S) {
+  if (!S.selId) {
+    app.toast('Select a task first');
+    return;
+  }
+
+  const t = S.data.tasks[S.selId];
+  if (!t || t.deleted) {
+    app.toast('Task not found');
+    return;
+  }
+
+  const raw = prompt('Paste email or email link:', '');
+  if (raw === null) return;
+
+  let link = String(raw || '').trim();
+  const mdMatch = link.match(/^\[[^\]]*\]\(([^)]+)\)$/);
+  if (mdMatch) link = String(mdMatch[1] || '').trim();
+
+  if (link.startsWith('<') && link.endsWith('>')) {
+    link = link.slice(1, -1).trim();
+  }
+
+  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(link);
+  if (!hasScheme && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(link)) {
+    link = `mailto:${link}`;
+  }
+
+  if (!link) {
+    app.toast('Link not added');
+    return;
+  }
+
+  if (!isAllowedLinkUrl(link)) {
+    app.toast('Unsupported link format');
+    return;
+  }
+
+  const token = `[fa:envelope](${link})`;
+  if (String(t.content || '').includes(token)) {
+    app.toast('Email link already exists');
+    return;
+  }
+
+  app.pushUndo(app.snap());
+  const before = String(t.content || '');
+  const sep = before && !/\s$/.test(before) ? ' ' : '';
+  t.content = `${before}${sep}${token}`.trim();
+  t.updated_at = now();
+  logTaskHistory(t, 'title', { from: before, to: t.content, source: 'email-link' });
+  app.save();
+  app.render();
+  app.toast('Email link added');
+}
+
 function showShortcutsUi(app) {
   const groups = [
     { heading: 'Navigation', items: [
@@ -119,6 +227,8 @@ function showShortcutsUi(app) {
       ['tt', 'Add tags'],
       ['ct', 'Clear tags'],
       ['nn', 'Add note'],
+      ['no', 'Add OneNote link'],
+      ['ne', 'Add email link'],
       ['cn', 'Clear notes'],
       ['sn', 'Show/hide all notes'],
       ['tj', 'Edit task JSON'],

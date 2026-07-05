@@ -26,18 +26,21 @@ const isAllowedLinkUrl = (url='') => {
 const FA_TOKEN_ICONS = {
   envelope: '✉',
   outlook: '✉',
-  onenote: '🗒',
   calendar: '📅',
   link: '🔗',
   task: '☑',
   file: '📄',
   github: '🐙'
 };
+const ONENOTE_INLINE_SVG = '<svg viewBox="0 0 24 24" role="img" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2" fill="currentColor" opacity="0.18"></rect><rect x="3.5" y="5.5" width="7" height="13" rx="1" fill="currentColor"></rect><path d="M8.2 15.8V8.2h1.15l2.45 4.3V8.2h1.2v7.6h-1.05l-2.55-4.45v4.45z" fill="#ffffff"></path><rect x="12" y="7.5" width="8" height="1.3" fill="currentColor" opacity="0.65"></rect><rect x="12" y="10.6" width="8" height="1.3" fill="currentColor" opacity="0.65"></rect><rect x="12" y="13.7" width="6.2" height="1.3" fill="currentColor" opacity="0.65"></rect></svg>';
 const renderLinkLabel = (label='') => {
   const raw = String(label || '').trim();
   const m = raw.match(/^fa:([a-z0-9-]+)$/i);
   if (!m) return raw;
   const name = m[1].toLowerCase();
+  if (name === 'onenote') {
+    return `<span class="fa-token onenote" data-fa="${name}" title="${name}" aria-label="${name}">${ONENOTE_INLINE_SVG}</span>`;
+  }
   const glyph = FA_TOKEN_ICONS[name] || '🔗';
   return `<span class="fa-token" data-fa="${name}" title="${name}" aria-label="${name}">${glyph}</span>`;
 };

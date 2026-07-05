@@ -348,6 +348,8 @@ const App={
   // â”€ Word count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   showWC(){ showWCUi(this, S); },
   showShortcuts(){ showShortcutsUi(this); },
+  addOneNoteLink(){ addOneNoteLinkUi(this, S); },
+  addEmailLink(){ addEmailLinkUi(this, S); },
 
   showStorageUsage(){ showStorageUsageUi(this, S); },
 
