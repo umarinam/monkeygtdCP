@@ -198,6 +198,91 @@ function addFileLinkUi(app, S) {
   app.toast('File link added');
 }
 
+function addWebLinkUi(app, S) {
+  if (!S.selId) {
+    app.toast('Select a task first');
+    return;
+  }
+
+  const t = S.data.tasks[S.selId];
+  if (!t || t.deleted) {
+    app.toast('Task not found');
+    return;
+  }
+
+  const raw = prompt('Paste web link:', '');
+  if (raw === null) return;
+
+  const link = normalizePromptLink(raw, 'web');
+
+  if (!link) {
+    app.toast('Link not added');
+    return;
+  }
+
+  const token = `[fa:link](${link})`;
+  if (String(t.content || '').includes(token)) {
+    app.toast('Web link already exists');
+    return;
+  }
+
+  app.pushUndo(app.snap());
+  const before = String(t.content || '');
+  const sep = before && !/\s$/.test(before) ? ' ' : '';
+  t.content = `${before}${sep}${token}`.trim();
+  t.updated_at = now();
+  logTaskHistory(t, 'title', { from: before, to: t.content, source: 'web-link' });
+  app.save();
+  app.render();
+  app.toast('Web link added');
+}
+
+function addLabeledWebLinkUi(app, S) {
+  if (!S.selId) {
+    app.toast('Select a task first');
+    return;
+  }
+
+  const t = S.data.tasks[S.selId];
+  if (!t || t.deleted) {
+    app.toast('Task not found');
+    return;
+  }
+
+  const rawLabel = prompt('Display label:', 'Link');
+  if (rawLabel === null) return;
+  const label = String(rawLabel || '').trim().replace(/[\r\n\[\]]+/g, ' ');
+  if (!label) {
+    app.toast('Label required');
+    return;
+  }
+
+  const rawUrl = prompt('Paste web link:', '');
+  if (rawUrl === null) return;
+  const link = normalizePromptLink(rawUrl, 'web');
+
+  if (!link) {
+    app.toast('Link not added');
+    return;
+  }
+
+  const token = `[${label}](${link})`;
+  if (String(t.content || '').includes(token)) {
+    app.toast('Link already exists');
+    return;
+  }
+
+  app.pushUndo(app.snap());
+  const before = String(t.content || '');
+  const sep = before && !/\s$/.test(before) ? ' ' : '';
+  t.content = `${before}${sep}${token}`.trim();
+  t.updated_at = now();
+  logTaskHistory(t, 'title', { from: before, to: t.content, source: 'web-link-labeled' });
+  app.save();
+  app.render();
+  app.toast('Link added');
+}
+
 function showShortcutsUi(app) {
   const groups = [
     { heading: 'Navigation', items: [
@@ -239,6 +324,8 @@ function showShortcutsUi(app) {
       ['no', 'Add OneNote link'],
       ['ne', 'Add email link'],
       ['nf', 'Add file link'],
+      ['nw', 'Add web link'],
+      ['Ctrl+K', 'Add labeled web link'],
       ['cn', 'Clear notes'],
       ['sn', 'Show/hide all notes'],
       ['tj', 'Edit task JSON'],

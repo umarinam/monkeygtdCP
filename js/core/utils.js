@@ -66,6 +66,13 @@ const normalizePromptLink = (raw='', kind='generic') => {
     return isAllowedLinkUrl(value) ? value : '';
   }
 
+  if (kind === 'web') {
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(value)) {
+      value = `https://${value}`;
+    }
+    return /^https?:\/\//i.test(value) && isAllowedLinkUrl(value) ? value : '';
+  }
+
   return isAllowedLinkUrl(value) ? value : '';
 };
 const FA_TOKEN_ICONS = {

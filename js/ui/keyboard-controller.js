@@ -295,6 +295,11 @@ function handleGlobalKey(app, state, e) {
     app.dup(state.selId);
     return;
   }
+  if (e.ctrlKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
+    e.preventDefault();
+    if (state.selId) app.addLabeledWebLink();
+    return;
+  }
   if (e.ctrlKey && e.shiftKey && e.key === 'C') {
     e.preventDefault();
     app.copyWithUrl();
@@ -393,6 +398,7 @@ function handleTwoKeySequence(app, state, e) {
     'no': () => { if (state.selId) app.addOneNoteLink(); },
     'ne': () => { if (state.selId) app.addEmailLink(); },
     'nf': () => { if (state.selId) app.addFileLink(); },
+    'nw': () => { if (state.selId) app.addWebLink(); },
     'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
     'sn': () => { state.showNotes = !state.showNotes; app.render(); app.toast(`Notes ${state.showNotes ? 'visible' : 'hidden'}`); },
     'ae': () => app.assignTask(),

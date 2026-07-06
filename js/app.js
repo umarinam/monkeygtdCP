@@ -351,6 +351,8 @@ const App={
   addOneNoteLink(){ addOneNoteLinkUi(this, S); },
   addEmailLink(){ addEmailLinkUi(this, S); },
   addFileLink(){ addFileLinkUi(this, S); },
+  addWebLink(){ addWebLinkUi(this, S); },
+  addLabeledWebLink(){ addLabeledWebLinkUi(this, S); },
 
   showStorageUsage(){ showStorageUsageUi(this, S); },
 

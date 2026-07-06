@@ -319,6 +319,81 @@ test('handleTwoKeySequence opens task JSON editor with tj shortcut', () => {
   assert.equal(calls.openTaskJson, 1);
 });
 
+test('handleTwoKeySequence triggers addWebLink with nw shortcut', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { addWebLink: 0 };
+
+  const app = {
+    addWebLink: () => { calls.addWebLink += 1; },
+    openTaskJson: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    startEdit: () => {},
+    openDueModal: () => {},
+    dispatch: () => {},
+    pushUndo: () => {},
+    snap: () => ({}),
+    save: () => {},
+    render: () => {},
+    toast: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    showPage: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    undo: () => {},
+    renderList: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {}
+  };
+
+  const state = {
+    selId: 't1',
+    kbuf: '',
+    kbtimer: null,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '' }
+      }
+    },
+    showNotes: false,
+    msel: new Set(),
+    lastCdAt: 0
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    preventDefault: () => {},
+    key: 'n'
+  };
+
+  handleTwoKeySequence(app, state, e);
+  e.key = 'w';
+  handleTwoKeySequence(app, state, e);
+
+  assert.equal(calls.addWebLink, 1);
+});
+
 test('handleGlobalKey prioritizes pending tj sequence over j navigation', () => {
   const { handleTwoKeySequence, handleGlobalKey } = loadKeyboardController();
   const calls = { openTaskJson: 0, navDown: 0 };
@@ -397,4 +472,112 @@ test('handleGlobalKey prioritizes pending tj sequence over j navigation', () => 
 
   assert.equal(calls.openTaskJson, 1);
   assert.equal(calls.navDown, 0);
+});
+
+test('handleGlobalKey triggers labeled web link flow on Ctrl+K', () => {
+  const { handleGlobalKey } = loadKeyboardController();
+  const calls = { addLabeledWebLink: 0 };
+
+  const app = {
+    addLabeledWebLink: () => { calls.addLabeledWebLink += 1; },
+    closeAll: () => {},
+    showShortcuts: () => {},
+    undo: () => {},
+    render: () => {},
+    clearSearch: () => {},
+    twoKey: () => {},
+    navDown: () => {},
+    navUp: () => {},
+    extDown: () => {},
+    extUp: () => {},
+    renderList: () => {},
+    unHoist: () => {},
+    hoistTask: () => {},
+    visible: () => ['t1'],
+    startEdit: () => {},
+    dispatch: () => {},
+    addAbove: () => 't2',
+    unindent: () => {},
+    indent: () => {},
+    invalidate: () => {},
+    moveUp: () => {},
+    moveDown: () => {},
+    expandAll: () => {},
+    collapseAll: () => {},
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    dup: () => {},
+    copyWithUrl: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    openTaskHistory: () => {},
+    openTaskJson: () => {},
+    showPage: () => {},
+    openNotesModal: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {},
+    addWebLink: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    save: () => {},
+    toast: () => {},
+    pushUndo: () => {},
+    snap: () => ({})
+  };
+
+  const state = {
+    selId: 't1',
+    page: 'list',
+    editId: null,
+    filter: '',
+    hoistId: null,
+    kbuf: '',
+    kbtimer: null,
+    showNotes: false,
+    msel: new Set(),
+    cpItems: [],
+    cpIdx: 0,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '', tasks: [], parent_id: '', color: 0 }
+      }
+    }
+  };
+
+  let prevented = false;
+  const e = {
+    ctrlKey: true,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    key: 'k',
+    preventDefault: () => { prevented = true; }
+  };
+
+  handleGlobalKey(app, state, e);
+
+  assert.equal(prevented, true);
+  assert.equal(calls.addLabeledWebLink, 1);
 });

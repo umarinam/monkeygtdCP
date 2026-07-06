@@ -20,6 +20,8 @@ test('command palette includes clear-assignees and key two-key shortcut actions'
     "{ l: 'Add OneNote link', s: 'no'",
     "{ l: 'Add email link', s: 'ne'",
     "{ l: 'Add file link', s: 'nf'",
+    "{ l: 'Add web link', s: 'nw'",
+    "{ l: 'Add labeled web link', s: 'Ctrl+K'",
     "{ l: 'Expand/collapse all', s: 'ec'",
     "{ l: 'Toggle multi-select for task', s: 'st'",
     "{ l: 'Copy task permalink', s: 'tc / lc'"
@@ -43,6 +45,8 @@ test('shortcuts help includes discoverability entries for advanced two-key actio
     "['no', 'Add OneNote link']",
     "['ne', 'Add email link']",
     "['nf', 'Add file link']",
+    "['nw', 'Add web link']",
+    "['Ctrl+K', 'Add labeled web link']",
     "['ec', 'Expand/collapse all']",
     "['st', 'Toggle multi-select for task']",
     "['tc / lc', 'Copy task permalink']",
