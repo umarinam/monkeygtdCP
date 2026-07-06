@@ -30,3 +30,12 @@ test('parseSmart still extracts explicit tag outside links', () => {
 
   assert.equal(JSON.stringify(parsed.tags), '["upskill"]');
 });
+
+test('parseSmart does not parse URL fragments as tags even when markdown link is malformed', () => {
+  const parseSmart = loadParseSmart();
+  const input = 'UpSkill project [fa:onenote](onenote:https://example.com/Scripts.one#Asad';
+
+  const parsed = parseSmart(input);
+
+  assert.equal(JSON.stringify(parsed.tags), '[]');
+});

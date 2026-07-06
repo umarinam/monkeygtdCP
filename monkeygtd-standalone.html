@@ -1073,18 +1073,29 @@ const parseSmart = raw => {
   const r={content:raw,tags:[],due:'',due_asap:false,color:0,assignees:[]};
   const tokenSource = stripLinkTargetsForSmartParsing(raw);
   const contentSource = String(raw || '');
-  (tokenSource.match(/#([\w-]+)/g)||[]).forEach(m=>{ const t=m.slice(1); if(!/^[1-9]$/.test(t)) r.tags.push(t); });
-  const pm=tokenSource.match(/!([1-9])/); if(pm) r.color=+pm[1];
-  (tokenSource.match(/\^(\S+)/g)||[]).forEach(m=>{
-    const v=m.slice(1).toLowerCase();
+  const tagRe = /(^|[\s([{])#([\w-]+)/g;
+  let m;
+  while ((m = tagRe.exec(tokenSource))) {
+    const t = m[2];
+    if (!/^[1-9]$/.test(t)) r.tags.push(t);
+  }
+
+  const pm=tokenSource.match(/(^|[\s([{])!([1-9])(?=\s|$)/);
+  if(pm) r.color=+pm[2];
+
+  const dueRe = /(^|[\s([{])\^(\S+)/g;
+  while ((m = dueRe.exec(tokenSource))) {
+    const v=m[2].toLowerCase();
     if(v==='today'||v==='tod') r.due=todayS();
     else if(v==='tomorrow'||v==='tom') r.due=tomorrowS();
     else if(v==='asap'||v==='shortlist') r.due_asap=true;
     else if(v==='nextweek') r.due=nextMonday();
-    else if(/^\d{4}-\d{2}-\d{2}$/.test(m.slice(1))) r.due=m.slice(1);
-    else if(/^\d{2}\/\d{2}\/\d{4}$/.test(m.slice(1))){ const[d2,mo,yr]=m.slice(1).split('/'); r.due=`${yr}-${mo}-${d2}`; }
-  });
-  (tokenSource.match(/@([\w-]+)/g)||[]).forEach(m=>r.assignees.push(m.slice(1)));
+    else if(/^\d{4}-\d{2}-\d{2}$/.test(m[2])) r.due=m[2];
+    else if(/^\d{2}\/\d{2}\/\d{4}$/.test(m[2])){ const[d2,mo,yr]=m[2].split('/'); r.due=`${yr}-${mo}-${d2}`; }
+  }
+
+  const assigneeRe = /(^|[\s([{])@([\w-]+)/g;
+  while ((m = assigneeRe.exec(tokenSource))) r.assignees.push(m[2]);
   r.content=contentSource.replace(/\s*!([1-9])/g,'').replace(/\s*\^(\S+)/g,'').trim();
   return r;
 };
