@@ -83,13 +83,19 @@ function gistParsePayload(raw) {
 
 function gistPreserveSyncSettings(state, previousSettings) {
   const current = state.data.settings || {};
-  const preservedKeys = ['gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastLocalSaveAt'];
+  const preservedKeys = ['gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary', 'gistLastLocalSaveAt'];
   for (const key of preservedKeys) {
     if (!current[key] && previousSettings[key]) {
       current[key] = previousSettings[key];
     }
   }
   state.data.settings = current;
+}
+
+function gistRememberSyncSummary(state, summary, at) {
+  state.data.settings = state.data.settings || {};
+  state.data.settings.gistLastSyncSummary = String(summary || '').trim();
+  state.data.settings.gistLastSyncAt = String(at || state.data.settings.gistLastSyncAt || new Date().toISOString()).trim();
 }
 
 function gistResolveRemoteVsLocal(remoteMs, localMs) {
@@ -349,10 +355,12 @@ async function syncFromGistRemote(app, state, options) {
     state.data.settings.gistLastSyncAt = remoteAt || new Date().toISOString();
 
     const inbox = await gistProcessInboxRemote(state, config, meta);
+    gistRememberSyncSummary(state, inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled', remoteAt || new Date().toISOString());
 
     app.save();
     app.render();
     app.syncSettings();
+    if (app.syncSB) app.syncSB();
 
     const label = file?.filename || config.filename;
     const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued` : '';
@@ -407,9 +415,10 @@ async function syncToGistRemote(app, state, options) {
     }
 
     state.data.settings = state.data.settings || {};
-    state.data.settings.gistLastSyncAt = exportedAt;
+    gistRememberSyncSummary(state, 'Pushed', exportedAt);
     app.save();
     app.syncSettings();
+    if (app.syncSB) app.syncSB();
 
     gistSetStatus(`Pushed ${config.filename}`, false);
     if (!opts.silent) app.toast('Gist sync: pushed');
@@ -448,9 +457,11 @@ async function syncGistBidirectionalRemote(app, state, options) {
 
     const inbox = await gistProcessInboxRemote(state, config, meta);
     if (inbox.applied > 0) {
+      gistRememberSyncSummary(state, `Inbox imported ${inbox.applied}`, new Date().toISOString());
       app.save();
       app.render();
       app.syncSettings();
+      if (app.syncSB) app.syncSB();
       if (!opts.silent) app.toast(`Gist inbox: added ${inbox.applied} task(s)`);
     }
 
@@ -472,6 +483,9 @@ async function syncGistBidirectionalRemote(app, state, options) {
       return syncToGistRemote(app, state, { silent: opts.silent });
     }
 
+    gistRememberSyncSummary(state, inbox.applied > 0 ? `Inbox imported ${inbox.applied}` : 'In sync', new Date().toISOString());
+    app.syncSettings();
+    if (app.syncSB) app.syncSB();
     gistSetStatus('Gist and local are in sync', false);
     if (!opts.silent) app.toast('Gist sync: already up to date');
     return true;

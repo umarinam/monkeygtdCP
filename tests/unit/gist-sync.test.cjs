@@ -254,6 +254,7 @@ test('syncGistBidirectionalRemote pulls when gist is newer', async () => {
   assert.equal(calls.save, 1);
   assert.equal(calls.render, 1);
   assert.equal(calls.syncSettings, 1);
+  assert.equal(state.data.settings.gistLastSyncSummary, 'Pulled');
   assert.equal(fetchCalls.filter(c => c.method === 'PATCH').length, 0);
 });
 
@@ -285,6 +286,7 @@ test('syncGistBidirectionalRemote pushes when local is newer', async () => {
   assert.equal(calls.save, 1);
   assert.equal(calls.render, 0);
   assert.equal(calls.syncSettings, 1);
+  assert.equal(state.data.settings.gistLastSyncSummary, 'Pushed');
   assert.equal(fetchCalls.filter(c => c.method === 'PATCH').length, 1);
 });
 
@@ -309,7 +311,8 @@ test('syncGistBidirectionalRemote does nothing when versions are equal', async (
   assert.equal(changed, true);
   assert.equal(calls.save, 0);
   assert.equal(calls.render, 0);
-  assert.equal(calls.syncSettings, 0);
+  assert.equal(calls.syncSettings, 1);
+  assert.equal(state.data.settings.gistLastSyncSummary, 'In sync');
   assert.equal(fetchCalls.filter(c => c.method === 'PATCH').length, 0);
 });
 

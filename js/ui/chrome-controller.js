@@ -22,6 +22,23 @@ function syncStatusBarUi(state) {
   } else {
     sf.style.display = 'none';
   }
+
+  const ss = document.getElementById('sb-sync');
+  if (ss) {
+    const settings = state.data?.settings || {};
+    const at = String(settings.gistLastSyncAt || '').trim();
+    const status = String(settings.gistLastSyncSummary || '').trim();
+    if (!at && !status) {
+      ss.textContent = '';
+    } else {
+      let when = at;
+      const parsed = Date.parse(at);
+      if (Number.isFinite(parsed)) {
+        when = new Date(parsed).toLocaleString();
+      }
+      ss.textContent = status ? `${status} ${when ? `@ ${when}` : ''}`.trim() : when;
+    }
+  }
 }
 
 function showToastUi(app, msg) {
