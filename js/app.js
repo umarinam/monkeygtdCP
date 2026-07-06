@@ -350,6 +350,7 @@ const App={
   showShortcuts(){ showShortcutsUi(this); },
   addOneNoteLink(){ addOneNoteLinkUi(this, S); },
   addEmailLink(){ addEmailLinkUi(this, S); },
+  addFileLink(){ addFileLinkUi(this, S); },
 
   showStorageUsage(){ showStorageUsageUi(this, S); },
 

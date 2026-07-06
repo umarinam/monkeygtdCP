@@ -360,7 +360,8 @@ label{display:block;margin-bottom:4px;font-size:12px;font-weight:500;color:var(-
 
 .fa-token{display:inline-flex;align-items:center;justify-content:center;min-width:1.2em;height:1.2em;line-height:1;font-size:1em;vertical-align:text-bottom}
 .fa-token svg{width:1.1em;height:1.1em;display:block}
-.fa-token.onenote{color:#7b3f95}
+.fa-token.onenote{color:#7b3f95;min-width:1.45em;height:1.45em}
+.fa-token.onenote svg{width:1.35em;height:1.35em}
 [data-theme=dark] .fa-token.onenote{color:#b58ad9}
 
 /* â”€â”€ Misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -944,6 +945,51 @@ const isAllowedLinkUrl = (url='') => {
     return false;
   }
   return true;
+};
+const normalizePromptLink = (raw='', kind='generic') => {
+  let value = String(raw || '').trim();
+  if (!value) return '';
+
+  const mdMatch = value.match(/^\[[^\]]*\]\(([^)]+)\)$/);
+  if (mdMatch) value = String(mdMatch[1] || '').trim();
+
+  if (value.startsWith('<') && value.endsWith('>')) {
+    value = value.slice(1, -1).trim();
+  }
+
+  if (kind === 'onenote') {
+    const legacyMatch = value.match(/\|\s*(onenote:[^\]\s]+)\s*\]?$/i);
+    if (legacyMatch) value = String(legacyMatch[1] || '').trim();
+
+    const match = value.match(/onenote:[^\s\])]+/i);
+    if (match) value = String(match[0] || '').trim();
+
+    value = value.replace(/&end$/i, '').trim();
+    return isAllowedLinkUrl(value) ? value : '';
+  }
+
+  if (kind === 'email') {
+    const legacyMatch = value.match(/\|\s*(outlook:[^\]\s]+)\s*\]?$/i);
+    if (legacyMatch) value = String(legacyMatch[1] || '').trim();
+
+    const outlookMatch = value.match(/outlook:[^\s\])]+/i);
+    if (outlookMatch) value = String(outlookMatch[0] || '').trim();
+
+    const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(value);
+    if (!hasScheme && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      value = `mailto:${value}`;
+    }
+    return isAllowedLinkUrl(value) ? value : '';
+  }
+
+  if (kind === 'file') {
+    if (!/^start:/i.test(value)) {
+      value = `start:${value}`;
+    }
+    return isAllowedLinkUrl(value) ? value : '';
+  }
+
+  return isAllowedLinkUrl(value) ? value : '';
 };
 const FA_TOKEN_ICONS = {
   envelope: '✉',
@@ -4340,6 +4386,7 @@ function handleTwoKeySequence(app, state, e) {
     'nn': () => { if (state.selId) app.openNotesModal(state.selId); },
     'no': () => { if (state.selId) app.addOneNoteLink(); },
     'ne': () => { if (state.selId) app.addEmailLink(); },
+    'nf': () => { if (state.selId) app.addFileLink(); },
     'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
     'sn': () => { state.showNotes = !state.showNotes; app.render(); app.toast(`Notes ${state.showNotes ? 'visible' : 'hidden'}`); },
     'ae': () => app.assignTask(),
@@ -5341,6 +5388,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Add note', s: 'nn', fn: () => { if (state.selId) app.openNotesModal(state.selId); } },
     { l: 'Add OneNote link', s: 'no', fn: () => { if (state.selId) app.addOneNoteLink(); } },
     { l: 'Add email link', s: 'ne', fn: () => { if (state.selId) app.addEmailLink(); } },
+    { l: 'Add file link', s: 'nf', fn: () => { if (state.selId) app.addFileLink(); } },
     { l: 'Edit task JSON', s: 'tj', fn: () => { if (state.selId) app.openTaskJson(state.selId); } },
     { l: 'View task history', s: 'th', fn: () => { if (state.selId) app.openTaskHistory(state.selId); } },
     { l: 'Clear notes', s: 'cn', fn: () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); } },
@@ -5827,24 +5875,10 @@ function addOneNoteLinkUi(app, S) {
   const raw = prompt('Paste OneNote link:', '');
   if (raw === null) return;
 
-  let link = String(raw || '').trim();
-  const mdMatch = link.match(/^\[[^\]]*\]\(([^)]+)\)$/);
-  if (mdMatch) link = String(mdMatch[1] || '').trim();
-
-  const legacyMatch = link.match(/\|\s*([a-z][a-z0-9+.-]*:[^\]\s]+)\s*\]?$/i);
-  if (legacyMatch) link = String(legacyMatch[1] || '').trim();
-
-  if (link.startsWith('<') && link.endsWith('>')) {
-    link = link.slice(1, -1).trim();
-  }
+  const link = normalizePromptLink(raw, 'onenote');
 
   if (!link) {
     app.toast('Link not added');
-    return;
-  }
-
-  if (!isAllowedLinkUrl(link)) {
-    app.toast('Unsupported link format');
     return;
   }
 
@@ -5880,26 +5914,10 @@ function addEmailLinkUi(app, S) {
   const raw = prompt('Paste email or email link:', '');
   if (raw === null) return;
 
-  let link = String(raw || '').trim();
-  const mdMatch = link.match(/^\[[^\]]*\]\(([^)]+)\)$/);
-  if (mdMatch) link = String(mdMatch[1] || '').trim();
-
-  if (link.startsWith('<') && link.endsWith('>')) {
-    link = link.slice(1, -1).trim();
-  }
-
-  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(link);
-  if (!hasScheme && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(link)) {
-    link = `mailto:${link}`;
-  }
+  const link = normalizePromptLink(raw, 'email');
 
   if (!link) {
     app.toast('Link not added');
-    return;
-  }
-
-  if (!isAllowedLinkUrl(link)) {
-    app.toast('Unsupported link format');
     return;
   }
 
@@ -5918,6 +5936,45 @@ function addEmailLinkUi(app, S) {
   app.save();
   app.render();
   app.toast('Email link added');
+}
+
+function addFileLinkUi(app, S) {
+  if (!S.selId) {
+    app.toast('Select a task first');
+    return;
+  }
+
+  const t = S.data.tasks[S.selId];
+  if (!t || t.deleted) {
+    app.toast('Task not found');
+    return;
+  }
+
+  const raw = prompt('Paste file path:', '');
+  if (raw === null) return;
+
+  const link = normalizePromptLink(raw, 'file');
+
+  if (!link) {
+    app.toast('Link not added');
+    return;
+  }
+
+  const token = `[fa:file](${link})`;
+  if (String(t.content || '').includes(token)) {
+    app.toast('File link already exists');
+    return;
+  }
+
+  app.pushUndo(app.snap());
+  const before = String(t.content || '');
+  const sep = before && !/\s$/.test(before) ? ' ' : '';
+  t.content = `${before}${sep}${token}`.trim();
+  t.updated_at = now();
+  logTaskHistory(t, 'title', { from: before, to: t.content, source: 'file-link' });
+  app.save();
+  app.render();
+  app.toast('File link added');
 }
 
 function showShortcutsUi(app) {
@@ -5960,6 +6017,7 @@ function showShortcutsUi(app) {
       ['nn', 'Add note'],
       ['no', 'Add OneNote link'],
       ['ne', 'Add email link'],
+      ['nf', 'Add file link'],
       ['cn', 'Clear notes'],
       ['sn', 'Show/hide all notes'],
       ['tj', 'Edit task JSON'],
@@ -6444,6 +6502,7 @@ const App={
   showShortcuts(){ showShortcutsUi(this); },
   addOneNoteLink(){ addOneNoteLinkUi(this, S); },
   addEmailLink(){ addEmailLinkUi(this, S); },
+  addFileLink(){ addFileLinkUi(this, S); },
 
   showStorageUsage(){ showStorageUsageUi(this, S); },
 

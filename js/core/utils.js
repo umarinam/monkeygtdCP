@@ -23,6 +23,51 @@ const isAllowedLinkUrl = (url='') => {
   }
   return true;
 };
+const normalizePromptLink = (raw='', kind='generic') => {
+  let value = String(raw || '').trim();
+  if (!value) return '';
+
+  const mdMatch = value.match(/^\[[^\]]*\]\(([^)]+)\)$/);
+  if (mdMatch) value = String(mdMatch[1] || '').trim();
+
+  if (value.startsWith('<') && value.endsWith('>')) {
+    value = value.slice(1, -1).trim();
+  }
+
+  if (kind === 'onenote') {
+    const legacyMatch = value.match(/\|\s*(onenote:[^\]\s]+)\s*\]?$/i);
+    if (legacyMatch) value = String(legacyMatch[1] || '').trim();
+
+    const match = value.match(/onenote:[^\s\])]+/i);
+    if (match) value = String(match[0] || '').trim();
+
+    value = value.replace(/&end$/i, '').trim();
+    return isAllowedLinkUrl(value) ? value : '';
+  }
+
+  if (kind === 'email') {
+    const legacyMatch = value.match(/\|\s*(outlook:[^\]\s]+)\s*\]?$/i);
+    if (legacyMatch) value = String(legacyMatch[1] || '').trim();
+
+    const outlookMatch = value.match(/outlook:[^\s\])]+/i);
+    if (outlookMatch) value = String(outlookMatch[0] || '').trim();
+
+    const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(value);
+    if (!hasScheme && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      value = `mailto:${value}`;
+    }
+    return isAllowedLinkUrl(value) ? value : '';
+  }
+
+  if (kind === 'file') {
+    if (!/^start:/i.test(value)) {
+      value = `start:${value}`;
+    }
+    return isAllowedLinkUrl(value) ? value : '';
+  }
+
+  return isAllowedLinkUrl(value) ? value : '';
+};
 const FA_TOKEN_ICONS = {
   envelope: '✉',
   outlook: '✉',

@@ -353,7 +353,8 @@ label{display:block;margin-bottom:4px;font-size:12px;font-weight:500;color:var(-
 
 .fa-token{display:inline-flex;align-items:center;justify-content:center;min-width:1.2em;height:1.2em;line-height:1;font-size:1em;vertical-align:text-bottom}
 .fa-token svg{width:1.1em;height:1.1em;display:block}
-.fa-token.onenote{color:#7b3f95}
+.fa-token.onenote{color:#7b3f95;min-width:1.45em;height:1.45em}
+.fa-token.onenote svg{width:1.35em;height:1.35em}
 [data-theme=dark] .fa-token.onenote{color:#b58ad9}
 
 /* â”€â”€ Misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */

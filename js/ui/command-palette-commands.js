@@ -19,6 +19,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Add note', s: 'nn', fn: () => { if (state.selId) app.openNotesModal(state.selId); } },
     { l: 'Add OneNote link', s: 'no', fn: () => { if (state.selId) app.addOneNoteLink(); } },
     { l: 'Add email link', s: 'ne', fn: () => { if (state.selId) app.addEmailLink(); } },
+    { l: 'Add file link', s: 'nf', fn: () => { if (state.selId) app.addFileLink(); } },
     { l: 'Edit task JSON', s: 'tj', fn: () => { if (state.selId) app.openTaskJson(state.selId); } },
     { l: 'View task history', s: 'th', fn: () => { if (state.selId) app.openTaskHistory(state.selId); } },
     { l: 'Clear notes', s: 'cn', fn: () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); } },
