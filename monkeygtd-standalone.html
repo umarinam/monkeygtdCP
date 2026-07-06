@@ -4953,9 +4953,10 @@ function renderReportUi(app, state) {
   const html = filteredRows.map(r => {
     const indent = Math.max(0, Number(r.depth || 0)) * 18;
     const deletedMark = r.statusKey === 'deleted' ? '<span class="report-deleted-mark">deleted</span>' : '';
+    const contentHtml = renderSummaryContentUi(state, r.content || '(untitled)');
     return `<div class="report-row rk-${r.statusKey}" style="padding-left:${indent + 10}px">
       <span class="report-dot"></span>
-      <span class="report-content">${esc(r.content || '(untitled)')}</span>
+      <span class="report-content">${contentHtml}</span>
       ${deletedMark}
     </div>`;
   }).join('');
@@ -5063,9 +5064,10 @@ function renderDueUi(app, state) {
     if (!items.length) return '';
     return `<div class="dsec"><div class="dsec-h">${sec.title} (${items.length})</div>${items.map(t => {
       const l = state.data.lists[t.checklist_id];
+      const contentHtml = renderSummaryContentUi(state, t.content || '(untitled)');
       return `<div class="dti" onclick="App.jumpTo('${t.id}')">
         <input type="checkbox" ${t.status === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
-        <div style="flex:1"><div>${esc(t.content.slice(0,80))}</div><div class="dlist">${l ? esc(l.name) : ''}</div></div>
+        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${l ? esc(l.name) : ''}</div></div>
         <div style="font-size:11px;color:var(--muted)">${fmtDue(t, state.data.settings.relativeDates)}</div>
       </div>`;
     }).join('')}</div>`;
@@ -5315,6 +5317,11 @@ function applyWikiLinksInContent(state, content) {
     if (!targetId) return full;
     return `[${label}](#task-${targetId})`;
   });
+}
+
+function renderSummaryContentUi(state, content) {
+  const wikiAwareContent = applyWikiLinksInContent(state, content);
+  return md(wikiAwareContent);
 }
 
 function buildTaskItemUi(app, state, id, depth, list) {
