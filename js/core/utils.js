@@ -136,12 +136,22 @@ const md = text => {
   return h;
 };
 
+const stripLinkTargetsForSmartParsing = raw => {
+  let s = String(raw || '');
+  // Keep markdown link labels but ignore link targets to avoid false tag detection from URL fragments.
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label) => String(label || ''));
+  // Ignore bare protocol URLs so #anchors and @segments do not become smart tokens.
+  s = s.replace(/\b([a-z][a-z0-9+.-]*:[^\s<>"]+)/gi, ' ');
+  return s;
+};
+
 const parseSmart = raw => {
   const r={content:raw,tags:[],due:'',due_asap:false,color:0,assignees:[]};
-  let s=raw;
-  (s.match(/#([\w-]+)/g)||[]).forEach(m=>{ const t=m.slice(1); if(!/^[1-9]$/.test(t)) r.tags.push(t); });
-  const pm=s.match(/!([1-9])/); if(pm) r.color=+pm[1];
-  (s.match(/\^(\S+)/g)||[]).forEach(m=>{
+  const tokenSource = stripLinkTargetsForSmartParsing(raw);
+  const contentSource = String(raw || '');
+  (tokenSource.match(/#([\w-]+)/g)||[]).forEach(m=>{ const t=m.slice(1); if(!/^[1-9]$/.test(t)) r.tags.push(t); });
+  const pm=tokenSource.match(/!([1-9])/); if(pm) r.color=+pm[1];
+  (tokenSource.match(/\^(\S+)/g)||[]).forEach(m=>{
     const v=m.slice(1).toLowerCase();
     if(v==='today'||v==='tod') r.due=todayS();
     else if(v==='tomorrow'||v==='tom') r.due=tomorrowS();
@@ -150,8 +160,8 @@ const parseSmart = raw => {
     else if(/^\d{4}-\d{2}-\d{2}$/.test(m.slice(1))) r.due=m.slice(1);
     else if(/^\d{2}\/\d{2}\/\d{4}$/.test(m.slice(1))){ const[d2,mo,yr]=m.slice(1).split('/'); r.due=`${yr}-${mo}-${d2}`; }
   });
-  (s.match(/@([\w-]+)/g)||[]).forEach(m=>r.assignees.push(m.slice(1)));
-  r.content=s.replace(/\s*!([1-9])/g,'').replace(/\s*\^(\S+)/g,'').trim();
+  (tokenSource.match(/@([\w-]+)/g)||[]).forEach(m=>r.assignees.push(m.slice(1)));
+  r.content=contentSource.replace(/\s*!([1-9])/g,'').replace(/\s*\^(\S+)/g,'').trim();
   return r;
 };
 
