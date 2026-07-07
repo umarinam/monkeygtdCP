@@ -65,7 +65,11 @@ body.zen #topbar{display:none}
 .ti{display:flex;align-items:flex-start;padding:1px 0;position:relative;cursor:pointer}
 .ti:hover{background:var(--bg-hover)}
 .ti.sel{background:var(--bg-sel)}
-.ti.msel{background:var(--bg-sel);opacity:.85}
+.ti.msel{background:var(--bg-sel);box-shadow:inset 3px 0 0 var(--accent)}
+.ti.msel::after{content:'◉';position:absolute;right:6px;top:2px;font-size:11px;
+                font-weight:700;line-height:1;padding:1px 4px;border-radius:999px;
+                color:var(--accent);background:color-mix(in srgb, var(--accent) 16%, transparent);
+                border:1px solid color-mix(in srgb, var(--accent) 35%, var(--border));}
 .ig{width:20px;position:relative;flex-shrink:0;align-self:stretch}
 .ig::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:1px;background:var(--border)}
 .tog{width:20px;height:22px;flex-shrink:0;display:flex;align-items:center;
@@ -379,7 +383,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T21:59:11+05:00',commit:'f99b121'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T22:13:50+05:00',commit:'ead72cb'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -4655,7 +4659,7 @@ function handleTwoKeySequence(app, state, e) {
     },
     'dr': () => { if (state.selId) app.openRepeatModal(); },
     'df': () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); app.toast(`Dates: ${state.data.settings.relativeDates ? 'relative' : 'exact'}`); },
-    'tt': () => { if (state.selId) app.openTagsModal(state.selId); },
+    'tt': () => app.addTagSelection(),
     'th': () => { if (state.selId) app.openTaskHistory(state.selId); },
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
     'gt': () => app.showPage('tags'),
@@ -5667,7 +5671,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Set due date...', s: 'dd', fn: () => app.openDueModal() },
     { l: 'Repeating due settings', s: 'dr', fn: () => { if (state.selId) app.openRepeatModal(); } },
     { l: 'Clear due date', s: 'cd', fn: () => app.clearDueSelection(false) },
-    { l: 'Add tags', s: 'tt', fn: () => { if (state.selId) app.openTagsModal(state.selId); } },
+    { l: 'Add tags', s: 'tt', fn: () => app.addTagSelection() },
     { l: 'Clear tags', s: 'ct', fn: () => app.clearTagsSelection() },
     { l: 'Add note', s: 'nn', fn: () => { if (state.selId) app.openNotesModal(state.selId); } },
     { l: 'Add OneNote link', s: 'no', fn: () => { if (state.selId) app.addOneNoteLink(); } },
@@ -6763,6 +6767,40 @@ const App={
     this.save();
     this.render();
     this.toast(`Tags cleared for ${ids.length} task(s)`);
+  },
+  addTagSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+
+    if (ids.length === 1) {
+      this.openTagsModal(ids[0]);
+      return;
+    }
+
+    const raw = String(prompt('Tag to add:') || '')
+      .trim()
+      .replace(/^#/, '')
+      .replace(/,/g, '')
+      .trim();
+    if (!raw) return;
+
+    this.withUndoBatch(() => ids.forEach(id => {
+      const t = S.data.tasks[id];
+      if (!t) return;
+      t.tags = t.tags || {};
+      const before = t.tags_as_text || '';
+      t.tags[raw] = { isPrivate: false };
+      t.tags_as_text = Object.keys(t.tags).join(',');
+      t.updated_at = now();
+      if (before !== (t.tags_as_text || '')) {
+        logTaskHistory(t, 'tags', { from: before, to: t.tags_as_text || '' });
+      }
+    }));
+
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Added #${raw} to ${ids.length} task(s)`);
   },
   clearNotesSelection(){
     const ids = this.selectedIds();

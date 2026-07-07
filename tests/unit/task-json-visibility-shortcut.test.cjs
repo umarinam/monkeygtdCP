@@ -1136,6 +1136,45 @@ test('handleTwoKeySequence st selects first visible task when selId is null', ()
   assert.equal(state.msel.has('t1'), true);
 });
 
+test('handleTwoKeySequence routes tt to addTagSelection for multi-select', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { addTagSelection: 0 };
+
+  const app = {
+    addTagSelection: () => { calls.addTagSelection += 1; },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: 't1',
+    kbuf: '',
+    kbtimer: null,
+    msel: new Set(['t1', 't2']),
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '' },
+        t2: { due: '', due_asap: false, repeating_due: null, content: '' }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    preventDefault: () => {},
+    key: 't'
+  };
+
+  handleTwoKeySequence(app, state, e);
+  e.key = 't';
+  handleTwoKeySequence(app, state, e);
+
+  assert.equal(calls.addTagSelection, 1);
+});
+
 test('handleGlobalKey routes Ctrl+ArrowUp to moveUpSelection for multi-select', () => {
   const { handleGlobalKey } = loadKeyboardController();
   const calls = { moveUpSelection: 0 };

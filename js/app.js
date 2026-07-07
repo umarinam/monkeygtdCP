@@ -209,6 +209,40 @@ const App={
     this.render();
     this.toast(`Tags cleared for ${ids.length} task(s)`);
   },
+  addTagSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+
+    if (ids.length === 1) {
+      this.openTagsModal(ids[0]);
+      return;
+    }
+
+    const raw = String(prompt('Tag to add:') || '')
+      .trim()
+      .replace(/^#/, '')
+      .replace(/,/g, '')
+      .trim();
+    if (!raw) return;
+
+    this.withUndoBatch(() => ids.forEach(id => {
+      const t = S.data.tasks[id];
+      if (!t) return;
+      t.tags = t.tags || {};
+      const before = t.tags_as_text || '';
+      t.tags[raw] = { isPrivate: false };
+      t.tags_as_text = Object.keys(t.tags).join(',');
+      t.updated_at = now();
+      if (before !== (t.tags_as_text || '')) {
+        logTaskHistory(t, 'tags', { from: before, to: t.tags_as_text || '' });
+      }
+    }));
+
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Added #${raw} to ${ids.length} task(s)`);
+  },
   clearNotesSelection(){
     const ids = this.selectedIds();
     if (!ids.length) return;

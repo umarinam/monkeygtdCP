@@ -395,7 +395,7 @@ function handleTwoKeySequence(app, state, e) {
     },
     'dr': () => { if (state.selId) app.openRepeatModal(); },
     'df': () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); app.toast(`Dates: ${state.data.settings.relativeDates ? 'relative' : 'exact'}`); },
-    'tt': () => { if (state.selId) app.openTagsModal(state.selId); },
+    'tt': () => app.addTagSelection(),
     'th': () => { if (state.selId) app.openTaskHistory(state.selId); },
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
     'gt': () => app.showPage('tags'),

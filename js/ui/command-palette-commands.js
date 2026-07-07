@@ -14,7 +14,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Set due date...', s: 'dd', fn: () => app.openDueModal() },
     { l: 'Repeating due settings', s: 'dr', fn: () => { if (state.selId) app.openRepeatModal(); } },
     { l: 'Clear due date', s: 'cd', fn: () => app.clearDueSelection(false) },
-    { l: 'Add tags', s: 'tt', fn: () => { if (state.selId) app.openTagsModal(state.selId); } },
+    { l: 'Add tags', s: 'tt', fn: () => app.addTagSelection() },
     { l: 'Clear tags', s: 'ct', fn: () => app.clearTagsSelection() },
     { l: 'Add note', s: 'nn', fn: () => { if (state.selId) app.openNotesModal(state.selId); } },
     { l: 'Add OneNote link', s: 'no', fn: () => { if (state.selId) app.addOneNoteLink(); } },
