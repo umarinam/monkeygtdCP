@@ -72,7 +72,36 @@ function handleGlobalKey(app, state, e) {
     app.showShortcuts();
     return;
   }
-  if (state.editId) return;
+  if (state.editId) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      const editId = state.editId;
+      const el = document.getElementById(`ea-${editId}`);
+      const typed = el && typeof el.value === 'string' ? el.value.trim() : '';
+
+      if (state.pendingNewEditId === editId && !typed) {
+        const prevId = state.pendingNewEditPrevId;
+        state.pendingNewEditId = null;
+        state.pendingNewEditPrevId = null;
+        state.editId = null;
+        app.deleteTask(editId);
+        if (prevId && state.data.tasks[prevId] && !state.data.tasks[prevId].deleted) {
+          state.selId = prevId;
+          app.renderList();
+        }
+        return;
+      }
+
+      if (state.pendingNewEditId === editId) {
+        state.pendingNewEditId = null;
+        state.pendingNewEditPrevId = null;
+      }
+
+      state.editId = null;
+      app.renderList();
+    }
+    return;
+  }
 
   if ((e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z')) || (e.ctrlKey && !e.shiftKey && (e.key === 'y' || e.key === 'Y'))) {
     e.preventDefault();

@@ -2,6 +2,10 @@
 
 function startEditUi(app, S, id, pos) {
   if (S.editId && S.editId !== id) app.commitEdit(S.editId);
+  if (S.pendingNewEditId && S.pendingNewEditId !== id) {
+    S.pendingNewEditId = null;
+    S.pendingNewEditPrevId = null;
+  }
   S.editId = id;
   S.selId = id;
   app.renderList();
@@ -52,6 +56,24 @@ function editKeyUi(app, S, e, id) {
   }
   if (e.key === 'Escape') {
     e.preventDefault();
+    const el = document.getElementById(`ea-${id}`);
+    const typed = (el && typeof el.value === 'string') ? el.value.trim() : '';
+    if (S.pendingNewEditId === id && !typed) {
+      const prevId = S.pendingNewEditPrevId;
+      S.pendingNewEditId = null;
+      S.pendingNewEditPrevId = null;
+      S.editId = null;
+      app.deleteTask(id);
+      if (prevId && S.data.tasks[prevId] && !S.data.tasks[prevId].deleted) {
+        S.selId = prevId;
+        app.renderList();
+      }
+      return;
+    }
+    if (S.pendingNewEditId === id) {
+      S.pendingNewEditId = null;
+      S.pendingNewEditPrevId = null;
+    }
     S.editId = null;
     app.renderList();
     return;
@@ -64,6 +86,8 @@ function editKeyUi(app, S, e, id) {
       S.editId = null;
     }
     const nid = app.addTask(id, false, '');
+    S.pendingNewEditId = nid;
+    S.pendingNewEditPrevId = id;
     app.renderList();
     app.startEdit(nid);
     return;
@@ -72,6 +96,10 @@ function editKeyUi(app, S, e, id) {
     e.preventDefault();
     const el = document.getElementById(`ea-${id}`);
     if (el) app.saveEdit(id, el.value);
+    if (S.pendingNewEditId === id) {
+      S.pendingNewEditId = null;
+      S.pendingNewEditPrevId = null;
+    }
     S.editId = null;
     app.renderList();
     return;
@@ -82,6 +110,10 @@ function editKeyUi(app, S, e, id) {
     if (el) {
       app.saveEdit(id, el.value);
       S.editId = null;
+    }
+    if (S.pendingNewEditId === id) {
+      S.pendingNewEditId = null;
+      S.pendingNewEditPrevId = null;
     }
     if (e.shiftKey) app.unindent(id);
     else app.indent(id);
@@ -103,6 +135,10 @@ function commitEditUi(app, S, id) {
   if (S.editId === id) {
     S.editId = null;
     app.renderList();
+  }
+  if (S.pendingNewEditId === id) {
+    S.pendingNewEditId = null;
+    S.pendingNewEditPrevId = null;
   }
 }
 

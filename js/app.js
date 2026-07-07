@@ -8,6 +8,7 @@ const S={
   dragSrc:null, listMode:'create', listEditId:null,
   cpIdx:0, cpItems:[], cpMode:'', sortField:'alpha', calDate:new Date(),
   movePickIdx:0, moveTargets:[],
+  pendingNewEditId:null, pendingNewEditPrevId:null,
   reportStart:'', reportEnd:'',
   reportFilters:{ added:true, modified:true, completed:true, deleted:true, untouched:true },
   showNotes:false, clipboard:null,

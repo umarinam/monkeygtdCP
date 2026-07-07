@@ -383,7 +383,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T22:13:50+05:00',commit:'ead72cb'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T22:22:09+05:00',commit:'e80c7a5'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -2784,7 +2784,9 @@ function runAppSmokeChecks(app, state) {
     msel: new Set(state.msel),
     undos: state.undos.slice(),
     redos: state.redos.slice(),
-    undoBatchDepth: Number(state.undoBatchDepth || 0)
+    undoBatchDepth: Number(state.undoBatchDepth || 0),
+    pendingNewEditId: state.pendingNewEditId || null,
+    pendingNewEditPrevId: state.pendingNewEditPrevId || null
   };
 
   const record = (name, pass, detail) => {
@@ -2850,6 +2852,8 @@ function runAppSmokeChecks(app, state) {
     state.undos = backup.undos;
     state.redos = backup.redos;
     state.undoBatchDepth = backup.undoBatchDepth;
+    state.pendingNewEditId = backup.pendingNewEditId;
+    state.pendingNewEditPrevId = backup.pendingNewEditPrevId;
     app.save();
     app.render();
   }
@@ -4336,7 +4340,36 @@ function handleGlobalKey(app, state, e) {
     app.showShortcuts();
     return;
   }
-  if (state.editId) return;
+  if (state.editId) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      const editId = state.editId;
+      const el = document.getElementById(`ea-${editId}`);
+      const typed = el && typeof el.value === 'string' ? el.value.trim() : '';
+
+      if (state.pendingNewEditId === editId && !typed) {
+        const prevId = state.pendingNewEditPrevId;
+        state.pendingNewEditId = null;
+        state.pendingNewEditPrevId = null;
+        state.editId = null;
+        app.deleteTask(editId);
+        if (prevId && state.data.tasks[prevId] && !state.data.tasks[prevId].deleted) {
+          state.selId = prevId;
+          app.renderList();
+        }
+        return;
+      }
+
+      if (state.pendingNewEditId === editId) {
+        state.pendingNewEditId = null;
+        state.pendingNewEditPrevId = null;
+      }
+
+      state.editId = null;
+      app.renderList();
+    }
+    return;
+  }
 
   if ((e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z')) || (e.ctrlKey && !e.shiftKey && (e.key === 'y' || e.key === 'Y'))) {
     e.preventDefault();
@@ -4746,6 +4779,10 @@ function handleTwoKeySequence(app, state, e) {
 
 function startEditUi(app, S, id, pos) {
   if (S.editId && S.editId !== id) app.commitEdit(S.editId);
+  if (S.pendingNewEditId && S.pendingNewEditId !== id) {
+    S.pendingNewEditId = null;
+    S.pendingNewEditPrevId = null;
+  }
   S.editId = id;
   S.selId = id;
   app.renderList();
@@ -4796,6 +4833,24 @@ function editKeyUi(app, S, e, id) {
   }
   if (e.key === 'Escape') {
     e.preventDefault();
+    const el = document.getElementById(`ea-${id}`);
+    const typed = (el && typeof el.value === 'string') ? el.value.trim() : '';
+    if (S.pendingNewEditId === id && !typed) {
+      const prevId = S.pendingNewEditPrevId;
+      S.pendingNewEditId = null;
+      S.pendingNewEditPrevId = null;
+      S.editId = null;
+      app.deleteTask(id);
+      if (prevId && S.data.tasks[prevId] && !S.data.tasks[prevId].deleted) {
+        S.selId = prevId;
+        app.renderList();
+      }
+      return;
+    }
+    if (S.pendingNewEditId === id) {
+      S.pendingNewEditId = null;
+      S.pendingNewEditPrevId = null;
+    }
     S.editId = null;
     app.renderList();
     return;
@@ -4808,6 +4863,8 @@ function editKeyUi(app, S, e, id) {
       S.editId = null;
     }
     const nid = app.addTask(id, false, '');
+    S.pendingNewEditId = nid;
+    S.pendingNewEditPrevId = id;
     app.renderList();
     app.startEdit(nid);
     return;
@@ -4816,6 +4873,10 @@ function editKeyUi(app, S, e, id) {
     e.preventDefault();
     const el = document.getElementById(`ea-${id}`);
     if (el) app.saveEdit(id, el.value);
+    if (S.pendingNewEditId === id) {
+      S.pendingNewEditId = null;
+      S.pendingNewEditPrevId = null;
+    }
     S.editId = null;
     app.renderList();
     return;
@@ -4826,6 +4887,10 @@ function editKeyUi(app, S, e, id) {
     if (el) {
       app.saveEdit(id, el.value);
       S.editId = null;
+    }
+    if (S.pendingNewEditId === id) {
+      S.pendingNewEditId = null;
+      S.pendingNewEditPrevId = null;
     }
     if (e.shiftKey) app.unindent(id);
     else app.indent(id);
@@ -4847,6 +4912,10 @@ function commitEditUi(app, S, id) {
   if (S.editId === id) {
     S.editId = null;
     app.renderList();
+  }
+  if (S.pendingNewEditId === id) {
+    S.pendingNewEditId = null;
+    S.pendingNewEditPrevId = null;
   }
 }
 
@@ -6567,6 +6636,7 @@ const S={
   dragSrc:null, listMode:'create', listEditId:null,
   cpIdx:0, cpItems:[], cpMode:'', sortField:'alpha', calDate:new Date(),
   movePickIdx:0, moveTargets:[],
+  pendingNewEditId:null, pendingNewEditPrevId:null,
   reportStart:'', reportEnd:'',
   reportFilters:{ added:true, modified:true, completed:true, deleted:true, untouched:true },
   showNotes:false, clipboard:null,

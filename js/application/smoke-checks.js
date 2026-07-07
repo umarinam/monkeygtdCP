@@ -12,7 +12,9 @@ function runAppSmokeChecks(app, state) {
     msel: new Set(state.msel),
     undos: state.undos.slice(),
     redos: state.redos.slice(),
-    undoBatchDepth: Number(state.undoBatchDepth || 0)
+    undoBatchDepth: Number(state.undoBatchDepth || 0),
+    pendingNewEditId: state.pendingNewEditId || null,
+    pendingNewEditPrevId: state.pendingNewEditPrevId || null
   };
 
   const record = (name, pass, detail) => {
@@ -78,6 +80,8 @@ function runAppSmokeChecks(app, state) {
     state.undos = backup.undos;
     state.redos = backup.redos;
     state.undoBatchDepth = backup.undoBatchDepth;
+    state.pendingNewEditId = backup.pendingNewEditId;
+    state.pendingNewEditPrevId = backup.pendingNewEditPrevId;
     app.save();
     app.render();
   }
