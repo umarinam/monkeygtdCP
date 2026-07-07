@@ -5,7 +5,7 @@ function formatDeployStamp(value) {
   if (!raw) return '';
   const parsed = Date.parse(raw);
   if (!Number.isFinite(parsed)) return raw;
-  return new Date(parsed).toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+  return new Date(parsed).toLocaleString();
 }
 
 function syncStatusBarUi(state) {

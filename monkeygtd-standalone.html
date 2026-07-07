@@ -379,7 +379,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-06T12:49:22+05:00',commit:'a57ec2e'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T10:38:12+05:00',commit:'69b4594'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -5571,7 +5571,7 @@ function formatDeployStamp(value) {
   if (!raw) return '';
   const parsed = Date.parse(raw);
   if (!Number.isFinite(parsed)) return raw;
-  return new Date(parsed).toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+  return new Date(parsed).toLocaleString();
 }
 
 function syncStatusBarUi(state) {

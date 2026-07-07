@@ -55,6 +55,7 @@ test('syncStatusBarUi shows standalone deploy stamp in sb-sync', () => {
 
   syncStatusBarUi(state);
 
-  assert.equal(nodes['sb-sync'].textContent.includes('uu deploy 2026-07-07 10:20:30 UTC'), true);
+  assert.equal(nodes['sb-sync'].textContent.includes('uu deploy '), true);
+  assert.equal(nodes['sb-sync'].textContent.includes('UTC'), false);
   assert.equal(nodes['sb-sync'].textContent.includes('abc1234'), true);
 });
