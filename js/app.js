@@ -3,7 +3,7 @@
 // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const S={
   data:null, page:'list', listId:null, selId:null, editId:null, hoistId:null,
-  msel:new Set(), filter:'', undos:[], kbuf:'', kbtimer:null,
+  msel:new Set(), filter:'', undos:[], redos:[], kbuf:'', kbtimer:null,
   dragSrc:null, listMode:'create', listEditId:null,
   cpIdx:0, cpItems:[], cpMode:'', sortField:'alpha', calDate:new Date(),
   reportStart:'', reportEnd:'',
@@ -72,11 +72,27 @@ const App={
 
   // â”€ Undo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   snap(){ return JSON.parse(JSON.stringify({tasks:S.data.tasks,lists:S.data.lists})); },
-  pushUndo(sn){ S.undos.push(sn); if(S.undos.length>60) S.undos.shift(); },
+  pushUndo(sn){
+    S.undos.push(sn);
+    if(S.undos.length>60) S.undos.shift();
+    S.redos = [];
+  },
+  pushRedo(sn){
+    S.redos.push(sn);
+    if(S.redos.length>60) S.redos.shift();
+  },
   undo(){
     if(!S.undos.length){this.toast('Nothing to undo');return;}
+    this.pushRedo(this.snap());
     const sn=S.undos.pop(); S.data.tasks=sn.tasks; S.data.lists=sn.lists;
     this.save(); this.render(); this.toast('Undone');
+  },
+  redo(){
+    if(!S.redos.length){this.toast('Nothing to redo');return;}
+    S.undos.push(this.snap());
+    if(S.undos.length>60) S.undos.shift();
+    const sn=S.redos.pop(); S.data.tasks=sn.tasks; S.data.lists=sn.lists;
+    this.save(); this.render(); this.toast('Redone');
   },
 
   // â”€ Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

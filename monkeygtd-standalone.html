@@ -379,7 +379,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T10:38:12+05:00',commit:'69b4594'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T11:15:22+05:00',commit:'85e9406'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -2700,7 +2700,8 @@ function runAppSmokeChecks(app, state) {
     hoistId: state.hoistId,
     filter: state.filter,
     msel: new Set(state.msel),
-    undos: state.undos.slice()
+    undos: state.undos.slice(),
+    redos: state.redos.slice()
   };
 
   const record = (name, pass, detail) => {
@@ -2764,6 +2765,7 @@ function runAppSmokeChecks(app, state) {
     state.filter = backup.filter;
     state.msel = backup.msel;
     state.undos = backup.undos;
+    state.redos = backup.redos;
     app.save();
     app.render();
   }
@@ -4111,7 +4113,12 @@ function handleGlobalKey(app, state, e) {
   }
   if (state.editId) return;
 
-  if (e.ctrlKey && e.key === 'z') {
+  if ((e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z')) || (e.ctrlKey && !e.shiftKey && (e.key === 'y' || e.key === 'Y'))) {
+    e.preventDefault();
+    app.redo();
+    return;
+  }
+  if (e.ctrlKey && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
     e.preventDefault();
     app.undo();
     return;
@@ -5485,6 +5492,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Restore deleted', s: 'rd', fn: () => app.showRestoreDeleted() },
     { l: 'Extract branch as new list', s: 'xx', fn: () => app.extractBranch() },
     { l: 'Undo', s: 'Ctrl+Z / uu', fn: () => app.undo() },
+    { l: 'Redo', s: 'Ctrl+Y / Ctrl+Shift+Z', fn: () => app.redo() },
     { l: 'Sync now', s: 'sg', fn: () => app.syncGistNow() },
     { l: 'Pull from Gist', s: 'sp', fn: () => app.syncFromGist() },
     { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
@@ -6181,6 +6189,7 @@ function showShortcutsUi(app) {
       ['Tab / Shift+Tab', 'Indent / un-indent'],
       ['Ctrl+↑ / Ctrl+↓', 'Move task up / down'],
       ['Ctrl+Z / uu', 'Undo'],
+      ['Ctrl+Y / Ctrl+Shift+Z', 'Redo'],
       ['Ctrl+D', 'Duplicate task'],
     ]},
     { heading: 'Status & Due', items: [
@@ -6340,7 +6349,7 @@ function clearAllDataUi(app, S) {
 // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const S={
   data:null, page:'list', listId:null, selId:null, editId:null, hoistId:null,
-  msel:new Set(), filter:'', undos:[], kbuf:'', kbtimer:null,
+  msel:new Set(), filter:'', undos:[], redos:[], kbuf:'', kbtimer:null,
   dragSrc:null, listMode:'create', listEditId:null,
   cpIdx:0, cpItems:[], cpMode:'', sortField:'alpha', calDate:new Date(),
   reportStart:'', reportEnd:'',
@@ -6409,11 +6418,27 @@ const App={
 
   // â”€ Undo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   snap(){ return JSON.parse(JSON.stringify({tasks:S.data.tasks,lists:S.data.lists})); },
-  pushUndo(sn){ S.undos.push(sn); if(S.undos.length>60) S.undos.shift(); },
+  pushUndo(sn){
+    S.undos.push(sn);
+    if(S.undos.length>60) S.undos.shift();
+    S.redos = [];
+  },
+  pushRedo(sn){
+    S.redos.push(sn);
+    if(S.redos.length>60) S.redos.shift();
+  },
   undo(){
     if(!S.undos.length){this.toast('Nothing to undo');return;}
+    this.pushRedo(this.snap());
     const sn=S.undos.pop(); S.data.tasks=sn.tasks; S.data.lists=sn.lists;
     this.save(); this.render(); this.toast('Undone');
+  },
+  redo(){
+    if(!S.redos.length){this.toast('Nothing to redo');return;}
+    S.undos.push(this.snap());
+    if(S.undos.length>60) S.undos.shift();
+    const sn=S.redos.pop(); S.data.tasks=sn.tasks; S.data.lists=sn.lists;
+    this.save(); this.render(); this.toast('Redone');
   },
 
   // â”€ Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

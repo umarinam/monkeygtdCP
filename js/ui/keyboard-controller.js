@@ -73,7 +73,12 @@ function handleGlobalKey(app, state, e) {
   }
   if (state.editId) return;
 
-  if (e.ctrlKey && e.key === 'z') {
+  if ((e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z')) || (e.ctrlKey && !e.shiftKey && (e.key === 'y' || e.key === 'Y'))) {
+    e.preventDefault();
+    app.redo();
+    return;
+  }
+  if (e.ctrlKey && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
     e.preventDefault();
     app.undo();
     return;

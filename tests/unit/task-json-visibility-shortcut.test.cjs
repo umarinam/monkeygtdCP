@@ -581,3 +581,221 @@ test('handleGlobalKey triggers labeled web link flow on Ctrl+K', () => {
   assert.equal(prevented, true);
   assert.equal(calls.addLabeledWebLink, 1);
 });
+
+test('handleGlobalKey triggers redo on Ctrl+Y', () => {
+  const { handleGlobalKey } = loadKeyboardController();
+  const calls = { redo: 0 };
+
+  const app = {
+    redo: () => { calls.redo += 1; },
+    closeAll: () => {},
+    showShortcuts: () => {},
+    undo: () => {},
+    render: () => {},
+    clearSearch: () => {},
+    twoKey: () => {},
+    navDown: () => {},
+    navUp: () => {},
+    extDown: () => {},
+    extUp: () => {},
+    renderList: () => {},
+    unHoist: () => {},
+    hoistTask: () => {},
+    visible: () => ['t1'],
+    startEdit: () => {},
+    dispatch: () => {},
+    addAbove: () => 't2',
+    unindent: () => {},
+    indent: () => {},
+    invalidate: () => {},
+    moveUp: () => {},
+    moveDown: () => {},
+    expandAll: () => {},
+    collapseAll: () => {},
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    dup: () => {},
+    copyWithUrl: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    openTaskHistory: () => {},
+    openTaskJson: () => {},
+    showPage: () => {},
+    openNotesModal: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {},
+    addWebLink: () => {},
+    addLabeledWebLink: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    save: () => {},
+    toast: () => {},
+    pushUndo: () => {},
+    snap: () => ({})
+  };
+
+  const state = {
+    selId: 't1',
+    page: 'list',
+    editId: null,
+    filter: '',
+    hoistId: null,
+    kbuf: '',
+    kbtimer: null,
+    showNotes: false,
+    msel: new Set(),
+    cpItems: [],
+    cpIdx: 0,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '', tasks: [], parent_id: '', color: 0 }
+      }
+    }
+  };
+
+  let prevented = false;
+  const e = {
+    ctrlKey: true,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    key: 'y',
+    preventDefault: () => { prevented = true; }
+  };
+
+  handleGlobalKey(app, state, e);
+
+  assert.equal(prevented, true);
+  assert.equal(calls.redo, 1);
+});
+
+test('handleGlobalKey triggers redo on Ctrl+Shift+Z', () => {
+  const { handleGlobalKey } = loadKeyboardController();
+  const calls = { redo: 0 };
+
+  const app = {
+    redo: () => { calls.redo += 1; },
+    closeAll: () => {},
+    showShortcuts: () => {},
+    undo: () => {},
+    render: () => {},
+    clearSearch: () => {},
+    twoKey: () => {},
+    navDown: () => {},
+    navUp: () => {},
+    extDown: () => {},
+    extUp: () => {},
+    renderList: () => {},
+    unHoist: () => {},
+    hoistTask: () => {},
+    visible: () => ['t1'],
+    startEdit: () => {},
+    dispatch: () => {},
+    addAbove: () => 't2',
+    unindent: () => {},
+    indent: () => {},
+    invalidate: () => {},
+    moveUp: () => {},
+    moveDown: () => {},
+    expandAll: () => {},
+    collapseAll: () => {},
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    dup: () => {},
+    copyWithUrl: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    openTaskHistory: () => {},
+    openTaskJson: () => {},
+    showPage: () => {},
+    openNotesModal: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {},
+    addWebLink: () => {},
+    addLabeledWebLink: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    save: () => {},
+    toast: () => {},
+    pushUndo: () => {},
+    snap: () => ({})
+  };
+
+  const state = {
+    selId: 't1',
+    page: 'list',
+    editId: null,
+    filter: '',
+    hoistId: null,
+    kbuf: '',
+    kbtimer: null,
+    showNotes: false,
+    msel: new Set(),
+    cpItems: [],
+    cpIdx: 0,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '', tasks: [], parent_id: '', color: 0 }
+      }
+    }
+  };
+
+  let prevented = false;
+  const e = {
+    ctrlKey: true,
+    altKey: false,
+    metaKey: false,
+    shiftKey: true,
+    key: 'z',
+    preventDefault: () => { prevented = true; }
+  };
+
+  handleGlobalKey(app, state, e);
+
+  assert.equal(prevented, true);
+  assert.equal(calls.redo, 1);
+});

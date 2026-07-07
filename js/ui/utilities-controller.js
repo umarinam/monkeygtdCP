@@ -304,6 +304,7 @@ function showShortcutsUi(app) {
       ['Tab / Shift+Tab', 'Indent / un-indent'],
       ['Ctrl+↑ / Ctrl+↓', 'Move task up / down'],
       ['Ctrl+Z / uu', 'Undo'],
+      ['Ctrl+Y / Ctrl+Shift+Z', 'Redo'],
       ['Ctrl+D', 'Duplicate task'],
     ]},
     { heading: 'Status & Due', items: [

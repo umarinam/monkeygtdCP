@@ -10,7 +10,8 @@ function runAppSmokeChecks(app, state) {
     hoistId: state.hoistId,
     filter: state.filter,
     msel: new Set(state.msel),
-    undos: state.undos.slice()
+    undos: state.undos.slice(),
+    redos: state.redos.slice()
   };
 
   const record = (name, pass, detail) => {
@@ -74,6 +75,7 @@ function runAppSmokeChecks(app, state) {
     state.filter = backup.filter;
     state.msel = backup.msel;
     state.undos = backup.undos;
+    state.redos = backup.redos;
     app.save();
     app.render();
   }

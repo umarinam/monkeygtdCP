@@ -27,6 +27,8 @@ test('command palette includes clear-assignees and key two-key shortcut actions'
     "{ l: 'Copy task permalink', s: 'tc / lc'"
   ];
 
+  required.push("{ l: 'Redo', s: 'Ctrl+Y / Ctrl+Shift+Z'");
+
   for (const snippet of required) {
     assert.equal(src.includes(snippet), true, `Missing command palette entry: ${snippet}`);
   }
@@ -47,6 +49,7 @@ test('shortcuts help includes discoverability entries for advanced two-key actio
     "['nf', 'Add file link']",
     "['nw', 'Add web link']",
     "['Ctrl+K', 'Add labeled web link']",
+    "['Ctrl+Y / Ctrl+Shift+Z', 'Redo']",
     "['ec', 'Expand/collapse all']",
     "['st', 'Toggle multi-select for task']",
     "['tc / lc', 'Copy task permalink']",
