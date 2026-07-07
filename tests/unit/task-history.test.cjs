@@ -92,6 +92,46 @@ test('assignTaskDomain records assignment history', () => {
   assert.equal(task.history.some(h => h.type === 'assignment'), true);
 });
 
+test('assignTaskDomain applies one prompted assignee to multi-select in one batch', () => {
+  const ctx = loadContext(
+    ['js/core/utils.js', 'js/domain/task-ops.js'],
+    ['mkTask', 'assignTaskDomain'],
+    { prompt: () => 'alice' }
+  );
+  const t1 = ctx.mkTask({ id: 't1', content: 'A', checklist_id: 'l1', assignees: [] });
+  const t2 = ctx.mkTask({ id: 't2', content: 'B', checklist_id: 'l1', assignees: [] });
+  const state = {
+    selId: 't1',
+    msel: new Set(['t1', 't2']),
+    data: {
+      tasks: { t1, t2 },
+      lists: { l1: { id: 'l1', root_tasks: ['t1', 't2'], style: 'none' } }
+    }
+  };
+
+  const calls = { save: 0, render: 0, toast: '' };
+  const app = {
+    selectedIds: () => ['t1', 't2'],
+    withUndoBatch: fn => fn(),
+    pushUndo: () => {},
+    snap: () => ({}),
+    save: () => { calls.save += 1; },
+    render: () => { calls.render += 1; },
+    toast: (m) => { calls.toast = m; },
+    dispatch: () => {}
+  };
+
+  ctx.assignTaskDomain(app, state, false, null);
+
+  assert.equal(t1.assignees.includes('alice'), true);
+  assert.equal(t2.assignees.includes('alice'), true);
+  assert.equal(t1.history.some(h => h.type === 'assignment'), true);
+  assert.equal(t2.history.some(h => h.type === 'assignment'), true);
+  assert.equal(calls.save, 1);
+  assert.equal(calls.render, 1);
+  assert.equal(calls.toast.includes('2 task(s)'), true);
+});
+
 test('setDueQuickUi and addTagFromInputUi record scheduling and tag history', () => {
   const docNodes = {
     'tag-in': { value: '', classList: { remove: () => {} } },
@@ -189,6 +229,38 @@ test('tree operations record structure history', () => {
   assert.equal(structureEntries.length >= 2, true);
   assert.equal(structureEntries.some(h => h.changes.action === 'indent'), true);
   assert.equal(structureEntries.some(h => h.changes.action === 'move-to-list'), true);
+});
+
+test('moveToTaskDomain blocks moving selected ancestor into descendant target', () => {
+  const ctx = loadContext(['js/core/utils.js', 'js/domain/tree-ops.js'], ['mkTask', 'moveToTaskDomain']);
+  const t1 = ctx.mkTask({ id: 't1', content: 'Parent', checklist_id: 'l1', parent_id: '', tasks: ['t2'] });
+  const t2 = ctx.mkTask({ id: 't2', content: 'Child', checklist_id: 'l1', parent_id: 't1', tasks: [] });
+  const state = {
+    selId: 't1',
+    msel: new Set(['t1']),
+    data: {
+      tasks: { t1, t2 },
+      lists: { l1: { id: 'l1', root_tasks: ['t1'] } }
+    }
+  };
+
+  const calls = { toast: '' };
+  const app = {
+    pushUndo: () => {},
+    snap: () => ({}),
+    save: () => {},
+    render: () => {},
+    closeModal: () => {},
+    toast: (m) => { calls.toast = m; },
+    selectedRootIds: () => ['t1'],
+    selectedIds: () => ['t1']
+  };
+
+  ctx.moveToTaskDomain(app, state, 't2');
+
+  assert.equal(t1.parent_id, '');
+  assert.equal((t2.tasks || []).includes('t1'), false);
+  assert.equal(calls.toast.includes('No movable tasks'), true);
 });
 
 test('import and clipboard operations record creation source history', () => {

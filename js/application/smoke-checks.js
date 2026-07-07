@@ -11,7 +11,8 @@ function runAppSmokeChecks(app, state) {
     filter: state.filter,
     msel: new Set(state.msel),
     undos: state.undos.slice(),
-    redos: state.redos.slice()
+    redos: state.redos.slice(),
+    undoBatchDepth: Number(state.undoBatchDepth || 0)
   };
 
   const record = (name, pass, detail) => {
@@ -76,6 +77,7 @@ function runAppSmokeChecks(app, state) {
     state.msel = backup.msel;
     state.undos = backup.undos;
     state.redos = backup.redos;
+    state.undoBatchDepth = backup.undoBatchDepth;
     app.save();
     app.render();
   }

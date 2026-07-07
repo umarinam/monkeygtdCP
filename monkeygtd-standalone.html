@@ -379,7 +379,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T11:15:22+05:00',commit:'85e9406'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T21:26:16+05:00',commit:'ba519f6'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1438,6 +1438,23 @@ function registerAppQueries(app, deps) {
 
 'use strict';
 
+function selectedMoveIds(app, state) {
+  if (typeof app.selectedRootIds === 'function') {
+    return app.selectedRootIds(typeof app.selectedIds === 'function' ? app.selectedIds() : undefined);
+  }
+  const ids = state.msel.size ? [...state.msel] : [state.selId];
+  return ids.filter(Boolean);
+}
+
+function isAncestorOf(state, ancestorId, nodeId) {
+  let p = state.data.tasks[nodeId] ? state.data.tasks[nodeId].parent_id : '';
+  while (p) {
+    if (p === ancestorId) return true;
+    p = state.data.tasks[p] ? state.data.tasks[p].parent_id : '';
+  }
+  return false;
+}
+
 function sibListDomain(state, id) {
   const t = state.data.tasks[id];
   if (!t) return null;
@@ -1568,13 +1585,16 @@ function unindentDomain(app, state, id) {
 function moveToListDomain(app, state, listId) {
   app.pushUndo(app.snap());
 
-  const ids = state.msel.size ? [...state.msel] : [state.selId];
+  const ids = selectedMoveIds(app, state);
   const targetList = state.data.lists[listId];
   if (!targetList) return;
+
+  let movedCount = 0;
 
   for (const id of ids) {
     const t = state.data.tasks[id];
     if (!t) continue;
+    if (t.checklist_id === listId && !t.parent_id) continue;
 
     const before = { parent_id: t.parent_id || '', checklist_id: t.checklist_id || '' };
 
@@ -1592,23 +1612,33 @@ function moveToListDomain(app, state, listId) {
       from: before,
       to: { parent_id: '', checklist_id: t.checklist_id || '' }
     });
+    movedCount++;
+  }
+
+  if (!movedCount) {
+    app.render();
+    app.toast('No movable tasks for selected target');
+    return;
   }
 
   app.save();
   app.closeModal('ov-move');
   app.render();
-  app.toast(`Moved to "${targetList.name}"`);
+  app.toast(`Moved ${movedCount} task(s) to "${targetList.name}"`);
 }
 
 function moveToTaskDomain(app, state, targetTaskId) {
   app.pushUndo(app.snap());
 
-  const ids = state.msel.size ? [...state.msel] : [state.selId];
+  const ids = selectedMoveIds(app, state);
   const targetTask = state.data.tasks[targetTaskId];
   if (!targetTask) return;
 
+  let movedCount = 0;
+
   for (const id of ids) {
     if (id === targetTaskId) continue;
+    if (isAncestorOf(state, id, targetTaskId)) continue;
 
     const s = sibListDomain(state, id);
     if (s) {
@@ -1629,12 +1659,19 @@ function moveToTaskDomain(app, state, targetTaskId) {
       from: before,
       to: { parent_id: task.parent_id || '', checklist_id: task.checklist_id || '' }
     });
+    movedCount++;
+  }
+
+  if (!movedCount) {
+    app.render();
+    app.toast('No movable tasks for selected target');
+    return;
   }
 
   app.save();
   app.closeModal('ov-move');
   app.render();
-  app.toast('Moved');
+  app.toast(`Moved ${movedCount} task(s)`);
 }
 
 
@@ -2140,28 +2177,69 @@ function toggleCollapseDomain(app, state, id) {
 
 'use strict';
 
-function assignTaskDomain(app, state, internal, payload) {
-  if (!internal) {
-    if (!state.selId) return;
-    const name = prompt('Assign to (username):');
-    if (!name || !name.trim()) return;
-    app.dispatch('task.assign', { taskId: state.selId, name: name.trim() });
-    return;
-  }
-
+function assignTaskInternal(app, state, payload) {
   const t = state.data.tasks[payload.taskId];
-  if (!t) return;
+  if (!t) return false;
 
-  app.pushUndo(app.snap());
+  if (!payload.skipUndo) app.pushUndo(app.snap());
   const before = [...(t.assignees || [])];
   t.assignees = [...new Set([...(t.assignees || []), payload.name])];
   t.updated_at = now();
   if (JSON.stringify(before) !== JSON.stringify(t.assignees || [])) {
     logTaskHistory(t, 'assignment', { from: before, to: t.assignees || [] });
   }
-  app.save();
-  app.render();
-  app.toast(`Assigned to @${payload.name}`);
+
+  if (!payload.noSave) app.save();
+  if (!payload.noRender) app.render();
+  if (!payload.silentToast) app.toast(`Assigned to @${payload.name}`);
+  return true;
+}
+
+function assignTaskDomain(app, state, internal, payload) {
+  if (!internal) {
+    const ids = (typeof app.selectedIds === 'function')
+      ? app.selectedIds()
+      : (state.msel && state.msel.size ? [...state.msel] : (state.selId ? [state.selId] : []));
+    if (!ids.length) return;
+    const name = prompt('Assign to (username):');
+    if (!name || !name.trim()) return;
+    const trimmedName = name.trim();
+
+    if (ids.length === 1) {
+      app.dispatch('task.assign', { taskId: ids[0], name: trimmedName });
+      return;
+    }
+
+    if (typeof app.withUndoBatch === 'function') {
+      app.withUndoBatch(() => {
+        ids.forEach(taskId => assignTaskInternal(app, state, {
+          taskId,
+          name: trimmedName,
+          skipUndo: true,
+          noSave: true,
+          noRender: true,
+          silentToast: true
+        }));
+      });
+      if (state.msel && typeof state.msel.clear === 'function') state.msel.clear();
+      app.save();
+      app.render();
+      app.toast(`Assigned @${trimmedName} to ${ids.length} task(s)`);
+      return;
+    }
+
+    ids.forEach(taskId => app.dispatch('task.assign', { taskId, name: trimmedName }));
+    return;
+  }
+
+  assignTaskInternal(app, state, {
+    taskId: payload.taskId,
+    name: payload.name,
+    skipUndo: !!payload.skipUndo,
+    noSave: !!payload.noSave,
+    noRender: !!payload.noRender,
+    silentToast: !!payload.silentToast
+  });
 }
 
 function applySortDomain(app, state, internal, payload) {
@@ -2701,7 +2779,8 @@ function runAppSmokeChecks(app, state) {
     filter: state.filter,
     msel: new Set(state.msel),
     undos: state.undos.slice(),
-    redos: state.redos.slice()
+    redos: state.redos.slice(),
+    undoBatchDepth: Number(state.undoBatchDepth || 0)
   };
 
   const record = (name, pass, detail) => {
@@ -2766,6 +2845,7 @@ function runAppSmokeChecks(app, state) {
     state.msel = backup.msel;
     state.undos = backup.undos;
     state.redos = backup.redos;
+    state.undoBatchDepth = backup.undoBatchDepth;
     app.save();
     app.render();
   }
@@ -3688,24 +3768,164 @@ function selSortUi(S, f) {
 function openMoveDlgUi(app, S) {
   if (!S.selId && !S.msel.size) return;
   document.getElementById('move-q').value = '';
+  S.movePickIdx = 0;
+  S.moveTargets = [];
   updateMoveRUi(app, S);
   app.openModal('ov-move');
   setTimeout(() => document.getElementById('move-q').focus(), 50);
 }
 
-function updateMoveRUi(app, S) {
-  const q = document.getElementById('move-q').value.toLowerCase();
-  let h = '';
-  const res = app.select('move.searchTargets', { q });
-  for (const l of res.lists) {
-    h += `<div class="mvt" onclick="App.moveToList('${l.id}')"><span>📋</span><div><div>${esc(l.name)}</div><div class="mvtl">List</div></div></div>`;
+function moveSelectionIdsUi(app, state) {
+  if (typeof app.selectedRootIds === 'function') {
+    return app.selectedRootIds(typeof app.selectedIds === 'function' ? app.selectedIds() : undefined);
   }
-  if (q) {
-    for (const t of res.tasks) {
-      h += `<div class="mvt" onclick="App.moveToTask('${t.id}')"><span>📌</span><div><div>${esc(t.content)}</div><div class="mvtl">${esc(t.listName || '')}</div></div></div>`;
+  return state.msel && state.msel.size ? [...state.msel] : (state.selId ? [state.selId] : []);
+}
+
+function isInvalidMoveTargetUi(state, selectedSet, targetId) {
+  if (selectedSet.has(targetId)) return true;
+  for (const id of selectedSet) {
+    let p = state.data.tasks[targetId] ? state.data.tasks[targetId].parent_id : '';
+    while (p) {
+      if (p === id) return true;
+      p = state.data.tasks[p] ? state.data.tasks[p].parent_id : '';
     }
   }
-  document.getElementById('move-r').innerHTML = h || '<div style="padding:12px;color:var(--muted);font-size:13px">Type to search</div>';
+  return false;
+}
+
+function moveTargetReasonUi(state, selectedSet, targetId) {
+  if (selectedSet.has(targetId)) return 'contains selected task';
+  for (const id of selectedSet) {
+    let p = state.data.tasks[targetId] ? state.data.tasks[targetId].parent_id : '';
+    while (p) {
+      if (p === id) return 'descendant of selection';
+      p = state.data.tasks[p] ? state.data.tasks[p].parent_id : '';
+    }
+  }
+  return '';
+}
+
+function isNoopListTargetUi(state, selectedIds, listId) {
+  if (!selectedIds.length) return true;
+  return selectedIds.every(id => {
+    const t = state.data.tasks[id];
+    return t && t.checklist_id === listId && !t.parent_id;
+  });
+}
+
+function buildMoveTargetsUi(state, selectedIds, res, q) {
+  const targets = [];
+  for (const l of res.lists) {
+    if (isNoopListTargetUi(state, selectedIds, l.id)) {
+      targets.push({ type: 'list', id: l.id, label: l.name, listName: 'List', valid: false, reason: 'already in list root' });
+    } else {
+      targets.push({ type: 'list', id: l.id, label: l.name, listName: 'List', valid: true, reason: '' });
+    }
+  }
+  if (q) {
+    const selectedSet = new Set(selectedIds);
+    for (const t of res.tasks) {
+      const reason = moveTargetReasonUi(state, selectedSet, t.id);
+      targets.push({
+        type: 'task',
+        id: t.id,
+        label: t.content,
+        listName: t.listName || '',
+        valid: !reason,
+        reason
+      });
+    }
+  }
+  return targets;
+}
+
+function updateMoveRUi(app, S) {
+  const q = document.getElementById('move-q').value.toLowerCase();
+  const selectedIds = moveSelectionIdsUi(app, S);
+  const selectedNames = selectedIds
+    .map(id => S.data.tasks[id])
+    .filter(Boolean)
+    .map(t => t.content)
+    .slice(0, 3)
+    .map(x => esc(x));
+
+  let h = `<div style="padding:8px 12px;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line)">Moving ${selectedIds.length} task(s): ${selectedNames.join(' · ')}${selectedIds.length > 3 ? ' ...' : ''}</div>`;
+  const res = app.select('move.searchTargets', { q });
+  const targets = buildMoveTargetsUi(S, selectedIds, res, q);
+  S.moveTargets = targets;
+
+  const validIdxs = targets.map((t, i) => t.valid ? i : -1).filter(i => i >= 0);
+  if (!validIdxs.length) {
+    S.movePickIdx = -1;
+  } else if (!targets[S.movePickIdx] || !targets[S.movePickIdx].valid) {
+    S.movePickIdx = validIdxs[0];
+  }
+
+  for (let i = 0; i < targets.length; i++) {
+    const target = targets[i];
+    const icon = target.type === 'list' ? '📋' : (target.valid ? '📌' : '⛔');
+    const onClass = i === S.movePickIdx ? ' on' : '';
+    if (target.valid) {
+      const click = target.type === 'list'
+        ? `App.moveToList('${target.id}')`
+        : `App.moveToTask('${target.id}')`;
+      h += `<div class="mvt${onClass}" onclick="${click}"><span>${icon}</span><div><div>${esc(target.label)}</div><div class="mvtl">${esc(target.listName || '')}</div></div></div>`;
+    } else {
+      h += `<div class="mvt" style="opacity:.5;cursor:not-allowed" title="Invalid move target: ${esc(target.reason)}"><span>${icon}</span><div><div>${esc(target.label)}</div><div class="mvtl">Invalid target: ${esc(target.reason)}</div></div></div>`;
+    }
+  }
+  document.getElementById('move-r').innerHTML = h;
+}
+
+function handleMoveInputKeyUi(app, S, e) {
+  if (!Array.isArray(S.moveTargets) || !S.moveTargets.length) return;
+  const validIdxs = S.moveTargets.map((t, i) => t.valid ? i : -1).filter(i => i >= 0);
+  if (!validIdxs.length) return;
+
+  const scrollMoveSelection = () => {
+    const rows = document.querySelectorAll('#move-r .mvt');
+    const el = rows[S.movePickIdx];
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  };
+
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const cur = validIdxs.includes(S.movePickIdx) ? validIdxs.indexOf(S.movePickIdx) : 0;
+    const next = e.key === 'ArrowDown'
+      ? validIdxs[(cur + 1) % validIdxs.length]
+      : validIdxs[(cur - 1 + validIdxs.length) % validIdxs.length];
+    S.movePickIdx = next;
+    updateMoveRUi(app, S);
+    scrollMoveSelection();
+    return;
+  }
+
+  if (e.key === 'Home') {
+    e.preventDefault();
+    S.movePickIdx = validIdxs[0];
+    updateMoveRUi(app, S);
+    scrollMoveSelection();
+    return;
+  }
+
+  if (e.key === 'End') {
+    e.preventDefault();
+    S.movePickIdx = validIdxs[validIdxs.length - 1];
+    updateMoveRUi(app, S);
+    scrollMoveSelection();
+    return;
+  }
+
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const target = S.moveTargets[S.movePickIdx];
+    if (!target || !target.valid) return;
+    if (target.type === 'list') app.moveToList(target.id);
+    else app.moveToTask(target.id);
+  }
 }
 
 function openExportUi(app) {
@@ -4083,6 +4303,7 @@ function bindGlobalEvents(app, state) {
   });
 
   document.getElementById('move-q').addEventListener('input', () => app.updateMoveR());
+  document.getElementById('move-q').addEventListener('keydown', e => app.handleMoveInputKey(e));
 }
 
 function handleGlobalKey(app, state, e) {
@@ -4275,33 +4496,31 @@ function handleGlobalKey(app, state, e) {
   }
   if (e.key === 'Delete') {
     e.preventDefault();
-    if (state.selId) app.dispatch('task.delete', { id: state.selId });
+    app.deleteSelection();
     return;
   }
   if (e.key === 'Tab') {
     e.preventDefault();
     if (state.selId) {
-      if (e.shiftKey) app.unindent(state.selId);
-      else app.indent(state.selId);
+      if (e.shiftKey) app.unindentSelection();
+      else app.indentSelection();
     }
     return;
   }
   if (e.key === ' ' || e.key === 'Spacebar') {
     e.preventDefault();
-    if (state.selId) {
-      if (e.shiftKey) app.invalidate(state.selId);
-      else app.dispatch('task.toggleStatus', { id: state.selId });
-    }
+    if (e.shiftKey) app.invalidateSelection();
+    else app.toggleStatusSelection();
     return;
   }
   if (e.ctrlKey && e.key === 'ArrowUp') {
     e.preventDefault();
-    if (state.selId) app.moveUp(state.selId);
+    if (state.selId) app.moveUpSelection();
     return;
   }
   if (e.ctrlKey && e.key === 'ArrowDown') {
     e.preventDefault();
-    if (state.selId) app.moveDown(state.selId);
+    if (state.selId) app.moveDownSelection();
     return;
   }
   if (e.ctrlKey && e.shiftKey && e.key === 'ArrowRight') {
@@ -4390,10 +4609,14 @@ function handleTwoKeySequence(app, state, e) {
     'ei': () => app.startEdit(state.selId, 'start'),
     'ea': () => app.startEdit(state.selId, 'end'),
     'dd': () => app.openDueModal(),
-    'td': () => { if (state.selId) app.dispatch('task.setDueQuick', { taskId: state.selId, preset: 'today' }); },
-    'tm': () => { if (state.selId) app.dispatch('task.setDueQuick', { taskId: state.selId, preset: 'tomorrow' }); },
-    'as': () => { if (state.selId) app.dispatch('task.setDueQuick', { taskId: state.selId, preset: 'asap' }); },
+    'td': () => app.setDueQuickSelection('today'),
+    'tm': () => app.setDueQuickSelection('tomorrow'),
+    'as': () => app.setDueQuickSelection('asap'),
     'cd': () => {
+      if (state.msel && state.msel.size > 1) {
+        app.clearDueSelection(false);
+        return;
+      }
       if (state.selId) {
         app.pushUndo(app.snap());
         const t = state.data.tasks[state.selId];
@@ -4435,7 +4658,6 @@ function handleTwoKeySequence(app, state, e) {
     'tt': () => { if (state.selId) app.openTagsModal(state.selId); },
     'th': () => { if (state.selId) app.openTaskHistory(state.selId); },
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
-    'ct': () => { if (state.selId) app.dispatch('task.clearTags', { taskId: state.selId }); },
     'gt': () => app.showPage('tags'),
     'gr': () => app.showPage('report'),
     'gk': () => app.showPage('kanban'),
@@ -4444,22 +4666,11 @@ function handleTwoKeySequence(app, state, e) {
     'ne': () => { if (state.selId) app.addEmailLink(); },
     'nf': () => { if (state.selId) app.addFileLink(); },
     'nw': () => { if (state.selId) app.addWebLink(); },
-    'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
+    'ct': () => app.clearTagsSelection(),
+    'cn': () => app.clearNotesSelection(),
     'sn': () => { state.showNotes = !state.showNotes; app.render(); app.toast(`Notes ${state.showNotes ? 'visible' : 'hidden'}`); },
     'ae': () => app.assignTask(),
-    'ca': () => {
-      if (state.selId) {
-        app.pushUndo(app.snap());
-        const t = state.data.tasks[state.selId];
-        const before = [...(t.assignees || [])];
-        t.assignees = [];
-        if (before.length) {
-          logTaskHistory(t, 'assignment', { from: before, to: [] });
-        }
-        app.save();
-        app.render();
-      }
-    },
+    'ca': () => app.clearAssigneesSelection(),
     'hc': () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); app.syncSettings(); app.toast(`Completed: ${state.data.settings.showCompleted ? 'visible' : 'hidden'}`); },
     'hf': () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); app.toast(`Future due: ${state.data.settings.hideFuture ? 'hidden' : 'visible'}`); },
     'sd': () => app.toggleDetails(),
@@ -5438,17 +5649,17 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Edit task', s: 'ee / F2', fn: () => { if (state.selId) app.startEdit(state.selId); } },
     { l: 'Add task below', s: 'Enter', fn: () => { if (state.selId) { const nid = app.dispatch('task.add', { afterId: state.selId, asChild: false, content: '' }); state.selId = nid; app.renderList(); app.startEdit(nid); } } },
     { l: 'Add child task', s: 'Shift+Enter', fn: () => { if (state.selId) { const nid = app.dispatch('task.add', { afterId: state.selId, asChild: true, content: '' }); state.selId = nid; app.renderList(); app.startEdit(nid); } } },
-    { l: 'Delete task', s: 'Del', fn: () => { if (state.selId) app.dispatch('task.delete', { id: state.selId }); } },
-    { l: 'Mark completed', s: 'Space', fn: () => { if (state.selId) app.dispatch('task.toggleStatus', { id: state.selId }); } },
-    { l: 'Mark invalidated', s: 'Shift+Space', fn: () => { if (state.selId) app.dispatch('task.invalidate', { id: state.selId }); } },
-    { l: 'Due today', s: 'td', fn: () => { if (state.selId) app.dispatch('task.setDueQuick', { taskId: state.selId, preset: 'today' }); } },
-    { l: 'Due tomorrow', s: 'tm', fn: () => { if (state.selId) app.dispatch('task.setDueQuick', { taskId: state.selId, preset: 'tomorrow' }); } },
-    { l: 'Due ASAP', s: 'as', fn: () => { if (state.selId) app.dispatch('task.setDueQuick', { taskId: state.selId, preset: 'asap' }); } },
+    { l: 'Delete task', s: 'Del', fn: () => app.deleteSelection() },
+    { l: 'Mark completed', s: 'Space', fn: () => app.toggleStatusSelection() },
+    { l: 'Mark invalidated', s: 'Shift+Space', fn: () => app.invalidateSelection() },
+    { l: 'Due today', s: 'td', fn: () => app.setDueQuickSelection('today') },
+    { l: 'Due tomorrow', s: 'tm', fn: () => app.setDueQuickSelection('tomorrow') },
+    { l: 'Due ASAP', s: 'as', fn: () => app.setDueQuickSelection('asap') },
     { l: 'Set due date...', s: 'dd', fn: () => app.openDueModal() },
     { l: 'Repeating due settings', s: 'dr', fn: () => { if (state.selId) app.openRepeatModal(); } },
-    { l: 'Clear due date', s: 'cd', fn: () => { if (state.selId) app.dispatch('task.clearDue', { taskId: state.selId, removeRepeat: false }); } },
+    { l: 'Clear due date', s: 'cd', fn: () => app.clearDueSelection(false) },
     { l: 'Add tags', s: 'tt', fn: () => { if (state.selId) app.openTagsModal(state.selId); } },
-    { l: 'Clear tags', s: 'ct', fn: () => { if (state.selId) app.dispatch('task.clearTags', { taskId: state.selId }); } },
+    { l: 'Clear tags', s: 'ct', fn: () => app.clearTagsSelection() },
     { l: 'Add note', s: 'nn', fn: () => { if (state.selId) app.openNotesModal(state.selId); } },
     { l: 'Add OneNote link', s: 'no', fn: () => { if (state.selId) app.addOneNoteLink(); } },
     { l: 'Add email link', s: 'ne', fn: () => { if (state.selId) app.addEmailLink(); } },
@@ -5457,26 +5668,14 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Add labeled web link', s: 'Ctrl+K', fn: () => { if (state.selId) app.addLabeledWebLink(); } },
     { l: 'Edit task JSON', s: 'tj', fn: () => { if (state.selId) app.openTaskJson(state.selId); } },
     { l: 'View task history', s: 'th', fn: () => { if (state.selId) app.openTaskHistory(state.selId); } },
-    { l: 'Clear notes', s: 'cn', fn: () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); } },
+    { l: 'Clear notes', s: 'cn', fn: () => app.clearNotesSelection() },
     { l: 'Show/hide all notes', s: 'sn', fn: () => { state.showNotes = !state.showNotes; app.render(); } },
     { l: 'Assign task', s: 'ae', fn: () => app.assignTask() },
-    { l: 'Clear assignees', s: 'ca', fn: () => {
-      if (!state.selId) return;
-      app.pushUndo(app.snap());
-      const t = state.data.tasks[state.selId];
-      if (!t) return;
-      const before = [...(t.assignees || [])];
-      t.assignees = [];
-      if (before.length) {
-        logTaskHistory(t, 'assignment', { from: before, to: [] });
-      }
-      app.save();
-      app.render();
-    } },
-    { l: 'Indent', s: 'Tab', fn: () => { if (state.selId) app.indent(state.selId); } },
-    { l: 'Un-indent', s: 'Shift+Tab', fn: () => { if (state.selId) app.unindent(state.selId); } },
-    { l: 'Move task up', s: 'Ctrl+Up', fn: () => { if (state.selId) app.moveUp(state.selId); } },
-    { l: 'Move task down', s: 'Ctrl+Down', fn: () => { if (state.selId) app.moveDown(state.selId); } },
+    { l: 'Clear assignees', s: 'ca', fn: () => app.clearAssigneesSelection() },
+    { l: 'Indent', s: 'Tab', fn: () => app.indentSelection() },
+    { l: 'Un-indent', s: 'Shift+Tab', fn: () => app.unindentSelection() },
+    { l: 'Move task up', s: 'Ctrl+Up', fn: () => app.moveUpSelection() },
+    { l: 'Move task down', s: 'Ctrl+Down', fn: () => app.moveDownSelection() },
     { l: 'Hoist / Focus', s: 'Shift+Right', fn: () => { if (state.selId) app.hoistTask(state.selId); } },
     { l: 'Un-focus', s: 'Shift+Left', fn: () => app.unHoist() },
     { l: 'Expand all', s: 'Ctrl+Shift+Right', fn: () => app.expandAll() },
@@ -5638,6 +5837,7 @@ function syncStatusBarUi(state) {
 }
 
 function showToastUi(app, msg) {
+  if (app && app._suppressToast) return;
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('on');
@@ -6350,8 +6550,10 @@ function clearAllDataUi(app, S) {
 const S={
   data:null, page:'list', listId:null, selId:null, editId:null, hoistId:null,
   msel:new Set(), filter:'', undos:[], redos:[], kbuf:'', kbtimer:null,
+  undoBatchDepth:0,
   dragSrc:null, listMode:'create', listEditId:null,
   cpIdx:0, cpItems:[], cpMode:'', sortField:'alpha', calDate:new Date(),
+  movePickIdx:0, moveTargets:[],
   reportStart:'', reportEnd:'',
   reportFilters:{ added:true, modified:true, completed:true, deleted:true, untouched:true },
   showNotes:false, clipboard:null,
@@ -6419,6 +6621,7 @@ const App={
   // â”€ Undo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   snap(){ return JSON.parse(JSON.stringify({tasks:S.data.tasks,lists:S.data.lists})); },
   pushUndo(sn){
+    if (S.undoBatchDepth > 0) return;
     S.undos.push(sn);
     if(S.undos.length>60) S.undos.shift();
     S.redos = [];
@@ -6439,6 +6642,228 @@ const App={
     if(S.undos.length>60) S.undos.shift();
     const sn=S.redos.pop(); S.data.tasks=sn.tasks; S.data.lists=sn.lists;
     this.save(); this.render(); this.toast('Redone');
+  },
+  selectedIds(){
+    const selected = S.msel.size ? new Set(S.msel) : new Set(S.selId ? [S.selId] : []);
+    if (!selected.size) return [];
+
+    const ordered = [];
+    for (const id of this.visible()) {
+      if (selected.has(id)) {
+        ordered.push(id);
+        selected.delete(id);
+      }
+    }
+    for (const id of selected) ordered.push(id);
+
+    return ordered.filter(id => {
+      const t = S.data.tasks[id];
+      return !!t && !t.deleted;
+    });
+  },
+  selectedRootIds(ids){
+    const ordered = Array.isArray(ids) ? ids : this.selectedIds();
+    const selectedSet = new Set(ordered);
+    return ordered.filter(id => {
+      let p = S.data.tasks[id]?.parent_id;
+      while (p) {
+        if (selectedSet.has(p)) return false;
+        p = S.data.tasks[p]?.parent_id;
+      }
+      return true;
+    });
+  },
+  withUndoBatch(fn){
+    this.pushUndo(this.snap());
+    S.undoBatchDepth += 1;
+    this._suppressToast = true;
+    try {
+      fn();
+    } finally {
+      this._suppressToast = false;
+      S.undoBatchDepth = Math.max(0, S.undoBatchDepth - 1);
+    }
+  },
+  deleteSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.delete', { id: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => {
+      for (const id of [...ids].reverse()) deleteTaskDomain(this, S, id);
+    });
+    S.msel.clear();
+    if (!S.selId || !S.data.tasks[S.selId] || S.data.tasks[S.selId].deleted) {
+      const vis = this.visible();
+      S.selId = vis[0] || null;
+    }
+    this.save();
+    this.render();
+    this.toast(`Deleted ${ids.length} task(s)`);
+  },
+  toggleStatusSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.toggleStatus', { id: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => toggleStatusDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Status toggled for ${ids.length} task(s)`);
+  },
+  invalidateSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.invalidate', { id: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => invalidateDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Invalidated ${ids.length} task(s)`);
+  },
+  clearDueSelection(removeRepeat){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.clearDue', { taskId: ids[0], removeRepeat: !!removeRepeat });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => clearDueUi(this, S, id, true, !!removeRepeat)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Due cleared for ${ids.length} task(s)`);
+  },
+  clearTagsSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.clearTags', { taskId: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => clearTagsUi(this, S, id, true)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Tags cleared for ${ids.length} task(s)`);
+  },
+  clearNotesSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.clearNotes', { taskId: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => clearNotesUi(this, S, id, true)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Notes cleared for ${ids.length} task(s)`);
+  },
+  setDueQuickSelection(preset){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.setDueQuick', { taskId: ids[0], preset });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => setDueQuickUi(this, S, preset, true, id)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Due set (${preset}) for ${ids.length} task(s)`);
+  },
+  clearAssigneesSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      const t = S.data.tasks[ids[0]];
+      if (!t) return;
+      this.pushUndo(this.snap());
+      const before = [...(t.assignees || [])];
+      t.assignees = [];
+      t.updated_at = now();
+      if (before.length) {
+        logTaskHistory(t, 'assignment', { from: before, to: [] });
+      }
+      this.save();
+      this.render();
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => {
+      const t = S.data.tasks[id];
+      if (!t) return;
+      const before = [...(t.assignees || [])];
+      t.assignees = [];
+      t.updated_at = now();
+      if (before.length) {
+        logTaskHistory(t, 'assignment', { from: before, to: [] });
+      }
+    }));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Assignees cleared for ${ids.length} task(s)`);
+  },
+  moveUpSelection(){
+    const ids = this.selectedRootIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.moveUp(ids[0]);
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => moveUpDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.renderList();
+    this.toast(`Moved up ${ids.length} task(s)`);
+  },
+  moveDownSelection(){
+    const ids = this.selectedRootIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.moveDown(ids[0]);
+      return;
+    }
+    this.withUndoBatch(() => [...ids].reverse().forEach(id => moveDownDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.renderList();
+    this.toast(`Moved down ${ids.length} task(s)`);
+  },
+  indentSelection(){
+    const ids = this.selectedRootIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.indent(ids[0]);
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => indentDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.renderList();
+    this.toast(`Indented ${ids.length} task(s)`);
+  },
+  unindentSelection(){
+    const ids = this.selectedRootIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.unindent(ids[0]);
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => unindentDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.renderList();
+    this.toast(`Un-indented ${ids.length} task(s)`);
   },
 
   // â”€ Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -6656,6 +7081,7 @@ const App={
   // â”€ Move â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openMoveDlg(){ openMoveDlgUi(this, S); },
   updateMoveR(){ updateMoveRUi(this, S); },
+  handleMoveInputKey(e){ handleMoveInputKeyUi(this, S, e); },
   moveToList(lid,internal){
     if(!internal){
       this.dispatch('task.moveToList',{listId:lid});

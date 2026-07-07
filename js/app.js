@@ -4,8 +4,10 @@
 const S={
   data:null, page:'list', listId:null, selId:null, editId:null, hoistId:null,
   msel:new Set(), filter:'', undos:[], redos:[], kbuf:'', kbtimer:null,
+  undoBatchDepth:0,
   dragSrc:null, listMode:'create', listEditId:null,
   cpIdx:0, cpItems:[], cpMode:'', sortField:'alpha', calDate:new Date(),
+  movePickIdx:0, moveTargets:[],
   reportStart:'', reportEnd:'',
   reportFilters:{ added:true, modified:true, completed:true, deleted:true, untouched:true },
   showNotes:false, clipboard:null,
@@ -73,6 +75,7 @@ const App={
   // â”€ Undo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   snap(){ return JSON.parse(JSON.stringify({tasks:S.data.tasks,lists:S.data.lists})); },
   pushUndo(sn){
+    if (S.undoBatchDepth > 0) return;
     S.undos.push(sn);
     if(S.undos.length>60) S.undos.shift();
     S.redos = [];
@@ -93,6 +96,228 @@ const App={
     if(S.undos.length>60) S.undos.shift();
     const sn=S.redos.pop(); S.data.tasks=sn.tasks; S.data.lists=sn.lists;
     this.save(); this.render(); this.toast('Redone');
+  },
+  selectedIds(){
+    const selected = S.msel.size ? new Set(S.msel) : new Set(S.selId ? [S.selId] : []);
+    if (!selected.size) return [];
+
+    const ordered = [];
+    for (const id of this.visible()) {
+      if (selected.has(id)) {
+        ordered.push(id);
+        selected.delete(id);
+      }
+    }
+    for (const id of selected) ordered.push(id);
+
+    return ordered.filter(id => {
+      const t = S.data.tasks[id];
+      return !!t && !t.deleted;
+    });
+  },
+  selectedRootIds(ids){
+    const ordered = Array.isArray(ids) ? ids : this.selectedIds();
+    const selectedSet = new Set(ordered);
+    return ordered.filter(id => {
+      let p = S.data.tasks[id]?.parent_id;
+      while (p) {
+        if (selectedSet.has(p)) return false;
+        p = S.data.tasks[p]?.parent_id;
+      }
+      return true;
+    });
+  },
+  withUndoBatch(fn){
+    this.pushUndo(this.snap());
+    S.undoBatchDepth += 1;
+    this._suppressToast = true;
+    try {
+      fn();
+    } finally {
+      this._suppressToast = false;
+      S.undoBatchDepth = Math.max(0, S.undoBatchDepth - 1);
+    }
+  },
+  deleteSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.delete', { id: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => {
+      for (const id of [...ids].reverse()) deleteTaskDomain(this, S, id);
+    });
+    S.msel.clear();
+    if (!S.selId || !S.data.tasks[S.selId] || S.data.tasks[S.selId].deleted) {
+      const vis = this.visible();
+      S.selId = vis[0] || null;
+    }
+    this.save();
+    this.render();
+    this.toast(`Deleted ${ids.length} task(s)`);
+  },
+  toggleStatusSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.toggleStatus', { id: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => toggleStatusDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Status toggled for ${ids.length} task(s)`);
+  },
+  invalidateSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.invalidate', { id: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => invalidateDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Invalidated ${ids.length} task(s)`);
+  },
+  clearDueSelection(removeRepeat){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.clearDue', { taskId: ids[0], removeRepeat: !!removeRepeat });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => clearDueUi(this, S, id, true, !!removeRepeat)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Due cleared for ${ids.length} task(s)`);
+  },
+  clearTagsSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.clearTags', { taskId: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => clearTagsUi(this, S, id, true)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Tags cleared for ${ids.length} task(s)`);
+  },
+  clearNotesSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.clearNotes', { taskId: ids[0] });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => clearNotesUi(this, S, id, true)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Notes cleared for ${ids.length} task(s)`);
+  },
+  setDueQuickSelection(preset){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.dispatch('task.setDueQuick', { taskId: ids[0], preset });
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => setDueQuickUi(this, S, preset, true, id)));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Due set (${preset}) for ${ids.length} task(s)`);
+  },
+  clearAssigneesSelection(){
+    const ids = this.selectedIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      const t = S.data.tasks[ids[0]];
+      if (!t) return;
+      this.pushUndo(this.snap());
+      const before = [...(t.assignees || [])];
+      t.assignees = [];
+      t.updated_at = now();
+      if (before.length) {
+        logTaskHistory(t, 'assignment', { from: before, to: [] });
+      }
+      this.save();
+      this.render();
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => {
+      const t = S.data.tasks[id];
+      if (!t) return;
+      const before = [...(t.assignees || [])];
+      t.assignees = [];
+      t.updated_at = now();
+      if (before.length) {
+        logTaskHistory(t, 'assignment', { from: before, to: [] });
+      }
+    }));
+    S.msel.clear();
+    this.save();
+    this.render();
+    this.toast(`Assignees cleared for ${ids.length} task(s)`);
+  },
+  moveUpSelection(){
+    const ids = this.selectedRootIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.moveUp(ids[0]);
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => moveUpDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.renderList();
+    this.toast(`Moved up ${ids.length} task(s)`);
+  },
+  moveDownSelection(){
+    const ids = this.selectedRootIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.moveDown(ids[0]);
+      return;
+    }
+    this.withUndoBatch(() => [...ids].reverse().forEach(id => moveDownDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.renderList();
+    this.toast(`Moved down ${ids.length} task(s)`);
+  },
+  indentSelection(){
+    const ids = this.selectedRootIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.indent(ids[0]);
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => indentDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.renderList();
+    this.toast(`Indented ${ids.length} task(s)`);
+  },
+  unindentSelection(){
+    const ids = this.selectedRootIds();
+    if (!ids.length) return;
+    if (ids.length === 1) {
+      this.unindent(ids[0]);
+      return;
+    }
+    this.withUndoBatch(() => ids.forEach(id => unindentDomain(this, S, id)));
+    S.msel.clear();
+    this.save();
+    this.renderList();
+    this.toast(`Un-indented ${ids.length} task(s)`);
   },
 
   // â”€ Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -310,6 +535,7 @@ const App={
   // â”€ Move â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openMoveDlg(){ openMoveDlgUi(this, S); },
   updateMoveR(){ updateMoveRUi(this, S); },
+  handleMoveInputKey(e){ handleMoveInputKeyUi(this, S, e); },
   moveToList(lid,internal){
     if(!internal){
       this.dispatch('task.moveToList',{listId:lid});

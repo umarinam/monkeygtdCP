@@ -64,6 +64,7 @@ function syncStatusBarUi(state) {
 }
 
 function showToastUi(app, msg) {
+  if (app && app._suppressToast) return;
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('on');

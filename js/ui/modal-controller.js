@@ -405,24 +405,164 @@ function selSortUi(S, f) {
 function openMoveDlgUi(app, S) {
   if (!S.selId && !S.msel.size) return;
   document.getElementById('move-q').value = '';
+  S.movePickIdx = 0;
+  S.moveTargets = [];
   updateMoveRUi(app, S);
   app.openModal('ov-move');
   setTimeout(() => document.getElementById('move-q').focus(), 50);
 }
 
-function updateMoveRUi(app, S) {
-  const q = document.getElementById('move-q').value.toLowerCase();
-  let h = '';
-  const res = app.select('move.searchTargets', { q });
-  for (const l of res.lists) {
-    h += `<div class="mvt" onclick="App.moveToList('${l.id}')"><span>📋</span><div><div>${esc(l.name)}</div><div class="mvtl">List</div></div></div>`;
+function moveSelectionIdsUi(app, state) {
+  if (typeof app.selectedRootIds === 'function') {
+    return app.selectedRootIds(typeof app.selectedIds === 'function' ? app.selectedIds() : undefined);
   }
-  if (q) {
-    for (const t of res.tasks) {
-      h += `<div class="mvt" onclick="App.moveToTask('${t.id}')"><span>📌</span><div><div>${esc(t.content)}</div><div class="mvtl">${esc(t.listName || '')}</div></div></div>`;
+  return state.msel && state.msel.size ? [...state.msel] : (state.selId ? [state.selId] : []);
+}
+
+function isInvalidMoveTargetUi(state, selectedSet, targetId) {
+  if (selectedSet.has(targetId)) return true;
+  for (const id of selectedSet) {
+    let p = state.data.tasks[targetId] ? state.data.tasks[targetId].parent_id : '';
+    while (p) {
+      if (p === id) return true;
+      p = state.data.tasks[p] ? state.data.tasks[p].parent_id : '';
     }
   }
-  document.getElementById('move-r').innerHTML = h || '<div style="padding:12px;color:var(--muted);font-size:13px">Type to search</div>';
+  return false;
+}
+
+function moveTargetReasonUi(state, selectedSet, targetId) {
+  if (selectedSet.has(targetId)) return 'contains selected task';
+  for (const id of selectedSet) {
+    let p = state.data.tasks[targetId] ? state.data.tasks[targetId].parent_id : '';
+    while (p) {
+      if (p === id) return 'descendant of selection';
+      p = state.data.tasks[p] ? state.data.tasks[p].parent_id : '';
+    }
+  }
+  return '';
+}
+
+function isNoopListTargetUi(state, selectedIds, listId) {
+  if (!selectedIds.length) return true;
+  return selectedIds.every(id => {
+    const t = state.data.tasks[id];
+    return t && t.checklist_id === listId && !t.parent_id;
+  });
+}
+
+function buildMoveTargetsUi(state, selectedIds, res, q) {
+  const targets = [];
+  for (const l of res.lists) {
+    if (isNoopListTargetUi(state, selectedIds, l.id)) {
+      targets.push({ type: 'list', id: l.id, label: l.name, listName: 'List', valid: false, reason: 'already in list root' });
+    } else {
+      targets.push({ type: 'list', id: l.id, label: l.name, listName: 'List', valid: true, reason: '' });
+    }
+  }
+  if (q) {
+    const selectedSet = new Set(selectedIds);
+    for (const t of res.tasks) {
+      const reason = moveTargetReasonUi(state, selectedSet, t.id);
+      targets.push({
+        type: 'task',
+        id: t.id,
+        label: t.content,
+        listName: t.listName || '',
+        valid: !reason,
+        reason
+      });
+    }
+  }
+  return targets;
+}
+
+function updateMoveRUi(app, S) {
+  const q = document.getElementById('move-q').value.toLowerCase();
+  const selectedIds = moveSelectionIdsUi(app, S);
+  const selectedNames = selectedIds
+    .map(id => S.data.tasks[id])
+    .filter(Boolean)
+    .map(t => t.content)
+    .slice(0, 3)
+    .map(x => esc(x));
+
+  let h = `<div style="padding:8px 12px;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line)">Moving ${selectedIds.length} task(s): ${selectedNames.join(' · ')}${selectedIds.length > 3 ? ' ...' : ''}</div>`;
+  const res = app.select('move.searchTargets', { q });
+  const targets = buildMoveTargetsUi(S, selectedIds, res, q);
+  S.moveTargets = targets;
+
+  const validIdxs = targets.map((t, i) => t.valid ? i : -1).filter(i => i >= 0);
+  if (!validIdxs.length) {
+    S.movePickIdx = -1;
+  } else if (!targets[S.movePickIdx] || !targets[S.movePickIdx].valid) {
+    S.movePickIdx = validIdxs[0];
+  }
+
+  for (let i = 0; i < targets.length; i++) {
+    const target = targets[i];
+    const icon = target.type === 'list' ? '📋' : (target.valid ? '📌' : '⛔');
+    const onClass = i === S.movePickIdx ? ' on' : '';
+    if (target.valid) {
+      const click = target.type === 'list'
+        ? `App.moveToList('${target.id}')`
+        : `App.moveToTask('${target.id}')`;
+      h += `<div class="mvt${onClass}" onclick="${click}"><span>${icon}</span><div><div>${esc(target.label)}</div><div class="mvtl">${esc(target.listName || '')}</div></div></div>`;
+    } else {
+      h += `<div class="mvt" style="opacity:.5;cursor:not-allowed" title="Invalid move target: ${esc(target.reason)}"><span>${icon}</span><div><div>${esc(target.label)}</div><div class="mvtl">Invalid target: ${esc(target.reason)}</div></div></div>`;
+    }
+  }
+  document.getElementById('move-r').innerHTML = h;
+}
+
+function handleMoveInputKeyUi(app, S, e) {
+  if (!Array.isArray(S.moveTargets) || !S.moveTargets.length) return;
+  const validIdxs = S.moveTargets.map((t, i) => t.valid ? i : -1).filter(i => i >= 0);
+  if (!validIdxs.length) return;
+
+  const scrollMoveSelection = () => {
+    const rows = document.querySelectorAll('#move-r .mvt');
+    const el = rows[S.movePickIdx];
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  };
+
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const cur = validIdxs.includes(S.movePickIdx) ? validIdxs.indexOf(S.movePickIdx) : 0;
+    const next = e.key === 'ArrowDown'
+      ? validIdxs[(cur + 1) % validIdxs.length]
+      : validIdxs[(cur - 1 + validIdxs.length) % validIdxs.length];
+    S.movePickIdx = next;
+    updateMoveRUi(app, S);
+    scrollMoveSelection();
+    return;
+  }
+
+  if (e.key === 'Home') {
+    e.preventDefault();
+    S.movePickIdx = validIdxs[0];
+    updateMoveRUi(app, S);
+    scrollMoveSelection();
+    return;
+  }
+
+  if (e.key === 'End') {
+    e.preventDefault();
+    S.movePickIdx = validIdxs[validIdxs.length - 1];
+    updateMoveRUi(app, S);
+    scrollMoveSelection();
+    return;
+  }
+
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const target = S.moveTargets[S.movePickIdx];
+    if (!target || !target.valid) return;
+    if (target.type === 'list') app.moveToList(target.id);
+    else app.moveToTask(target.id);
+  }
 }
 
 function openExportUi(app) {

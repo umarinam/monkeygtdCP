@@ -799,3 +799,739 @@ test('handleGlobalKey triggers redo on Ctrl+Shift+Z', () => {
   assert.equal(prevented, true);
   assert.equal(calls.redo, 1);
 });
+
+test('handleGlobalKey routes Delete to deleteSelection for multi-select', () => {
+  const { handleGlobalKey } = loadKeyboardController();
+  const calls = { deleteSelection: 0 };
+
+  const app = {
+    deleteSelection: () => { calls.deleteSelection += 1; },
+    closeAll: () => {},
+    showShortcuts: () => {},
+    undo: () => {},
+    redo: () => {},
+    render: () => {},
+    clearSearch: () => {},
+    twoKey: () => {},
+    navDown: () => {},
+    navUp: () => {},
+    extDown: () => {},
+    extUp: () => {},
+    renderList: () => {},
+    unHoist: () => {},
+    hoistTask: () => {},
+    visible: () => ['t1'],
+    startEdit: () => {},
+    dispatch: () => {},
+    addAbove: () => 't2',
+    unindent: () => {},
+    indent: () => {},
+    invalidateSelection: () => {},
+    toggleStatusSelection: () => {},
+    invalidate: () => {},
+    moveUp: () => {},
+    moveDown: () => {},
+    expandAll: () => {},
+    collapseAll: () => {},
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    dup: () => {},
+    copyWithUrl: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    openTaskHistory: () => {},
+    openTaskJson: () => {},
+    showPage: () => {},
+    openNotesModal: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {},
+    addWebLink: () => {},
+    addLabeledWebLink: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    save: () => {},
+    toast: () => {},
+    pushUndo: () => {},
+    snap: () => ({})
+  };
+
+  const state = {
+    selId: 't1',
+    page: 'list',
+    editId: null,
+    filter: '',
+    hoistId: null,
+    kbuf: '',
+    kbtimer: null,
+    showNotes: false,
+    msel: new Set(['t1', 't2']),
+    cpItems: [],
+    cpIdx: 0,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '', tasks: [], parent_id: '', color: 0 }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    key: 'Delete',
+    preventDefault: () => {}
+  };
+
+  handleGlobalKey(app, state, e);
+
+  assert.equal(calls.deleteSelection, 1);
+});
+
+test('handleGlobalKey routes Space to toggleStatusSelection for multi-select', () => {
+  const { handleGlobalKey } = loadKeyboardController();
+  const calls = { toggleStatusSelection: 0 };
+
+  const app = {
+    toggleStatusSelection: () => { calls.toggleStatusSelection += 1; },
+    deleteSelection: () => {},
+    invalidateSelection: () => {},
+    closeAll: () => {},
+    showShortcuts: () => {},
+    undo: () => {},
+    redo: () => {},
+    render: () => {},
+    clearSearch: () => {},
+    twoKey: () => {},
+    navDown: () => {},
+    navUp: () => {},
+    extDown: () => {},
+    extUp: () => {},
+    renderList: () => {},
+    unHoist: () => {},
+    hoistTask: () => {},
+    visible: () => ['t1'],
+    startEdit: () => {},
+    dispatch: () => {},
+    addAbove: () => 't2',
+    unindent: () => {},
+    indent: () => {},
+    invalidate: () => {},
+    moveUp: () => {},
+    moveDown: () => {},
+    expandAll: () => {},
+    collapseAll: () => {},
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    dup: () => {},
+    copyWithUrl: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    openTaskHistory: () => {},
+    openTaskJson: () => {},
+    showPage: () => {},
+    openNotesModal: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {},
+    addWebLink: () => {},
+    addLabeledWebLink: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    save: () => {},
+    toast: () => {},
+    pushUndo: () => {},
+    snap: () => ({})
+  };
+
+  const state = {
+    selId: 't1',
+    page: 'list',
+    editId: null,
+    filter: '',
+    hoistId: null,
+    kbuf: '',
+    kbtimer: null,
+    showNotes: false,
+    msel: new Set(['t1', 't2']),
+    cpItems: [],
+    cpIdx: 0,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '', tasks: [], parent_id: '', color: 0 }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    key: ' ',
+    preventDefault: () => {}
+  };
+
+  handleGlobalKey(app, state, e);
+
+  assert.equal(calls.toggleStatusSelection, 1);
+});
+
+test('handleTwoKeySequence routes td to setDueQuickSelection for multi-select', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { setDueQuickSelection: [] };
+
+  const app = {
+    setDueQuickSelection: (preset) => { calls.setDueQuickSelection.push(preset); },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: 't1',
+    kbuf: '',
+    kbtimer: null,
+    msel: new Set(['t1', 't2']),
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '' }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    preventDefault: () => {},
+    key: 't'
+  };
+
+  handleTwoKeySequence(app, state, e);
+  e.key = 'd';
+  handleTwoKeySequence(app, state, e);
+
+  assert.deepEqual(calls.setDueQuickSelection, ['today']);
+});
+
+test('handleTwoKeySequence routes ca to clearAssigneesSelection for multi-select', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { clearAssigneesSelection: 0 };
+
+  const app = {
+    clearAssigneesSelection: () => { calls.clearAssigneesSelection += 1; },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: 't1',
+    kbuf: '',
+    kbtimer: null,
+    msel: new Set(['t1', 't2']),
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '' }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    preventDefault: () => {},
+    key: 'c'
+  };
+
+  handleTwoKeySequence(app, state, e);
+  e.key = 'a';
+  handleTwoKeySequence(app, state, e);
+
+  assert.equal(calls.clearAssigneesSelection, 1);
+});
+
+test('handleGlobalKey routes Ctrl+ArrowUp to moveUpSelection for multi-select', () => {
+  const { handleGlobalKey } = loadKeyboardController();
+  const calls = { moveUpSelection: 0 };
+
+  const app = {
+    moveUpSelection: () => { calls.moveUpSelection += 1; },
+    moveDownSelection: () => {},
+    indentSelection: () => {},
+    unindentSelection: () => {},
+    toggleStatusSelection: () => {},
+    deleteSelection: () => {},
+    invalidateSelection: () => {},
+    closeAll: () => {},
+    showShortcuts: () => {},
+    undo: () => {},
+    redo: () => {},
+    render: () => {},
+    clearSearch: () => {},
+    twoKey: () => {},
+    navDown: () => {},
+    navUp: () => {},
+    extDown: () => {},
+    extUp: () => {},
+    renderList: () => {},
+    unHoist: () => {},
+    hoistTask: () => {},
+    visible: () => ['t1'],
+    startEdit: () => {},
+    dispatch: () => {},
+    addAbove: () => 't2',
+    moveUp: () => {},
+    moveDown: () => {},
+    expandAll: () => {},
+    collapseAll: () => {},
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    dup: () => {},
+    copyWithUrl: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    openTaskHistory: () => {},
+    openTaskJson: () => {},
+    showPage: () => {},
+    openNotesModal: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {},
+    addWebLink: () => {},
+    addLabeledWebLink: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    save: () => {},
+    toast: () => {},
+    pushUndo: () => {},
+    snap: () => ({})
+  };
+
+  const state = {
+    selId: 't1',
+    page: 'list',
+    editId: null,
+    filter: '',
+    hoistId: null,
+    kbuf: '',
+    kbtimer: null,
+    showNotes: false,
+    msel: new Set(['t1', 't2']),
+    cpItems: [],
+    cpIdx: 0,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '', tasks: [], parent_id: '', color: 0 }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: true,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    key: 'ArrowUp',
+    preventDefault: () => {}
+  };
+
+  handleGlobalKey(app, state, e);
+  assert.equal(calls.moveUpSelection, 1);
+});
+
+test('handleGlobalKey routes Ctrl+ArrowDown to moveDownSelection for multi-select', () => {
+  const { handleGlobalKey } = loadKeyboardController();
+  const calls = { moveDownSelection: 0 };
+
+  const app = {
+    moveDownSelection: () => { calls.moveDownSelection += 1; },
+    moveUpSelection: () => {},
+    indentSelection: () => {},
+    unindentSelection: () => {},
+    toggleStatusSelection: () => {},
+    deleteSelection: () => {},
+    invalidateSelection: () => {},
+    closeAll: () => {},
+    showShortcuts: () => {},
+    undo: () => {},
+    redo: () => {},
+    render: () => {},
+    clearSearch: () => {},
+    twoKey: () => {},
+    navDown: () => {},
+    navUp: () => {},
+    extDown: () => {},
+    extUp: () => {},
+    renderList: () => {},
+    unHoist: () => {},
+    hoistTask: () => {},
+    visible: () => ['t1'],
+    startEdit: () => {},
+    dispatch: () => {},
+    addAbove: () => 't2',
+    moveUp: () => {},
+    moveDown: () => {},
+    expandAll: () => {},
+    collapseAll: () => {},
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    dup: () => {},
+    copyWithUrl: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    openTaskHistory: () => {},
+    openTaskJson: () => {},
+    showPage: () => {},
+    openNotesModal: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {},
+    addWebLink: () => {},
+    addLabeledWebLink: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    save: () => {},
+    toast: () => {},
+    pushUndo: () => {},
+    snap: () => ({})
+  };
+
+  const state = {
+    selId: 't1',
+    page: 'list',
+    editId: null,
+    filter: '',
+    hoistId: null,
+    kbuf: '',
+    kbtimer: null,
+    showNotes: false,
+    msel: new Set(['t1', 't2']),
+    cpItems: [],
+    cpIdx: 0,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '', tasks: [], parent_id: '', color: 0 }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: true,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    key: 'ArrowDown',
+    preventDefault: () => {}
+  };
+
+  handleGlobalKey(app, state, e);
+  assert.equal(calls.moveDownSelection, 1);
+});
+
+test('handleGlobalKey routes Tab to indentSelection for multi-select', () => {
+  const { handleGlobalKey } = loadKeyboardController();
+  const calls = { indentSelection: 0 };
+
+  const app = {
+    indentSelection: () => { calls.indentSelection += 1; },
+    unindentSelection: () => {},
+    moveUpSelection: () => {},
+    moveDownSelection: () => {},
+    toggleStatusSelection: () => {},
+    deleteSelection: () => {},
+    invalidateSelection: () => {},
+    closeAll: () => {},
+    showShortcuts: () => {},
+    undo: () => {},
+    redo: () => {},
+    render: () => {},
+    clearSearch: () => {},
+    twoKey: () => {},
+    navDown: () => {},
+    navUp: () => {},
+    extDown: () => {},
+    extUp: () => {},
+    renderList: () => {},
+    unHoist: () => {},
+    hoistTask: () => {},
+    visible: () => ['t1'],
+    startEdit: () => {},
+    dispatch: () => {},
+    addAbove: () => 't2',
+    moveUp: () => {},
+    moveDown: () => {},
+    expandAll: () => {},
+    collapseAll: () => {},
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    dup: () => {},
+    copyWithUrl: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    openTaskHistory: () => {},
+    openTaskJson: () => {},
+    showPage: () => {},
+    openNotesModal: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {},
+    addWebLink: () => {},
+    addLabeledWebLink: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    save: () => {},
+    toast: () => {},
+    pushUndo: () => {},
+    snap: () => ({})
+  };
+
+  const state = {
+    selId: 't1',
+    page: 'list',
+    editId: null,
+    filter: '',
+    hoistId: null,
+    kbuf: '',
+    kbtimer: null,
+    showNotes: false,
+    msel: new Set(['t1', 't2']),
+    cpItems: [],
+    cpIdx: 0,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '', tasks: [], parent_id: '', color: 0 }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    key: 'Tab',
+    preventDefault: () => {}
+  };
+
+  handleGlobalKey(app, state, e);
+  assert.equal(calls.indentSelection, 1);
+});
+
+test('handleGlobalKey routes Shift+Tab to unindentSelection for multi-select', () => {
+  const { handleGlobalKey } = loadKeyboardController();
+  const calls = { unindentSelection: 0 };
+
+  const app = {
+    unindentSelection: () => { calls.unindentSelection += 1; },
+    indentSelection: () => {},
+    moveUpSelection: () => {},
+    moveDownSelection: () => {},
+    toggleStatusSelection: () => {},
+    deleteSelection: () => {},
+    invalidateSelection: () => {},
+    closeAll: () => {},
+    showShortcuts: () => {},
+    undo: () => {},
+    redo: () => {},
+    render: () => {},
+    clearSearch: () => {},
+    twoKey: () => {},
+    navDown: () => {},
+    navUp: () => {},
+    extDown: () => {},
+    extUp: () => {},
+    renderList: () => {},
+    unHoist: () => {},
+    hoistTask: () => {},
+    visible: () => ['t1'],
+    startEdit: () => {},
+    dispatch: () => {},
+    addAbove: () => 't2',
+    moveUp: () => {},
+    moveDown: () => {},
+    expandAll: () => {},
+    collapseAll: () => {},
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    dup: () => {},
+    copyWithUrl: () => {},
+    openDueModal: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    openTaskHistory: () => {},
+    openTaskJson: () => {},
+    showPage: () => {},
+    openNotesModal: () => {},
+    addOneNoteLink: () => {},
+    addEmailLink: () => {},
+    addFileLink: () => {},
+    addWebLink: () => {},
+    addLabeledWebLink: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    save: () => {},
+    toast: () => {},
+    pushUndo: () => {},
+    snap: () => ({})
+  };
+
+  const state = {
+    selId: 't1',
+    page: 'list',
+    editId: null,
+    filter: '',
+    hoistId: null,
+    kbuf: '',
+    kbtimer: null,
+    showNotes: false,
+    msel: new Set(['t1', 't2']),
+    cpItems: [],
+    cpIdx: 0,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '', tasks: [], parent_id: '', color: 0 }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    shiftKey: true,
+    key: 'Tab',
+    preventDefault: () => {}
+  };
+
+  handleGlobalKey(app, state, e);
+  assert.equal(calls.unindentSelection, 1);
+});

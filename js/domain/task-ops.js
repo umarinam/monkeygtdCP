@@ -1,27 +1,68 @@
 'use strict';
 
-function assignTaskDomain(app, state, internal, payload) {
-  if (!internal) {
-    if (!state.selId) return;
-    const name = prompt('Assign to (username):');
-    if (!name || !name.trim()) return;
-    app.dispatch('task.assign', { taskId: state.selId, name: name.trim() });
-    return;
-  }
-
+function assignTaskInternal(app, state, payload) {
   const t = state.data.tasks[payload.taskId];
-  if (!t) return;
+  if (!t) return false;
 
-  app.pushUndo(app.snap());
+  if (!payload.skipUndo) app.pushUndo(app.snap());
   const before = [...(t.assignees || [])];
   t.assignees = [...new Set([...(t.assignees || []), payload.name])];
   t.updated_at = now();
   if (JSON.stringify(before) !== JSON.stringify(t.assignees || [])) {
     logTaskHistory(t, 'assignment', { from: before, to: t.assignees || [] });
   }
-  app.save();
-  app.render();
-  app.toast(`Assigned to @${payload.name}`);
+
+  if (!payload.noSave) app.save();
+  if (!payload.noRender) app.render();
+  if (!payload.silentToast) app.toast(`Assigned to @${payload.name}`);
+  return true;
+}
+
+function assignTaskDomain(app, state, internal, payload) {
+  if (!internal) {
+    const ids = (typeof app.selectedIds === 'function')
+      ? app.selectedIds()
+      : (state.msel && state.msel.size ? [...state.msel] : (state.selId ? [state.selId] : []));
+    if (!ids.length) return;
+    const name = prompt('Assign to (username):');
+    if (!name || !name.trim()) return;
+    const trimmedName = name.trim();
+
+    if (ids.length === 1) {
+      app.dispatch('task.assign', { taskId: ids[0], name: trimmedName });
+      return;
+    }
+
+    if (typeof app.withUndoBatch === 'function') {
+      app.withUndoBatch(() => {
+        ids.forEach(taskId => assignTaskInternal(app, state, {
+          taskId,
+          name: trimmedName,
+          skipUndo: true,
+          noSave: true,
+          noRender: true,
+          silentToast: true
+        }));
+      });
+      if (state.msel && typeof state.msel.clear === 'function') state.msel.clear();
+      app.save();
+      app.render();
+      app.toast(`Assigned @${trimmedName} to ${ids.length} task(s)`);
+      return;
+    }
+
+    ids.forEach(taskId => app.dispatch('task.assign', { taskId, name: trimmedName }));
+    return;
+  }
+
+  assignTaskInternal(app, state, {
+    taskId: payload.taskId,
+    name: payload.name,
+    skipUndo: !!payload.skipUndo,
+    noSave: !!payload.noSave,
+    noRender: !!payload.noRender,
+    silentToast: !!payload.silentToast
+  });
 }
 
 function applySortDomain(app, state, internal, payload) {

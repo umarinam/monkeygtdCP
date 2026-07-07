@@ -1,5 +1,22 @@
 'use strict';
 
+function selectedMoveIds(app, state) {
+  if (typeof app.selectedRootIds === 'function') {
+    return app.selectedRootIds(typeof app.selectedIds === 'function' ? app.selectedIds() : undefined);
+  }
+  const ids = state.msel.size ? [...state.msel] : [state.selId];
+  return ids.filter(Boolean);
+}
+
+function isAncestorOf(state, ancestorId, nodeId) {
+  let p = state.data.tasks[nodeId] ? state.data.tasks[nodeId].parent_id : '';
+  while (p) {
+    if (p === ancestorId) return true;
+    p = state.data.tasks[p] ? state.data.tasks[p].parent_id : '';
+  }
+  return false;
+}
+
 function sibListDomain(state, id) {
   const t = state.data.tasks[id];
   if (!t) return null;
@@ -130,13 +147,16 @@ function unindentDomain(app, state, id) {
 function moveToListDomain(app, state, listId) {
   app.pushUndo(app.snap());
 
-  const ids = state.msel.size ? [...state.msel] : [state.selId];
+  const ids = selectedMoveIds(app, state);
   const targetList = state.data.lists[listId];
   if (!targetList) return;
+
+  let movedCount = 0;
 
   for (const id of ids) {
     const t = state.data.tasks[id];
     if (!t) continue;
+    if (t.checklist_id === listId && !t.parent_id) continue;
 
     const before = { parent_id: t.parent_id || '', checklist_id: t.checklist_id || '' };
 
@@ -154,23 +174,33 @@ function moveToListDomain(app, state, listId) {
       from: before,
       to: { parent_id: '', checklist_id: t.checklist_id || '' }
     });
+    movedCount++;
+  }
+
+  if (!movedCount) {
+    app.render();
+    app.toast('No movable tasks for selected target');
+    return;
   }
 
   app.save();
   app.closeModal('ov-move');
   app.render();
-  app.toast(`Moved to "${targetList.name}"`);
+  app.toast(`Moved ${movedCount} task(s) to "${targetList.name}"`);
 }
 
 function moveToTaskDomain(app, state, targetTaskId) {
   app.pushUndo(app.snap());
 
-  const ids = state.msel.size ? [...state.msel] : [state.selId];
+  const ids = selectedMoveIds(app, state);
   const targetTask = state.data.tasks[targetTaskId];
   if (!targetTask) return;
 
+  let movedCount = 0;
+
   for (const id of ids) {
     if (id === targetTaskId) continue;
+    if (isAncestorOf(state, id, targetTaskId)) continue;
 
     const s = sibListDomain(state, id);
     if (s) {
@@ -191,10 +221,17 @@ function moveToTaskDomain(app, state, targetTaskId) {
       from: before,
       to: { parent_id: task.parent_id || '', checklist_id: task.checklist_id || '' }
     });
+    movedCount++;
+  }
+
+  if (!movedCount) {
+    app.render();
+    app.toast('No movable tasks for selected target');
+    return;
   }
 
   app.save();
   app.closeModal('ov-move');
   app.render();
-  app.toast('Moved');
+  app.toast(`Moved ${movedCount} task(s)`);
 }

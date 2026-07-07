@@ -43,6 +43,7 @@ function bindGlobalEvents(app, state) {
   });
 
   document.getElementById('move-q').addEventListener('input', () => app.updateMoveR());
+  document.getElementById('move-q').addEventListener('keydown', e => app.handleMoveInputKey(e));
 }
 
 function handleGlobalKey(app, state, e) {
@@ -235,33 +236,31 @@ function handleGlobalKey(app, state, e) {
   }
   if (e.key === 'Delete') {
     e.preventDefault();
-    if (state.selId) app.dispatch('task.delete', { id: state.selId });
+    app.deleteSelection();
     return;
   }
   if (e.key === 'Tab') {
     e.preventDefault();
     if (state.selId) {
-      if (e.shiftKey) app.unindent(state.selId);
-      else app.indent(state.selId);
+      if (e.shiftKey) app.unindentSelection();
+      else app.indentSelection();
     }
     return;
   }
   if (e.key === ' ' || e.key === 'Spacebar') {
     e.preventDefault();
-    if (state.selId) {
-      if (e.shiftKey) app.invalidate(state.selId);
-      else app.dispatch('task.toggleStatus', { id: state.selId });
-    }
+    if (e.shiftKey) app.invalidateSelection();
+    else app.toggleStatusSelection();
     return;
   }
   if (e.ctrlKey && e.key === 'ArrowUp') {
     e.preventDefault();
-    if (state.selId) app.moveUp(state.selId);
+    if (state.selId) app.moveUpSelection();
     return;
   }
   if (e.ctrlKey && e.key === 'ArrowDown') {
     e.preventDefault();
-    if (state.selId) app.moveDown(state.selId);
+    if (state.selId) app.moveDownSelection();
     return;
   }
   if (e.ctrlKey && e.shiftKey && e.key === 'ArrowRight') {
@@ -350,10 +349,14 @@ function handleTwoKeySequence(app, state, e) {
     'ei': () => app.startEdit(state.selId, 'start'),
     'ea': () => app.startEdit(state.selId, 'end'),
     'dd': () => app.openDueModal(),
-    'td': () => { if (state.selId) app.dispatch('task.setDueQuick', { taskId: state.selId, preset: 'today' }); },
-    'tm': () => { if (state.selId) app.dispatch('task.setDueQuick', { taskId: state.selId, preset: 'tomorrow' }); },
-    'as': () => { if (state.selId) app.dispatch('task.setDueQuick', { taskId: state.selId, preset: 'asap' }); },
+    'td': () => app.setDueQuickSelection('today'),
+    'tm': () => app.setDueQuickSelection('tomorrow'),
+    'as': () => app.setDueQuickSelection('asap'),
     'cd': () => {
+      if (state.msel && state.msel.size > 1) {
+        app.clearDueSelection(false);
+        return;
+      }
       if (state.selId) {
         app.pushUndo(app.snap());
         const t = state.data.tasks[state.selId];
@@ -395,7 +398,6 @@ function handleTwoKeySequence(app, state, e) {
     'tt': () => { if (state.selId) app.openTagsModal(state.selId); },
     'th': () => { if (state.selId) app.openTaskHistory(state.selId); },
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
-    'ct': () => { if (state.selId) app.dispatch('task.clearTags', { taskId: state.selId }); },
     'gt': () => app.showPage('tags'),
     'gr': () => app.showPage('report'),
     'gk': () => app.showPage('kanban'),
@@ -404,22 +406,11 @@ function handleTwoKeySequence(app, state, e) {
     'ne': () => { if (state.selId) app.addEmailLink(); },
     'nf': () => { if (state.selId) app.addFileLink(); },
     'nw': () => { if (state.selId) app.addWebLink(); },
-    'cn': () => { if (state.selId) app.dispatch('task.clearNotes', { taskId: state.selId }); },
+    'ct': () => app.clearTagsSelection(),
+    'cn': () => app.clearNotesSelection(),
     'sn': () => { state.showNotes = !state.showNotes; app.render(); app.toast(`Notes ${state.showNotes ? 'visible' : 'hidden'}`); },
     'ae': () => app.assignTask(),
-    'ca': () => {
-      if (state.selId) {
-        app.pushUndo(app.snap());
-        const t = state.data.tasks[state.selId];
-        const before = [...(t.assignees || [])];
-        t.assignees = [];
-        if (before.length) {
-          logTaskHistory(t, 'assignment', { from: before, to: [] });
-        }
-        app.save();
-        app.render();
-      }
-    },
+    'ca': () => app.clearAssigneesSelection(),
     'hc': () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); app.syncSettings(); app.toast(`Completed: ${state.data.settings.showCompleted ? 'visible' : 'hidden'}`); },
     'hf': () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); app.toast(`Future due: ${state.data.settings.hideFuture ? 'hidden' : 'visible'}`); },
     'sd': () => app.toggleDetails(),
