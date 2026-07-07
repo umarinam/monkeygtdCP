@@ -330,7 +330,7 @@ function handleGlobalKey(app, state, e) {
 
 function handleTwoKeySequence(app, state, e) {
   if (e.ctrlKey || e.altKey || e.metaKey) return;
-  if (!state.selId && !['g', 'l', 'o', 'h', 's'].includes(e.key)) return;
+  if (!state.selId && !state.kbuf && !['g', 'l', 'o', 'h', 's'].includes(e.key)) return;
   if (e.key === 'Shift') {
     if (state.kbuf === 'Shift') {
       state.kbuf = '';
@@ -428,7 +428,16 @@ function handleTwoKeySequence(app, state, e) {
     'wc': () => app.showWC(),
     'xx': () => app.extractBranch(),
     'uu': () => app.undo(),
-    'st': () => { if (state.selId) { state.msel.has(state.selId) ? state.msel.delete(state.selId) : state.msel.add(state.selId); app.renderList(); } },
+    'st': () => {
+      if (!state.selId) {
+        const v = app.visible ? app.visible() : [];
+        state.selId = v[0] || null;
+      }
+      if (state.selId) {
+        state.msel.has(state.selId) ? state.msel.delete(state.selId) : state.msel.add(state.selId);
+        app.renderList();
+      }
+    },
     'ec': () => app.toggleEC(),
     'ex': () => app.openExport(),
     'im': () => app.openImport(),
@@ -455,7 +464,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;

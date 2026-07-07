@@ -1096,6 +1096,46 @@ test('handleTwoKeySequence routes ca to clearAssigneesSelection for multi-select
   assert.equal(calls.clearAssigneesSelection, 1);
 });
 
+test('handleTwoKeySequence st selects first visible task when selId is null', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+
+  const app = {
+    visible: () => ['t1', 't2'],
+    renderList: () => {},
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: null,
+    kbuf: '',
+    kbtimer: null,
+    msel: new Set(),
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '' },
+        t2: { due: '', due_asap: false, repeating_due: null, content: '' }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    preventDefault: () => {},
+    key: 's'
+  };
+
+  handleTwoKeySequence(app, state, e);
+  e.key = 't';
+  handleTwoKeySequence(app, state, e);
+
+  assert.equal(state.selId, 't1');
+  assert.equal(state.msel.has('t1'), true);
+});
+
 test('handleGlobalKey routes Ctrl+ArrowUp to moveUpSelection for multi-select', () => {
   const { handleGlobalKey } = loadKeyboardController();
   const calls = { moveUpSelection: 0 };
