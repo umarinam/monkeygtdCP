@@ -379,6 +379,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-06T12:49:22+05:00',commit:'a57ec2e'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -5565,6 +5566,14 @@ function executeCommandPaletteItem(app, state, index) {
 
 'use strict';
 
+function formatDeployStamp(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const parsed = Date.parse(raw);
+  if (!Number.isFinite(parsed)) return raw;
+  return new Date(parsed).toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+}
+
 function syncStatusBarUi(state) {
   const list = state.data.lists[state.listId];
   document.getElementById('sb-list').textContent = list ? list.name : '';
@@ -5593,15 +5602,29 @@ function syncStatusBarUi(state) {
     const settings = state.data?.settings || {};
     const at = String(settings.gistLastSyncAt || '').trim();
     const status = String(settings.gistLastSyncSummary || '').trim();
-    if (!at && !status) {
-      ss.textContent = '';
-    } else {
+    let gistText = '';
+    if (at || status) {
       let when = at;
       const parsed = Date.parse(at);
       if (Number.isFinite(parsed)) {
         when = new Date(parsed).toLocaleString();
       }
-      ss.textContent = status ? `${status} ${when ? `@ ${when}` : ''}`.trim() : when;
+      gistText = status ? `${status} ${when ? `@ ${when}` : ''}`.trim() : when;
+    }
+
+    const deployMeta = globalThis.__MGTD_STANDALONE_DEPLOY || {};
+    const deployAt = formatDeployStamp(deployMeta.deployedAt || '');
+    const deployCommit = String(deployMeta.commit || '').trim();
+    const deployText = deployAt
+      ? `uu deploy ${deployAt}${deployCommit ? ` · ${deployCommit}` : ''}`
+      : '';
+
+    if (!gistText && !deployText) {
+      ss.textContent = '';
+    } else if (gistText && deployText) {
+      ss.textContent = `${gistText} | ${deployText}`;
+    } else {
+      ss.textContent = gistText || deployText;
     }
   }
 }

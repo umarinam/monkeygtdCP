@@ -1,5 +1,13 @@
 'use strict';
 
+function formatDeployStamp(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const parsed = Date.parse(raw);
+  if (!Number.isFinite(parsed)) return raw;
+  return new Date(parsed).toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+}
+
 function syncStatusBarUi(state) {
   const list = state.data.lists[state.listId];
   document.getElementById('sb-list').textContent = list ? list.name : '';
@@ -28,15 +36,29 @@ function syncStatusBarUi(state) {
     const settings = state.data?.settings || {};
     const at = String(settings.gistLastSyncAt || '').trim();
     const status = String(settings.gistLastSyncSummary || '').trim();
-    if (!at && !status) {
-      ss.textContent = '';
-    } else {
+    let gistText = '';
+    if (at || status) {
       let when = at;
       const parsed = Date.parse(at);
       if (Number.isFinite(parsed)) {
         when = new Date(parsed).toLocaleString();
       }
-      ss.textContent = status ? `${status} ${when ? `@ ${when}` : ''}`.trim() : when;
+      gistText = status ? `${status} ${when ? `@ ${when}` : ''}`.trim() : when;
+    }
+
+    const deployMeta = globalThis.__MGTD_STANDALONE_DEPLOY || {};
+    const deployAt = formatDeployStamp(deployMeta.deployedAt || '');
+    const deployCommit = String(deployMeta.commit || '').trim();
+    const deployText = deployAt
+      ? `uu deploy ${deployAt}${deployCommit ? ` · ${deployCommit}` : ''}`
+      : '';
+
+    if (!gistText && !deployText) {
+      ss.textContent = '';
+    } else if (gistText && deployText) {
+      ss.textContent = `${gistText} | ${deployText}`;
+    } else {
+      ss.textContent = gistText || deployText;
     }
   }
 }

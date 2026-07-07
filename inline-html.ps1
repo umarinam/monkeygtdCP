@@ -5,10 +5,32 @@ $baseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $htmlFile = Join-Path $baseDir "app.html"
 $outputFile = Join-Path $baseDir "monkeygtd-standalone.html"
 
+function Get-GitValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Args
+    )
+
+    try {
+        $output = & git @Args 2>$null
+        if ($LASTEXITCODE -ne 0) { return "" }
+        return [string]::Join("`n", $output).Trim()
+    } catch {
+        return ""
+    }
+}
+
 Write-Host "Creating standalone HTML file..." -ForegroundColor Cyan
 
 # Read original HTML
 $html = [System.IO.File]::ReadAllText($htmlFile, [System.Text.Encoding]::UTF8)
+
+$deployAt = Get-GitValue -Args @('log', '-1', '--format=%cI')
+$deployCommit = Get-GitValue -Args @('rev-parse', '--short', 'HEAD')
+$deployAtEscaped = ($deployAt -replace "'", "\\'")
+$deployCommitEscaped = ($deployCommit -replace "'", "\\'")
+$deployScript = "<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'$deployAtEscaped',commit:'$deployCommitEscaped'};</script>"
+$html = $html.Replace('<body>', "<body>`r`n$deployScript")
 
 # Extract CSS link and replace with inline style (before script processing to avoid conflicts)
 $cssPattern = '<link rel="stylesheet" href="([^"]+)">'
