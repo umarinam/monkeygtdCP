@@ -131,19 +131,22 @@ function gistParseInboxLines(raw) {
   return items;
 }
 
-function gistBuildTaskRecord(parent, content) {
+function gistBuildTaskRecord(parent, content, options) {
+  const opts = options || {};
+  const checklistId = opts.checklistId || parent?.checklist_id || '';
+  const parentId = typeof opts.parentId === 'string' ? opts.parentId : (parent?.id || '');
   const text = String(content || '').trim();
   if (!text) return null;
 
   const fallbackId = `gq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
   const base = (typeof mkTask === 'function')
-    ? mkTask({ content: text, checklist_id: parent.checklist_id || '', parent_id: parent.id })
+    ? mkTask({ content: text, checklist_id: checklistId, parent_id: parentId })
     : {
       id: fallbackId,
       content: text,
       status: 0,
-      checklist_id: parent.checklist_id || '',
-      parent_id: parent.id,
+      checklist_id: checklistId,
+      parent_id: parentId,
       tasks: [],
       tags: {},
       tags_as_text: '',
@@ -177,26 +180,86 @@ function gistBuildTaskRecord(parent, content) {
   return base;
 }
 
+function gistResolveInboxListId(state, req) {
+  const lists = state.data?.lists || {};
+  const listIds = Object.keys(lists);
+  if (!listIds.length) return '';
+
+  const requested = String(req?.listId || '').trim();
+  if (requested && lists[requested]) return requested;
+
+  const inboxByName = Object.values(lists).find(l => String(l?.name || '').trim().toLowerCase() === 'inbox');
+  if (inboxByName?.id) return inboxByName.id;
+
+  const currentListId = String(state.data?.currentListId || '').trim();
+  if (currentListId && lists[currentListId]) return currentListId;
+
+  return listIds[0] || '';
+}
+
+function gistApplyDueFromRequest(task, req) {
+  const due = String(req?.due || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(due)) {
+    task.due = due;
+    task.due_asap = false;
+  }
+  if (req?.due_asap === true && !task.due) {
+    task.due_asap = true;
+  }
+}
+
 function gistApplyInboxRequest(state, req) {
-  if (!req || req.action !== 'addChild') return { applied: false, reason: 'unsupported-action' };
-  const parentId = String(req.parentTaskId || '').trim();
-  if (!parentId) return { applied: false, reason: 'missing-parent' };
+  if (!req) return { applied: false, reason: 'unsupported-action' };
+  const action = String(req.action || '').trim();
 
-  const parent = state.data?.tasks?.[parentId];
-  if (!parent || parent.deleted) return { applied: false, reason: 'parent-not-found' };
+  let task = null;
+  let parentId = '';
+  let listId = '';
 
-  const task = gistBuildTaskRecord(parent, req.content);
-  if (!task) return { applied: false, reason: 'empty-content' };
+  if (action === 'addChild') {
+    parentId = String(req.parentTaskId || '').trim();
+    if (!parentId) return { applied: false, reason: 'missing-parent' };
 
-  state.data.tasks = state.data.tasks || {};
-  state.data.tasks[task.id] = task;
-  parent.tasks = [...(parent.tasks || []), task.id];
+    const parent = state.data?.tasks?.[parentId];
+    if (!parent || parent.deleted) return { applied: false, reason: 'parent-not-found' };
+
+    task = gistBuildTaskRecord(parent, req.content, {
+      checklistId: parent.checklist_id || '',
+      parentId: parent.id
+    });
+    if (!task) return { applied: false, reason: 'empty-content' };
+
+    state.data.tasks = state.data.tasks || {};
+    state.data.tasks[task.id] = task;
+    parent.tasks = [...(parent.tasks || []), task.id];
+    listId = task.checklist_id || '';
+  } else if (action === 'addInbox') {
+    listId = gistResolveInboxListId(state, req);
+    if (!listId) return { applied: false, reason: 'missing-list' };
+
+    const content = String(req.content || '').trim();
+    task = gistBuildTaskRecord(null, content, {
+      checklistId: listId,
+      parentId: ''
+    });
+    if (!task) return { applied: false, reason: 'empty-content' };
+
+    state.data.tasks = state.data.tasks || {};
+    state.data.tasks[task.id] = task;
+
+    const list = state.data.lists[listId];
+    list.root_tasks = [...(list.root_tasks || []), task.id];
+  } else {
+    return { applied: false, reason: 'unsupported-action' };
+  }
+
+  gistApplyDueFromRequest(task, req);
 
   if (typeof logTaskHistory === 'function') {
     logTaskHistory(task, 'creation', {
       source: 'gist-inbox',
-      listId: task.checklist_id || '',
-      parentId: parent.id,
+      listId: task.checklist_id || listId,
+      parentId,
       requestId: String(req.id || '').trim()
     });
   }

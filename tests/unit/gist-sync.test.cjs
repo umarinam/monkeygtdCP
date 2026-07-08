@@ -400,7 +400,8 @@ test('syncGistBidirectionalRemote applies queued addChild inbox requests', async
     id: 'req-1',
     action: 'addChild',
     parentTaskId: 'p1',
-    content: 'Queued child task'
+    content: 'Queued child task',
+    due: '2026-07-21'
   });
   const fetchCalls = [];
 
@@ -456,6 +457,50 @@ test('syncGistBidirectionalRemote applies queued addChild inbox requests', async
   assert.equal(!!child, true);
   assert.equal(child.parent_id, 'p1');
   assert.equal(child.content, 'Queued child task');
+  assert.equal(child.due, '2026-07-21');
+
+  const queuePatch = fetchCalls.find(c => c.method === 'PATCH' && String(c.body || '').includes('monkeygtd-inbox.ndjson'));
+  assert.equal(!!queuePatch, true);
+});
+
+test('syncGistBidirectionalRemote applies queued addInbox inbox requests with due date', async () => {
+  const sameTs = '2026-06-27T12:00:00.000Z';
+  const queueLine = JSON.stringify({
+    id: 'req-inbox-1',
+    action: 'addInbox',
+    content: 'Queued root task',
+    due: '2026-07-20'
+  });
+  const fetchCalls = [];
+
+  const fetchMock = async (url, options = {}) => {
+    const method = options.method || 'GET';
+    fetchCalls.push({ url, method, body: options.body || '' });
+    if (method === 'PATCH') {
+      return { ok: true, json: async () => ({}) };
+    }
+    if (String(url).includes('/gists/')) {
+      return { ok: true, json: async () => metaResponseWithInbox(sameTs, queueLine) };
+    }
+    return { ok: true, text: async () => '' };
+  };
+
+  const { syncGistBidirectionalRemote } = loadGistSyncModule({ fetch: fetchMock });
+  const state = makeState(sameTs);
+  const { app, calls } = makeAppCounters();
+
+  const changed = await syncGistBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(calls.save >= 1, true);
+  assert.equal(calls.render >= 1, true);
+  const roots = state.data.lists.l1.root_tasks || [];
+  assert.equal(roots.length, 1);
+  const task = state.data.tasks[roots[0]];
+  assert.equal(!!task, true);
+  assert.equal(task.parent_id, '');
+  assert.equal(task.content, 'Queued root task');
+  assert.equal(task.due, '2026-07-20');
 
   const queuePatch = fetchCalls.find(c => c.method === 'PATCH' && String(c.body || '').includes('monkeygtd-inbox.ndjson'));
   assert.equal(!!queuePatch, true);

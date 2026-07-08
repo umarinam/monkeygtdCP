@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MonkeyGTD - Inbox</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 24px;
+        }
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-send {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-send:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .btn-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-clear {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+            font-size: 14px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+        .auth-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        .creds-setup {
+            background: #f8f9ff;
+            border: 1px solid #dfe3ff;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 20px;
+        }
+        .creds-setup h3 {
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #333;
+        }
+        .creds-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .creds-help {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #5c6480;
+        }
+        .creds-help a {
+            color: #2f6fed;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .creds-help a:hover {
+            text-decoration: underline;
+        }
+        .btn-save-creds {
+            background: #2f6fed;
+            color: white;
+        }
+        .hint {
+            margin-top: 6px;
+            color: #6b7280;
+            font-size: 12px;
+        }
+        .recent-parents {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .recent-parent-item {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid #d9deef;
+            background: #f7f9ff;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .recent-parent-pill {
+            border: none;
+            background: transparent;
+            color: #2f3e67;
+            padding: 4px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            text-align: left;
+        }
+        .recent-parent-pill:hover {
+            background: #ecf1ff;
+        }
+        .recent-parent-remove {
+            border: none;
+            border-left: 1px solid #d9deef;
+            background: #eef2ff;
+            color: #7c2434;
+            width: 24px;
+            min-width: 24px;
+            padding: 4px 0;
+            font-size: 14px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .recent-parent-remove:hover {
+            background: #ffe7ec;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📬 MonkeyGTD Inbox</h1>
+        <p class="subtitle">Send a new task to your GTD system</p>
+        
+        <div class="auth-warning" id="authWarning" style="display: none;">
+            ⚠️ Authentication credentials not found. Please configure your token and ID first.
+        </div>
+
+        <div class="creds-setup" id="credsSetup" style="display: none;">
+            <h3>Configure Credentials</h3>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label for="credsToken">Gist Token</label>
+                <input type="text" id="credsToken" placeholder="ghp_...">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="credsId">Gist ID</label>
+                <input type="text" id="credsId" placeholder="Your gist ID">
+            </div>
+            <div class="creds-actions">
+                <button type="button" class="btn-save-creds" id="saveCredsBtn">Save Credentials</button>
+            </div>
+            <div class="creds-help">
+                Already configured in the app? <a href="app.html" target="_blank" rel="noopener noreferrer">Open MonkeyGTD settings</a> and update Gist Token/Gist ID there.
+            </div>
+        </div>
+
+        <form id="taskForm">
+            <div class="form-group">
+                <label for="taskTitle">Task Title *</label>
+                <input type="text" id="taskTitle" name="taskTitle" placeholder="Enter task title..." required>
+            </div>
+
+            <div class="form-group">
+                <label for="taskParentId">Parent ID (optional)</label>
+                <input type="text" id="taskParentId" name="taskParentId" list="parentSuggestions" placeholder="Paste parent task ID...">
+                <datalist id="parentSuggestions"></datalist>
+                <div class="recent-parents" id="recentParents" style="display: none;"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="taskParentTitle">Parent Title (optional)</label>
+                <input type="text" id="taskParentTitle" name="taskParentTitle" placeholder="Used only to label saved parent IDs...">
+                <p class="hint">Saved with Parent ID so you can pick it quickly next time.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="taskDueDate">Due Date (optional)</label>
+                <input type="date" id="taskDueDate" name="taskDueDate">
+            </div>
+
+            <div class="form-group">
+                <label for="taskDescription">Description</label>
+                <textarea id="taskDescription" name="taskDescription" placeholder="Add any additional details..."></textarea>
+            </div>
+
+            <div class="button-group">
+                <button type="button" class="btn-send" id="submitBtn">Send Task</button>
+                <button type="reset" class="btn-clear">Clear</button>
+            </div>
+
+            <div class="status" id="statusMessage"></div>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('taskForm');
+        const statusMessage = document.getElementById('statusMessage');
+        const authWarning = document.getElementById('authWarning');
+        const submitBtn = document.getElementById('submitBtn');
+        const credsSetup = document.getElementById('credsSetup');
+        const credsTokenInput = document.getElementById('credsToken');
+        const credsIdInput = document.getElementById('credsId');
+        const saveCredsBtn = document.getElementById('saveCredsBtn');
+        const parentIdInput = document.getElementById('taskParentId');
+        const parentTitleInput = document.getElementById('taskParentTitle');
+        const dueDateInput = document.getElementById('taskDueDate');
+        const parentSuggestions = document.getElementById('parentSuggestions');
+        const recentParents = document.getElementById('recentParents');
+
+        const PARENT_CACHE_KEY = 'mgtd3_inbox_parent_cache';
+        const MAX_PARENT_CACHE = 20;
+
+        // Check authentication on page load
+        window.addEventListener('load', () => {
+            checkAuthentication();
+            renderParentSuggestions();
+        });
+
+        function readParentCache() {
+            try {
+                const raw = localStorage.getItem(PARENT_CACHE_KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(parsed)) return [];
+                return parsed
+                    .filter((item) => item && typeof item.id === 'string')
+                    .map((item) => ({
+                        id: String(item.id).trim(),
+                        title: String(item.title || '').trim(),
+                        updatedAt: String(item.updatedAt || '')
+                    }))
+                    .filter((item) => !!item.id);
+            } catch {
+                return [];
+            }
+        }
+
+        function writeParentCache(items) {
+            localStorage.setItem(PARENT_CACHE_KEY, JSON.stringify(items));
+        }
+
+        function removeCachedParentReference(parentId) {
+            const id = String(parentId || '').trim();
+            if (!id) return;
+
+            const items = readParentCache();
+            const next = items.filter((item) => item.id !== id);
+            writeParentCache(next);
+            renderParentSuggestions();
+
+            if (parentIdInput.value.trim() === id) {
+                parentIdInput.value = '';
+                parentTitleInput.value = '';
+            }
+        }
+
+        function renderParentSuggestions() {
+            if (!parentSuggestions) return;
+            const items = readParentCache();
+            parentSuggestions.innerHTML = '';
+            items.forEach((item) => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.label = item.title ? `${item.id} - ${item.title}` : item.id;
+                parentSuggestions.appendChild(option);
+            });
+
+            if (!recentParents) return;
+            recentParents.innerHTML = '';
+            const visibleItems = items.slice(0, 8);
+            recentParents.style.display = visibleItems.length ? 'flex' : 'none';
+
+            visibleItems.forEach((item) => {
+                const row = document.createElement('div');
+                row.className = 'recent-parent-item';
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'recent-parent-pill';
+                button.textContent = item.title ? `${item.title} (${item.id})` : item.id;
+                button.addEventListener('click', () => {
+                    parentIdInput.value = item.id;
+                    if (item.title) parentTitleInput.value = item.title;
+                    parentIdInput.focus();
+                });
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'recent-parent-remove';
+                removeBtn.title = `Remove ${item.id}`;
+                removeBtn.textContent = 'x';
+                removeBtn.addEventListener('click', (e) => {
+                    if (e.preventDefault) e.preventDefault();
+                    if (e.stopPropagation) e.stopPropagation();
+                    removeCachedParentReference(item.id);
+                });
+
+                row.appendChild(button);
+                row.appendChild(removeBtn);
+                recentParents.appendChild(row);
+            });
+        }
+
+        function cacheParentReference(parentId, parentTitle) {
+            const id = String(parentId || '').trim();
+            if (!id) return;
+
+            const title = String(parentTitle || '').trim();
+            const now = new Date().toISOString();
+            const items = readParentCache();
+            const withoutCurrent = items.filter((item) => item.id !== id);
+            const next = [{ id, title, updatedAt: now }, ...withoutCurrent].slice(0, MAX_PARENT_CACHE);
+            writeParentCache(next);
+            renderParentSuggestions();
+        }
+
+        function buildInboxContent(title, description) {
+            const t = String(title || '').trim();
+            const d = String(description || '').trim();
+            if (!d) return t;
+            return `${t}\n\n${d}`;
+        }
+
+        async function fetchJson(url, options) {
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error(`GitHub API request failed (${res.status})`);
+            return res.json();
+        }
+
+        async function fetchText(url) {
+            const res = await fetch(url, { method: 'GET' });
+            if (!res.ok) throw new Error(`Inbox file download failed (${res.status})`);
+            return res.text();
+        }
+
+        async function queueInboxRequest(creds, request) {
+            const gistUrl = `https://api.github.com/gists/${encodeURIComponent(creds.id)}`;
+            const headers = {
+                Accept: 'application/vnd.github+json',
+                Authorization: `token ${creds.token}`
+            };
+
+            const meta = await fetchJson(gistUrl, { method: 'GET', headers });
+            const file = meta?.files?.[creds.inboxFilename] || null;
+
+            let existing = '';
+            if (file) {
+                if (!file.truncated) {
+                    existing = String(file.content || '');
+                } else if (file.raw_url) {
+                    existing = await fetchText(file.raw_url);
+                }
+            }
+
+            const line = JSON.stringify(request);
+            const trimmed = String(existing || '').replace(/[\r\n]+$/g, '');
+            const nextContent = trimmed ? `${trimmed}\n${line}` : line;
+
+            const patchRes = await fetch(gistUrl, {
+                method: 'PATCH',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    files: {
+                        [creds.inboxFilename]: { content: nextContent }
+                    }
+                })
+            });
+
+            if (!patchRes.ok) {
+                throw new Error(`Gist queue write failed (${patchRes.status})`);
+            }
+        }
+
+        parentIdInput.addEventListener('input', () => {
+            const id = parentIdInput.value.trim();
+            if (!id) {
+                parentTitleInput.value = '';
+                return;
+            }
+
+            const hit = readParentCache().find((item) => item.id === id);
+            if (hit && hit.title && !parentTitleInput.value.trim()) {
+                parentTitleInput.value = hit.title;
+            }
+        });
+
+        function getAppCredentials() {
+            let data = null;
+            try {
+                const raw = localStorage.getItem('mgtd3');
+                data = raw ? JSON.parse(raw) : null;
+            } catch {
+                data = null;
+            }
+
+            const settings = (data && data.settings) ? data.settings : {};
+            const token = settings.gistToken || localStorage.getItem('mgtd3_gist_token') || localStorage.getItem('gtd_token') || '';
+            const id = settings.gistId || localStorage.getItem('gtd_id') || '';
+            const inboxFilename = settings.gistInboxFilename || 'monkeygtd-inbox.ndjson';
+            return { token, id, inboxFilename };
+        }
+
+        function saveAppCredentials(token, id) {
+            let data = null;
+            try {
+                const raw = localStorage.getItem('mgtd3');
+                data = raw ? JSON.parse(raw) : null;
+            } catch {
+                data = null;
+            }
+
+            if (!data || typeof data !== 'object') data = {};
+            if (!data.settings || typeof data.settings !== 'object') data.settings = {};
+
+            data.settings.gistToken = token;
+            data.settings.gistId = id;
+
+            localStorage.setItem('mgtd3', JSON.stringify(data));
+            localStorage.setItem('mgtd3_gist_token', token);
+        }
+
+        function checkAuthentication() {
+            const creds = getAppCredentials();
+
+            if (!creds.token || !creds.id) {
+                authWarning.style.display = 'block';
+                credsSetup.style.display = 'block';
+                if (!credsTokenInput.value) credsTokenInput.value = creds.token || '';
+                if (!credsIdInput.value) credsIdInput.value = creds.id || '';
+                submitBtn.disabled = true;
+            } else {
+                authWarning.style.display = 'none';
+                credsSetup.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        }
+
+        saveCredsBtn.addEventListener('click', () => {
+            const token = credsTokenInput.value.trim();
+            const id = credsIdInput.value.trim();
+
+            if (!token || !id) {
+                showStatus('Please enter both Gist Token and Gist ID.', 'error');
+                return;
+            }
+
+            try {
+                saveAppCredentials(token, id);
+                checkAuthentication();
+                showStatus('✓ Credentials saved. You can now send tasks.', 'success');
+            } catch (error) {
+                showStatus(`Error saving credentials: ${error.message}`, 'error');
+            }
+        });
+
+        async function submitTask() {
+            const creds = getAppCredentials();
+            const token = creds.token;
+            const id = creds.id;
+
+            if (!token || !id) {
+                showStatus('Authentication credentials not found. Please configure Gist token and Gist ID in MonkeyGTD settings.', 'error');
+                return;
+            }
+
+            const taskTitle = document.getElementById('taskTitle').value.trim();
+            const taskDescription = document.getElementById('taskDescription').value.trim();
+            const taskParentId = parentIdInput.value.trim();
+            const taskParentTitle = parentTitleInput.value.trim();
+            const taskDueDate = dueDateInput.value;
+
+            if (!taskTitle) {
+                showStatus('Task title is required.', 'error');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            showStatus('Sending task...', 'info');
+
+            try {
+                const action = taskParentId ? 'addChild' : 'addInbox';
+                const uuidFn = globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function'
+                    ? globalThis.crypto.randomUUID.bind(globalThis.crypto)
+                    : null;
+                const request = {
+                    id: uuidFn
+                        ? uuidFn()
+                        : `inbox-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    action,
+                    content: buildInboxContent(taskTitle, taskDescription),
+                    title: taskTitle,
+                    description: taskDescription,
+                    at: new Date().toISOString(),
+                    source: 'inbox-web'
+                };
+
+                if (taskParentId) request.parentTaskId = taskParentId;
+                if (taskDueDate) request.due = taskDueDate;
+
+                await queueInboxRequest({ token, id, inboxFilename: creds.inboxFilename }, request);
+
+                cacheParentReference(taskParentId, taskParentTitle);
+                showStatus('✓ Task queued to Gist inbox successfully!', 'success');
+                form.reset();
+                setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 5000);
+            } catch (error) {
+                if (String(error?.message || '').toLowerCase().includes('failed to fetch')) {
+                    showStatus('Error: Could not reach GitHub API. Check internet, token validity, and that this page can access https://api.github.com.', 'error');
+                } else {
+                    showStatus(`Error: ${error.message}`, 'error');
+                }
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (e.stopPropagation) e.stopPropagation();
+            await submitTask();
+        });
+
+        submitBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await submitTask();
+        });
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status ${type}`;
+        }
+    </script>
+</body>
+</html>
