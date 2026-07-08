@@ -55,6 +55,12 @@ jobs:
       - name: Verify standalone bundle is up to date
         run: npm run check:standalone
 
+      - name: Verify Pages deploy assets exist
+        shell: bash
+        run: |
+          test -f monkeygtd-standalone.html
+          test -f Inbox.html
+
   test-policy:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
