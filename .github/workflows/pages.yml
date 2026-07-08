@@ -39,6 +39,7 @@ jobs:
           mkdir -p _site
           cp monkeygtd-standalone.html _site/index.html
           cp Inbox.html _site/Inbox.html
+          cp Inbox.html _site/inbox.html
           touch _site/.nojekyll
 
       - name: Validate Pages artifact
@@ -46,6 +47,7 @@ jobs:
         run: |
           test -f _site/index.html
           test -f _site/Inbox.html
+          test -f _site/inbox.html
           ls -lah _site
 
       - name: Upload Pages artifact
