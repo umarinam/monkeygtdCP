@@ -299,6 +299,13 @@
         const PARENT_CACHE_KEY = 'mgtd3_inbox_parent_cache';
         const MAX_PARENT_CACHE = 20;
 
+        const DEFAULT_PARENTS = [
+            { id: '8bkrfy3mr57q25y', title: 'Email' },
+            { id: '8ntc83jmqoaij5e', title: 'CoEE' },
+            { id: 'pv8m4ihmqmotj0r', title: 'QADev' },
+            { id: 'uzvatpsmqrtawlj', title: 'Architecture' }
+        ];
+
         // Check authentication on page load
         window.addEventListener('load', () => {
             checkAuthentication();
@@ -308,19 +315,21 @@
         function readParentCache() {
             try {
                 const raw = localStorage.getItem(PARENT_CACHE_KEY);
-                const parsed = raw ? JSON.parse(raw) : [];
-                if (!Array.isArray(parsed)) return [];
-                return parsed
-                    .filter((item) => item && typeof item.id === 'string')
-                    .map((item) => ({
-                        id: String(item.id).trim(),
-                        title: String(item.title || '').trim(),
-                        updatedAt: String(item.updatedAt || '')
-                    }))
-                    .filter((item) => !!item.id);
+                const parsed = raw ? JSON.parse(raw) : null;
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed
+                        .filter((item) => item && typeof item.id === 'string')
+                        .map((item) => ({
+                            id: String(item.id).trim(),
+                            title: String(item.title || '').trim(),
+                            updatedAt: String(item.updatedAt || '')
+                        }))
+                        .filter((item) => !!item.id);
+                }
             } catch {
-                return [];
+                // fall through to defaults
             }
+            return DEFAULT_PARENTS.map((p) => ({ id: p.id, title: p.title, updatedAt: '' }));
         }
 
         function writeParentCache(items) {

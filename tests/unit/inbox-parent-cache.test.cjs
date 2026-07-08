@@ -222,6 +222,15 @@ test('Inbox submit without parent queues addInbox request', async () => {
   assert.equal(queued.due, '2026-07-30');
 });
 
+test('Inbox shows default parent seeds when cache is empty', () => {
+  const { elements } = bootInbox(credsSeed());
+  // 4 default parents should be rendered
+  assert.equal(elements.recentParents.children.length, 4);
+  assert.equal(elements.recentParents.style.display, 'flex');
+  const firstPill = elements.recentParents.children[0].children[0];
+  assert.equal(firstPill.textContent.includes('Email'), true);
+});
+
 test('Inbox parent suggestions load from cache and auto-fill parent title for known IDs', () => {
   const seed = {
     ...credsSeed(),
@@ -253,8 +262,9 @@ test('Inbox parent suggestions load from cache and auto-fill parent title for kn
 
   const removeBtn = recentRow.children[1];
   removeBtn.listeners.click({ preventDefault() {}, stopPropagation() {} });
-  assert.equal(elements.recentParents.children.length, 0);
-  assert.equal(elements.recentParents.style.display, 'none');
+  // After removing the one user item, cache is empty so defaults (4) are shown
+  assert.equal(elements.recentParents.children.length, 4);
+  assert.equal(elements.recentParents.style.display, 'flex');
   assert.equal(elements.taskParentId.value, '');
   assert.equal(elements.taskParentTitle.value, '');
 });
