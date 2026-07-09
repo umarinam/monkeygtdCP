@@ -115,3 +115,44 @@ test('renderDueUi renders markdown links as anchors', () => {
   assert.equal(docNodes['due-c'].innerHTML.includes('href="https://example.com/runbook"'), true);
   assert.equal(docNodes['due-c'].innerHTML.includes('target="_blank"'), true);
 });
+
+test('renderDueUi shows priority chip when task has priority', () => {
+  const docNodes = {
+    'due-c': { innerHTML: '' }
+  };
+  const { renderDueUi } = loadRenderContext(docNodes);
+
+  const state = {
+    data: {
+      settings: { relativeDates: false },
+      lists: {
+        l1: { id: 'l1', name: 'Main' }
+      }
+    }
+  };
+
+  const app = {
+    select: (name) => {
+      if (name === 'due.sections') {
+        return [{
+          title: 'Overdue',
+          items: [{
+            id: 't1',
+            checklist_id: 'l1',
+            status: 0,
+            content: 'Priority task',
+            due: '2026-07-06',
+            due_asap: false,
+            color: 5
+          }]
+        }];
+      }
+      return [];
+    }
+  };
+
+  renderDueUi(app, state);
+
+  assert.equal(docNodes['due-c'].innerHTML.includes('class="dpri priority-5"'), true);
+  assert.equal(docNodes['due-c'].innerHTML.includes('P5'), true);
+});

@@ -109,3 +109,28 @@ test('due.sections includes completed due tasks when showCompleted is true', () 
   assert.equal(ids.includes('a'), true);
   assert.equal(ids.includes('b'), true);
 });
+
+test('due.sections sorts by priority before due date', () => {
+  const state = buildState(true);
+  state.data.tasks.a.color = 1;
+  state.data.tasks.b.color = 5;
+  state.data.tasks.b.status = 0;
+  state.data.tasks.d = {
+    id: 'd',
+    checklist_id: 'l1',
+    deleted: false,
+    status: 0,
+    content: 'Medium overdue',
+    due: '2026-07-01',
+    due_asap: false,
+    color: 3,
+    tasks: []
+  };
+
+  const ctx = loadQueryContext(state);
+  const sections = ctx.dueSections();
+  const overdue = sections.find(s => s.title === 'Overdue');
+  const ids = Array.from(overdue?.items || [], t => t.id);
+
+  assert.deepEqual(ids.slice(0, 3), ['b', 'd', 'a']);
+});

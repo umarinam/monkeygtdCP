@@ -317,9 +317,12 @@ function renderDueUi(app, state) {
     return `<div class="dsec"><div class="dsec-h">${sec.title} (${items.length})</div>${items.map(t => {
       const l = state.data.lists[t.checklist_id];
       const contentHtml = renderSummaryContentUi(state, t.content || '(untitled)');
-      return `<div class="dti" onclick="App.jumpTo('${t.id}')">
+      const priorityCls = t.color > 0 ? ` priority-${t.color}` : '';
+      const priorityChip = t.color > 0 ? `<span class="dpri priority-${t.color}">P${t.color}</span>` : '';
+      return `<div class="dti${priorityCls}" onclick="App.jumpTo('${t.id}')">
+        ${t.color > 0 ? '<div class="cbar"></div>' : ''}
         <input type="checkbox" ${t.status === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
-        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${l ? esc(l.name) : ''}</div></div>
+        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}</div></div>
         <div style="font-size:11px;color:var(--muted)">${fmtDue(t, state.data.settings.relativeDates)}</div>
       </div>`;
     }).join('')}</div>`;

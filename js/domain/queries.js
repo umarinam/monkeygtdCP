@@ -113,10 +113,21 @@ function registerAppQueries(app, deps) {
       { title: 'Repeating', filter: t => !!t.repeating_due }
     ];
 
+    const byPriorityThenDue = (a, b) => {
+      const pa = Number(a.color || 0);
+      const pb = Number(b.color || 0);
+      if (pb !== pa) return pb - pa;
+
+      const dueCmp = cmpDate(a.due || '', b.due || '');
+      if (dueCmp !== 0) return dueCmp;
+
+      return String(a.content || '').localeCompare(String(b.content || ''));
+    };
+
     return sections
       .map(sec => ({
         title: sec.title,
-        items: tasks.filter(sec.filter).sort((a, b) => cmpDate(a.due, b.due))
+        items: tasks.filter(sec.filter).sort(byPriorityThenDue)
       }))
       .filter(sec => sec.items.length > 0);
   });

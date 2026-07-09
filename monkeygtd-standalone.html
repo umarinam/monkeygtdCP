@@ -165,9 +165,21 @@ body.zen #topbar{display:none}
 .dsec{margin-bottom:22px}
 .dsec-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
         color:var(--muted);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
-.dti{display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;border-radius:var(--r)}
+.dti{display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;border-radius:var(--r);position:relative}
 .dti:hover{background:var(--bg-hover)}
 .dlist{font-size:11px;color:var(--muted)}
+.dpri{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:16px;
+     margin-right:6px;padding:0 5px;border-radius:999px;border:1px solid var(--border);font-size:10px;
+     font-weight:700;line-height:1;background:var(--bg-alt);color:var(--muted)}
+.dpri.priority-1{color:var(--p1);border-color:color-mix(in srgb, var(--p1) 45%, var(--border))}
+.dpri.priority-2{color:var(--p2);border-color:color-mix(in srgb, var(--p2) 45%, var(--border))}
+.dpri.priority-3{color:var(--p3);border-color:color-mix(in srgb, var(--p3) 45%, var(--border))}
+.dpri.priority-4{color:var(--p4);border-color:color-mix(in srgb, var(--p4) 45%, var(--border))}
+.dpri.priority-5{color:var(--p5);border-color:color-mix(in srgb, var(--p5) 45%, var(--border))}
+.dpri.priority-6{color:var(--p6);border-color:color-mix(in srgb, var(--p6) 45%, var(--border))}
+.dpri.priority-7{color:var(--p7);border-color:color-mix(in srgb, var(--p7) 45%, var(--border))}
+.dpri.priority-8{color:var(--p8);border-color:color-mix(in srgb, var(--p8) 45%, var(--border))}
+.dpri.priority-9{color:var(--p9);border-color:color-mix(in srgb, var(--p9) 45%, var(--border))}
 .tag-cloud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
 .tci{padding:4px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;
      font-size:13px;background:var(--bg-alt)}
@@ -383,7 +395,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-08T13:45:56+05:00',commit:'76d7a65'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-09T10:10:18+05:00',commit:'4ff4c54'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1271,7 +1283,13 @@ function registerAppQueries(app, deps) {
 
   app.queryService.register('due.sections', () => {
     const data = getData();
-    const tasks = Object.values(data.tasks).filter(t => !t.deleted && (t.due || t.due_asap));
+    const includeCompleted = data.settings.showCompleted !== false;
+    const tasks = Object.values(data.tasks).filter(t => {
+      if (t.deleted) return false;
+      if (!(t.due || t.due_asap)) return false;
+      if (!includeCompleted && t.status !== 0) return false;
+      return true;
+    });
     const td = todayS();
     const tm = tomorrowS();
     const sections = [
@@ -1283,10 +1301,21 @@ function registerAppQueries(app, deps) {
       { title: 'Repeating', filter: t => !!t.repeating_due }
     ];
 
+    const byPriorityThenDue = (a, b) => {
+      const pa = Number(a.color || 0);
+      const pb = Number(b.color || 0);
+      if (pb !== pa) return pb - pa;
+
+      const dueCmp = cmpDate(a.due || '', b.due || '');
+      if (dueCmp !== 0) return dueCmp;
+
+      return String(a.content || '').localeCompare(String(b.content || ''));
+    };
+
     return sections
       .map(sec => ({
         title: sec.title,
-        items: tasks.filter(sec.filter).sort((a, b) => cmpDate(a.due, b.due))
+        items: tasks.filter(sec.filter).sort(byPriorityThenDue)
       }))
       .filter(sec => sec.items.length > 0);
   });
@@ -5451,9 +5480,12 @@ function renderDueUi(app, state) {
     return `<div class="dsec"><div class="dsec-h">${sec.title} (${items.length})</div>${items.map(t => {
       const l = state.data.lists[t.checklist_id];
       const contentHtml = renderSummaryContentUi(state, t.content || '(untitled)');
-      return `<div class="dti" onclick="App.jumpTo('${t.id}')">
+      const priorityCls = t.color > 0 ? ` priority-${t.color}` : '';
+      const priorityChip = t.color > 0 ? `<span class="dpri priority-${t.color}">P${t.color}</span>` : '';
+      return `<div class="dti${priorityCls}" onclick="App.jumpTo('${t.id}')">
+        ${t.color > 0 ? '<div class="cbar"></div>' : ''}
         <input type="checkbox" ${t.status === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
-        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${l ? esc(l.name) : ''}</div></div>
+        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}</div></div>
         <div style="font-size:11px;color:var(--muted)">${fmtDue(t, state.data.settings.relativeDates)}</div>
       </div>`;
     }).join('')}</div>`;
