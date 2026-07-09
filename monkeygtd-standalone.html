@@ -383,7 +383,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-07T22:22:09+05:00',commit:'e80c7a5'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-08T13:45:56+05:00',commit:'76d7a65'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1029,7 +1029,12 @@ const getDueCls = t => {
   if(t.due_asap) return 'asap';
   if(!t.due) return '';
   const td=todayS();
-  if(t.due<td) return 'ov'; if(t.due===td) return 'tod'; if(t.due===tomorrowS()) return 'tom';
+  if(t.due<td){
+    // Selecting the same overdue date in the due picker acknowledges the overdue state.
+    if((t.overdue_ack_due||'')===t.due) return '';
+    return 'ov';
+  }
+  if(t.due===td) return 'tod'; if(t.due===tomorrowS()) return 'tom';
   return '';
 };
 const fmtDue = (t,rel) => {
@@ -3492,8 +3497,10 @@ function pickDateUi(app, state, ds) {
   app.pushUndo(app.snap());
   const t = state.data.tasks[state.selId];
   const before = { due: t.due || '', due_asap: !!t.due_asap };
+  const wasOverdueSameDate = !!before.due && before.due === ds && before.due < todayS();
   t.due = ds;
   t.due_asap = false;
+  t.overdue_ack_due = wasOverdueSameDate ? ds : '';
   t.updated_at = now();
   logTaskHistory(t, 'scheduling', { from: before, to: { due: t.due || '', due_asap: !!t.due_asap } });
   app.save();
@@ -3513,11 +3520,11 @@ function setDueQuickUi(app, state, p, internal, taskId) {
   const t = state.data.tasks[taskId];
   const before = { due: t.due || '', due_asap: !!t.due_asap };
   ({
-    today: () => { t.due = todayS(); t.due_asap = false; },
-    tomorrow: () => { t.due = tomorrowS(); t.due_asap = false; },
-    asap: () => { t.due = ''; t.due_asap = true; },
-    nextweek: () => { t.due = nextMonday(); t.due_asap = false; },
-    clear: () => { t.due = ''; t.due_asap = false; }
+    today: () => { t.due = todayS(); t.due_asap = false; t.overdue_ack_due = ''; },
+    tomorrow: () => { t.due = tomorrowS(); t.due_asap = false; t.overdue_ack_due = ''; },
+    asap: () => { t.due = ''; t.due_asap = true; t.overdue_ack_due = ''; },
+    nextweek: () => { t.due = nextMonday(); t.due_asap = false; t.overdue_ack_due = ''; },
+    clear: () => { t.due = ''; t.due_asap = false; t.overdue_ack_due = ''; }
   })[p]?.();
   t.updated_at = now();
   if (before.due !== (t.due || '') || before.due_asap !== !!t.due_asap) {
@@ -3541,6 +3548,7 @@ function clearDueUi(app, state, taskId, internal, removeRepeat) {
   const before = { due: t.due || '', due_asap: !!t.due_asap, repeating_due: t.repeating_due ? 'set' : '' };
   t.due = '';
   t.due_asap = false;
+  t.overdue_ack_due = '';
   if (removeRepeat) t.repeating_due = null;
   t.updated_at = now();
   logTaskHistory(t, 'scheduling', {
@@ -3606,6 +3614,7 @@ function saveRepeatSettingsUi(app, state) {
   };
   t.due = startDate;
   t.due_asap = false;
+  t.overdue_ack_due = '';
   t.updated_at = now();
   logTaskHistory(t, 'scheduling', {
     from: { repeating_due: before },

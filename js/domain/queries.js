@@ -95,7 +95,13 @@ function registerAppQueries(app, deps) {
 
   app.queryService.register('due.sections', () => {
     const data = getData();
-    const tasks = Object.values(data.tasks).filter(t => !t.deleted && (t.due || t.due_asap));
+    const includeCompleted = data.settings.showCompleted !== false;
+    const tasks = Object.values(data.tasks).filter(t => {
+      if (t.deleted) return false;
+      if (!(t.due || t.due_asap)) return false;
+      if (!includeCompleted && t.status !== 0) return false;
+      return true;
+    });
     const td = todayS();
     const tm = tomorrowS();
     const sections = [

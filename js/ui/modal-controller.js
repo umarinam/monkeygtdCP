@@ -58,8 +58,10 @@ function pickDateUi(app, state, ds) {
   app.pushUndo(app.snap());
   const t = state.data.tasks[state.selId];
   const before = { due: t.due || '', due_asap: !!t.due_asap };
+  const wasOverdueSameDate = !!before.due && before.due === ds && before.due < todayS();
   t.due = ds;
   t.due_asap = false;
+  t.overdue_ack_due = wasOverdueSameDate ? ds : '';
   t.updated_at = now();
   logTaskHistory(t, 'scheduling', { from: before, to: { due: t.due || '', due_asap: !!t.due_asap } });
   app.save();
@@ -79,11 +81,11 @@ function setDueQuickUi(app, state, p, internal, taskId) {
   const t = state.data.tasks[taskId];
   const before = { due: t.due || '', due_asap: !!t.due_asap };
   ({
-    today: () => { t.due = todayS(); t.due_asap = false; },
-    tomorrow: () => { t.due = tomorrowS(); t.due_asap = false; },
-    asap: () => { t.due = ''; t.due_asap = true; },
-    nextweek: () => { t.due = nextMonday(); t.due_asap = false; },
-    clear: () => { t.due = ''; t.due_asap = false; }
+    today: () => { t.due = todayS(); t.due_asap = false; t.overdue_ack_due = ''; },
+    tomorrow: () => { t.due = tomorrowS(); t.due_asap = false; t.overdue_ack_due = ''; },
+    asap: () => { t.due = ''; t.due_asap = true; t.overdue_ack_due = ''; },
+    nextweek: () => { t.due = nextMonday(); t.due_asap = false; t.overdue_ack_due = ''; },
+    clear: () => { t.due = ''; t.due_asap = false; t.overdue_ack_due = ''; }
   })[p]?.();
   t.updated_at = now();
   if (before.due !== (t.due || '') || before.due_asap !== !!t.due_asap) {
@@ -107,6 +109,7 @@ function clearDueUi(app, state, taskId, internal, removeRepeat) {
   const before = { due: t.due || '', due_asap: !!t.due_asap, repeating_due: t.repeating_due ? 'set' : '' };
   t.due = '';
   t.due_asap = false;
+  t.overdue_ack_due = '';
   if (removeRepeat) t.repeating_due = null;
   t.updated_at = now();
   logTaskHistory(t, 'scheduling', {
@@ -172,6 +175,7 @@ function saveRepeatSettingsUi(app, state) {
   };
   t.due = startDate;
   t.due_asap = false;
+  t.overdue_ack_due = '';
   t.updated_at = now();
   logTaskHistory(t, 'scheduling', {
     from: { repeating_due: before },

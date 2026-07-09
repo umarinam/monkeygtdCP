@@ -100,7 +100,12 @@ const getDueCls = t => {
   if(t.due_asap) return 'asap';
   if(!t.due) return '';
   const td=todayS();
-  if(t.due<td) return 'ov'; if(t.due===td) return 'tod'; if(t.due===tomorrowS()) return 'tom';
+  if(t.due<td){
+    // Selecting the same overdue date in the due picker acknowledges the overdue state.
+    if((t.overdue_ack_due||'')===t.due) return '';
+    return 'ov';
+  }
+  if(t.due===td) return 'tod'; if(t.due===tomorrowS()) return 'tom';
   return '';
 };
 const fmtDue = (t,rel) => {
