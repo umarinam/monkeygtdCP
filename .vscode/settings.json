@@ -22,6 +22,14 @@
         "/^node -e \"const fs=require\\('fs'\\);const vm=require\\('vm'\\);const src=fs\\.readFileSync\\('js/core/utils\\.js','utf8'\\);const sb=\\{console,Date,Math,JSON\\};vm\\.createContext\\(sb\\);vm\\.runInContext\\(src\\+';globalThis\\.p=parseSmart;',sb\\); const s='UpSkill project for Abhinav \\[fa:onenote\\]\\(onenote:https://d\\.docs\\.live\\.net/389065471FA18896/Documents/Bentley2026/Scripts\\.one#Asad%20for%20Abhinav&section-id=\\{AD2ECFA8-3C34-4953-A725-C542F4207E63\\}&page-id=\\{70CB4199-2C35-4565-AE89-C2276F2B9E5F\\}\\)'; const r=sb\\.p\\(s\\); console\\.log\\(JSON\\.stringify\\(r,null,2\\)\\);\"$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^node scripts/run-tests\\.cjs --help$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node --test tests/unit/task-list-layout-settings\\.test\\.cjs$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

@@ -417,6 +417,38 @@
           <label class="tog-sw"><input type="checkbox" id="s-histchip" onchange="App.setSetting('showTaskHistoryChip',this.checked)"><span class="tslider"></span></label></div>
       </div>
       <div style="margin-bottom:18px">
+        <div class="sst">List Layout</div>
+        <div class="ssi"><div><div class="ssl">Row Density</div><div class="ssd">Control spacing between task rows</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-density" onchange="App.setSetting('taskDensity',this.value)">
+            <option value="compact">Compact</option>
+            <option value="comfortable">Comfortable</option>
+            <option value="relaxed">Relaxed</option>
+          </select></div></div>
+        <div class="ssi"><div><div class="ssl">Emphasize Parent Tasks</div><div class="ssd">Make branch headers easier to scan</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-parent-emphasis" onchange="App.setSetting('emphasizeParentTasks',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Indent Guides</div><div class="ssd">Adjust nesting guide visibility</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-guides" onchange="App.setSetting('indentGuideStyle',this.value)">
+            <option value="full">Full</option>
+            <option value="subtle">Subtle</option>
+            <option value="none">Hidden</option>
+          </select></div></div>
+        <div class="ssi"><div><div class="ssl">Branch Separation</div><div class="ssd">Add visual space between sibling branches</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-branches" onchange="App.setSetting('branchSpacing',this.value)">
+            <option value="compact">Compact</option>
+            <option value="relaxed">Relaxed</option>
+          </select></div></div>
+        <div class="ssi"><div><div class="ssl">Focus Treatment</div><div class="ssd">Dim unrelated rows around the selected task</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-focus" onchange="App.setSetting('focusMode',this.value)">
+            <option value="off">Off</option>
+            <option value="path">Selected Path</option>
+          </select></div></div>
+        <div class="ssi"><div><div class="ssl">Readable Line Length</div><div class="ssd">Constrain task text width on wide lists</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-measure" onchange="App.setSetting('contentWidth',this.value)">
+            <option value="fluid">Full Width</option>
+            <option value="measure">Readable Measure</option>
+          </select></div></div>
+      </div>
+      <div style="margin-bottom:18px">
         <div class="sst">List Style</div>
         <div class="fg">
           <select id="s-style" onchange="App.setListStyle(this.value)">

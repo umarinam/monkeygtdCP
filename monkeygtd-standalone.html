@@ -62,7 +62,7 @@ body.zen #topbar{display:none}
 
 /* â”€â”€ Task list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #task-list{padding:4px 0;min-height:100%}
-.ti{display:flex;align-items:flex-start;padding:1px 0;position:relative;cursor:pointer}
+.ti{display:flex;align-items:flex-start;padding:3px 0;position:relative;cursor:pointer}
 .ti:hover{background:var(--bg-hover)}
 .ti.sel{background:var(--bg-sel)}
 .ti.msel{background:var(--bg-sel);box-shadow:inset 3px 0 0 var(--accent)}
@@ -70,8 +70,9 @@ body.zen #topbar{display:none}
                 font-weight:700;line-height:1;padding:1px 4px;border-radius:999px;
                 color:var(--accent);background:color-mix(in srgb, var(--accent) 16%, transparent);
                 border:1px solid color-mix(in srgb, var(--accent) 35%, var(--border));}
+.igw{display:flex;align-self:stretch}
 .ig{width:20px;position:relative;flex-shrink:0;align-self:stretch}
-.ig::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:1px;background:var(--border)}
+.ig::before{content:'';position:absolute;left:10px;top:0;bottom:0;border-left:1px solid var(--border)}
 .tog{width:20px;height:22px;flex-shrink:0;display:flex;align-items:center;
      justify-content:center;color:var(--muted);font-size:10px;cursor:pointer;border-radius:3px}
 .tog:hover{color:var(--text);background:var(--bg-hover)}
@@ -148,6 +149,24 @@ body.zen #topbar{display:none}
        font-size:9px;font-weight:700;border-radius:50%;border:2px solid var(--accent);
        color:var(--accent);flex-shrink:0;cursor:pointer}
 .pring.done{border-color:var(--ok);color:var(--ok)}
+
+#task-list.density-compact .ti{padding:1px 0}
+#task-list.density-comfortable .ti{padding:4px 0}
+#task-list.density-relaxed .ti{padding:7px 0}
+#task-list.parents-strong .ti.has-kids .tc{font-weight:600}
+#task-list.parents-strong .ti.has-kids.depth-0 .tc{font-size:14.5px}
+#task-list.guides-full .ig::before{border-left:2px solid color-mix(in srgb, var(--text) 22%, var(--border))}
+#task-list.guides-subtle .ig::before{border-left:1px solid color-mix(in srgb, var(--border) 45%, transparent)}
+#task-list.guides-none .ig::before{border-left:none}
+#task-list.branches-relaxed .ti.depth-0 + .ti.depth-0{margin-top:10px}
+#task-list.branches-relaxed .ti.has-kids{margin-bottom:4px}
+#task-list.focus-path .ti{transition:opacity .12s ease, background-color .12s ease}
+#task-list.focus-path .ti.focus-dim{opacity:.42}
+#task-list.focus-path .ti.focus-path{opacity:.82}
+#task-list.focus-path .ti.focus-active{opacity:1}
+#task-list.focus-path .ti.focus-active .tc{font-weight:600}
+#task-list.measure-readable .tb{padding-right:16px}
+#task-list.measure-readable .tc{max-width:72ch}
 
 /* â”€â”€ Home page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #home-page{padding:24px}
@@ -395,7 +414,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-10T10:57:59+05:00',commit:'b78fbc0'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-10T11:56:25+05:00',commit:'fa558ba'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -806,6 +825,38 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           <label class="tog-sw"><input type="checkbox" id="s-histchip" onchange="App.setSetting('showTaskHistoryChip',this.checked)"><span class="tslider"></span></label></div>
       </div>
       <div style="margin-bottom:18px">
+        <div class="sst">List Layout</div>
+        <div class="ssi"><div><div class="ssl">Row Density</div><div class="ssd">Control spacing between task rows</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-density" onchange="App.setSetting('taskDensity',this.value)">
+            <option value="compact">Compact</option>
+            <option value="comfortable">Comfortable</option>
+            <option value="relaxed">Relaxed</option>
+          </select></div></div>
+        <div class="ssi"><div><div class="ssl">Emphasize Parent Tasks</div><div class="ssd">Make branch headers easier to scan</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-parent-emphasis" onchange="App.setSetting('emphasizeParentTasks',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Indent Guides</div><div class="ssd">Adjust nesting guide visibility</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-guides" onchange="App.setSetting('indentGuideStyle',this.value)">
+            <option value="full">Full</option>
+            <option value="subtle">Subtle</option>
+            <option value="none">Hidden</option>
+          </select></div></div>
+        <div class="ssi"><div><div class="ssl">Branch Separation</div><div class="ssd">Add visual space between sibling branches</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-branches" onchange="App.setSetting('branchSpacing',this.value)">
+            <option value="compact">Compact</option>
+            <option value="relaxed">Relaxed</option>
+          </select></div></div>
+        <div class="ssi"><div><div class="ssl">Focus Treatment</div><div class="ssd">Dim unrelated rows around the selected task</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-focus" onchange="App.setSetting('focusMode',this.value)">
+            <option value="off">Off</option>
+            <option value="path">Selected Path</option>
+          </select></div></div>
+        <div class="ssi"><div><div class="ssl">Readable Line Length</div><div class="ssd">Constrain task text width on wide lists</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-measure" onchange="App.setSetting('contentWidth',this.value)">
+            <option value="fluid">Full Width</option>
+            <option value="measure">Readable Measure</option>
+          </select></div></div>
+      </div>
+      <div style="margin-bottom:18px">
         <div class="sst">List Style</div>
         <div class="fg">
           <select id="s-style" onchange="App.setListStyle(this.value)">
@@ -1179,6 +1230,8 @@ const seedData = () => {
     settings:{darkMode:false,zenMode:false,showCompleted:true,moveCompletedDown:false,
               relativeDates:false,hideFuture:false,showBreadcrumbs:true,autoCloseParent:true,
               closeChildrenOnParentDone:false,
+              taskDensity:'comfortable',emphasizeParentTasks:true,indentGuideStyle:'subtle',
+              branchSpacing:'relaxed',focusMode:'off',contentWidth:'measure',
               listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,copyStatusPrefix:false,
               gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5},
     deletedItems:[],currentListId:lid
@@ -5673,6 +5726,67 @@ function ensureSelectionVisibleUi(app, state) {
   }
 }
 
+function pickTaskListOption(value, allowed, fallback) {
+  return allowed.includes(value) ? value : fallback;
+}
+
+function getTaskListLayoutClassName(settings) {
+  const density = pickTaskListOption(String(settings?.taskDensity || ''), ['compact', 'comfortable', 'relaxed'], 'comfortable');
+  const guideStyle = pickTaskListOption(String(settings?.indentGuideStyle || ''), ['full', 'subtle', 'none'], 'subtle');
+  const branchSpacing = pickTaskListOption(String(settings?.branchSpacing || ''), ['compact', 'relaxed'], 'relaxed');
+  const focusMode = pickTaskListOption(String(settings?.focusMode || ''), ['off', 'path'], 'off');
+  const contentWidth = pickTaskListOption(String(settings?.contentWidth || ''), ['fluid', 'measure'], 'measure');
+  const parentEmphasis = settings?.emphasizeParentTasks !== false ? 'parents-strong' : 'parents-flat';
+  const measureClass = contentWidth === 'measure' ? 'measure-readable' : 'measure-fluid';
+
+  return `task-list density-${density} ${parentEmphasis} guides-${guideStyle} branches-${branchSpacing} focus-${focusMode} ${measureClass}`;
+}
+
+function getTaskFocusCache(state) {
+  const selId = String(state?.selId || '');
+  if (!selId) return null;
+  const existing = state.__taskFocusCache;
+  if (existing && existing.selId === selId) return existing;
+
+  const tasks = state.data?.tasks || {};
+  const branchIds = new Set([selId]);
+  const selectedTask = tasks[selId];
+  let current = selectedTask;
+
+  while (current && current.parent_id) {
+    const parent = tasks[current.parent_id];
+    if (!parent) break;
+    branchIds.add(parent.id);
+    current = parent;
+  }
+
+  const addDescendants = (taskId) => {
+    const task = tasks[taskId];
+    if (!task || !Array.isArray(task.tasks)) return;
+    task.tasks.forEach((childId) => {
+      if (branchIds.has(childId)) return;
+      branchIds.add(childId);
+      addDescendants(childId);
+    });
+  };
+
+  addDescendants(selId);
+
+  const cache = { selId, branchIds };
+  state.__taskFocusCache = cache;
+  return cache;
+}
+
+function getTaskFocusClassName(state, id) {
+  const focusMode = pickTaskListOption(String(state?.data?.settings?.focusMode || ''), ['off', 'path'], 'off');
+  if (focusMode !== 'path' || !state?.selId) return '';
+  if (state.selId === id) return ' focus-active';
+
+  const cache = getTaskFocusCache(state);
+  if (cache && cache.branchIds.has(id)) return ' focus-path';
+  return ' focus-dim';
+}
+
 function renderListUi(app, state) {
   const list = state.data.lists[state.listId];
   if (!list) {
@@ -5687,7 +5801,9 @@ function renderListUi(app, state) {
 
   const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
   const html = buildTaskTreeUi(app, state, roots, 0, list);
-  document.getElementById('task-list').innerHTML = html || `<div class="empty">
+  const taskListEl = document.getElementById('task-list');
+  taskListEl.className = getTaskListLayoutClassName(state.data.settings || {});
+  taskListEl.innerHTML = html || `<div class="empty">
       <div style="font-size:40px;margin-bottom:12px">📋</div>
       <div class="empty-t">No tasks yet</div>
       <div class="empty-d">Press <strong>Enter</strong> to add your first task.</div></div>`;
@@ -5792,6 +5908,9 @@ function buildTaskItemUi(app, state, id, depth, list) {
   const sCls = ` s${t.status}`;
   const selCls = isSel ? ' sel' : '';
   const mselCls = isMsel ? ' msel' : '';
+  const branchCls = hasKids ? ' has-kids' : ' leaf';
+  const depthCls = ` depth-${depth}`;
+  const focusCls = getTaskFocusClassName(state, id);
   const guides = Array(depth).fill('<div class="ig"></div>').join('');
 
   const tog = hasKids
@@ -5857,9 +5976,9 @@ function buildTaskItemUi(app, state, id, depth, list) {
     ? `<div class="tb"><textarea class="edit-area" id="ea-${id}" data-id="${id}">${esc(t.content)}</textarea><div class="iac" id="iac-${id}"></div></div>`
     : `<div class="tb"><div class="tline"><div class="tc">${pfx}${rendered}</div>${metaH ? `<div class="tmeta">${metaH}</div>` : ''}</div>${detailH}${notesH}</div>`;
 
-  let html = `<div class="ti${sCls}${colCls}${selCls}${mselCls}" data-id="${id}" data-depth="${depth}" draggable="true">
+    let html = `<div class="ti${sCls}${colCls}${selCls}${mselCls}${branchCls}${depthCls}${focusCls}" data-id="${id}" data-depth="${depth}" draggable="true">
       ${t.color > 0 ? '<div class="cbar"></div>' : ''}
-      <div style="display:flex">${guides}</div>${tog}${cb}${bodyH}</div>`;
+      <div class="igw">${guides}</div>${tog}${cb}${bodyH}</div>`;
 
   if (hasKids && !t._collapsed) html += buildTaskTreeUi(app, state, t.tasks || [], depth + 1, list);
   return html;
@@ -6111,6 +6230,10 @@ function syncSettingsUi(app, S) {
     const el = document.getElementById(id);
     if (el) el.checked = !!v;
   };
+  const syncSelect = (id, v, fallback) => {
+    const el = document.getElementById(id);
+    if (el) el.value = String(v || fallback);
+  };
   syncCheckbox('s-dark', s.darkMode);
   syncCheckbox('s-zen', s.zenMode);
   syncCheckbox('s-showdone', s.showCompleted);
@@ -6124,6 +6247,12 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-copy-status', s.copyStatusPrefix === true);
   syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);
   syncCheckbox('s-histchip', s.showTaskHistoryChip !== false);
+  syncCheckbox('s-parent-emphasis', s.emphasizeParentTasks !== false);
+  syncSelect('s-density', s.taskDensity, 'comfortable');
+  syncSelect('s-guides', s.indentGuideStyle, 'subtle');
+  syncSelect('s-branches', s.branchSpacing, 'relaxed');
+  syncSelect('s-focus', s.focusMode, 'off');
+  syncSelect('s-measure', s.contentWidth, 'measure');
   const styleEl = document.getElementById('s-style');
   if (styleEl) styleEl.value = s.listStyle || 'none';
 

@@ -238,6 +238,8 @@ const seedData = () => {
     settings:{darkMode:false,zenMode:false,showCompleted:true,moveCompletedDown:false,
               relativeDates:false,hideFuture:false,showBreadcrumbs:true,autoCloseParent:true,
               closeChildrenOnParentDone:false,
+              taskDensity:'comfortable',emphasizeParentTasks:true,indentGuideStyle:'subtle',
+              branchSpacing:'relaxed',focusMode:'off',contentWidth:'measure',
               listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,copyStatusPrefix:false,
               gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5},
     deletedItems:[],currentListId:lid

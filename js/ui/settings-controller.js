@@ -17,6 +17,10 @@ function syncSettingsUi(app, S) {
     const el = document.getElementById(id);
     if (el) el.checked = !!v;
   };
+  const syncSelect = (id, v, fallback) => {
+    const el = document.getElementById(id);
+    if (el) el.value = String(v || fallback);
+  };
   syncCheckbox('s-dark', s.darkMode);
   syncCheckbox('s-zen', s.zenMode);
   syncCheckbox('s-showdone', s.showCompleted);
@@ -30,6 +34,12 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-copy-status', s.copyStatusPrefix === true);
   syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);
   syncCheckbox('s-histchip', s.showTaskHistoryChip !== false);
+  syncCheckbox('s-parent-emphasis', s.emphasizeParentTasks !== false);
+  syncSelect('s-density', s.taskDensity, 'comfortable');
+  syncSelect('s-guides', s.indentGuideStyle, 'subtle');
+  syncSelect('s-branches', s.branchSpacing, 'relaxed');
+  syncSelect('s-focus', s.focusMode, 'off');
+  syncSelect('s-measure', s.contentWidth, 'measure');
   const styleEl = document.getElementById('s-style');
   if (styleEl) styleEl.value = s.listStyle || 'none';
 

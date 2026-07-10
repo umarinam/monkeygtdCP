@@ -55,7 +55,7 @@ body.zen #topbar{display:none}
 
 /* â”€â”€ Task list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #task-list{padding:4px 0;min-height:100%}
-.ti{display:flex;align-items:flex-start;padding:1px 0;position:relative;cursor:pointer}
+.ti{display:flex;align-items:flex-start;padding:3px 0;position:relative;cursor:pointer}
 .ti:hover{background:var(--bg-hover)}
 .ti.sel{background:var(--bg-sel)}
 .ti.msel{background:var(--bg-sel);box-shadow:inset 3px 0 0 var(--accent)}
@@ -63,8 +63,9 @@ body.zen #topbar{display:none}
                 font-weight:700;line-height:1;padding:1px 4px;border-radius:999px;
                 color:var(--accent);background:color-mix(in srgb, var(--accent) 16%, transparent);
                 border:1px solid color-mix(in srgb, var(--accent) 35%, var(--border));}
+.igw{display:flex;align-self:stretch}
 .ig{width:20px;position:relative;flex-shrink:0;align-self:stretch}
-.ig::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:1px;background:var(--border)}
+.ig::before{content:'';position:absolute;left:10px;top:0;bottom:0;border-left:1px solid var(--border)}
 .tog{width:20px;height:22px;flex-shrink:0;display:flex;align-items:center;
      justify-content:center;color:var(--muted);font-size:10px;cursor:pointer;border-radius:3px}
 .tog:hover{color:var(--text);background:var(--bg-hover)}
@@ -141,6 +142,24 @@ body.zen #topbar{display:none}
        font-size:9px;font-weight:700;border-radius:50%;border:2px solid var(--accent);
        color:var(--accent);flex-shrink:0;cursor:pointer}
 .pring.done{border-color:var(--ok);color:var(--ok)}
+
+#task-list.density-compact .ti{padding:1px 0}
+#task-list.density-comfortable .ti{padding:4px 0}
+#task-list.density-relaxed .ti{padding:7px 0}
+#task-list.parents-strong .ti.has-kids .tc{font-weight:600}
+#task-list.parents-strong .ti.has-kids.depth-0 .tc{font-size:14.5px}
+#task-list.guides-full .ig::before{border-left:2px solid color-mix(in srgb, var(--text) 22%, var(--border))}
+#task-list.guides-subtle .ig::before{border-left:1px solid color-mix(in srgb, var(--border) 45%, transparent)}
+#task-list.guides-none .ig::before{border-left:none}
+#task-list.branches-relaxed .ti.depth-0 + .ti.depth-0{margin-top:10px}
+#task-list.branches-relaxed .ti.has-kids{margin-bottom:4px}
+#task-list.focus-path .ti{transition:opacity .12s ease, background-color .12s ease}
+#task-list.focus-path .ti.focus-dim{opacity:.42}
+#task-list.focus-path .ti.focus-path{opacity:.82}
+#task-list.focus-path .ti.focus-active{opacity:1}
+#task-list.focus-path .ti.focus-active .tc{font-weight:600}
+#task-list.measure-readable .tb{padding-right:16px}
+#task-list.measure-readable .tc{max-width:72ch}
 
 /* â”€â”€ Home page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #home-page{padding:24px}

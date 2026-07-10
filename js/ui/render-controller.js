@@ -472,6 +472,67 @@ function ensureSelectionVisibleUi(app, state) {
   }
 }
 
+function pickTaskListOption(value, allowed, fallback) {
+  return allowed.includes(value) ? value : fallback;
+}
+
+function getTaskListLayoutClassName(settings) {
+  const density = pickTaskListOption(String(settings?.taskDensity || ''), ['compact', 'comfortable', 'relaxed'], 'comfortable');
+  const guideStyle = pickTaskListOption(String(settings?.indentGuideStyle || ''), ['full', 'subtle', 'none'], 'subtle');
+  const branchSpacing = pickTaskListOption(String(settings?.branchSpacing || ''), ['compact', 'relaxed'], 'relaxed');
+  const focusMode = pickTaskListOption(String(settings?.focusMode || ''), ['off', 'path'], 'off');
+  const contentWidth = pickTaskListOption(String(settings?.contentWidth || ''), ['fluid', 'measure'], 'measure');
+  const parentEmphasis = settings?.emphasizeParentTasks !== false ? 'parents-strong' : 'parents-flat';
+  const measureClass = contentWidth === 'measure' ? 'measure-readable' : 'measure-fluid';
+
+  return `task-list density-${density} ${parentEmphasis} guides-${guideStyle} branches-${branchSpacing} focus-${focusMode} ${measureClass}`;
+}
+
+function getTaskFocusCache(state) {
+  const selId = String(state?.selId || '');
+  if (!selId) return null;
+  const existing = state.__taskFocusCache;
+  if (existing && existing.selId === selId) return existing;
+
+  const tasks = state.data?.tasks || {};
+  const branchIds = new Set([selId]);
+  const selectedTask = tasks[selId];
+  let current = selectedTask;
+
+  while (current && current.parent_id) {
+    const parent = tasks[current.parent_id];
+    if (!parent) break;
+    branchIds.add(parent.id);
+    current = parent;
+  }
+
+  const addDescendants = (taskId) => {
+    const task = tasks[taskId];
+    if (!task || !Array.isArray(task.tasks)) return;
+    task.tasks.forEach((childId) => {
+      if (branchIds.has(childId)) return;
+      branchIds.add(childId);
+      addDescendants(childId);
+    });
+  };
+
+  addDescendants(selId);
+
+  const cache = { selId, branchIds };
+  state.__taskFocusCache = cache;
+  return cache;
+}
+
+function getTaskFocusClassName(state, id) {
+  const focusMode = pickTaskListOption(String(state?.data?.settings?.focusMode || ''), ['off', 'path'], 'off');
+  if (focusMode !== 'path' || !state?.selId) return '';
+  if (state.selId === id) return ' focus-active';
+
+  const cache = getTaskFocusCache(state);
+  if (cache && cache.branchIds.has(id)) return ' focus-path';
+  return ' focus-dim';
+}
+
 function renderListUi(app, state) {
   const list = state.data.lists[state.listId];
   if (!list) {
@@ -486,7 +547,9 @@ function renderListUi(app, state) {
 
   const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
   const html = buildTaskTreeUi(app, state, roots, 0, list);
-  document.getElementById('task-list').innerHTML = html || `<div class="empty">
+  const taskListEl = document.getElementById('task-list');
+  taskListEl.className = getTaskListLayoutClassName(state.data.settings || {});
+  taskListEl.innerHTML = html || `<div class="empty">
       <div style="font-size:40px;margin-bottom:12px">📋</div>
       <div class="empty-t">No tasks yet</div>
       <div class="empty-d">Press <strong>Enter</strong> to add your first task.</div></div>`;
@@ -591,6 +654,9 @@ function buildTaskItemUi(app, state, id, depth, list) {
   const sCls = ` s${t.status}`;
   const selCls = isSel ? ' sel' : '';
   const mselCls = isMsel ? ' msel' : '';
+  const branchCls = hasKids ? ' has-kids' : ' leaf';
+  const depthCls = ` depth-${depth}`;
+  const focusCls = getTaskFocusClassName(state, id);
   const guides = Array(depth).fill('<div class="ig"></div>').join('');
 
   const tog = hasKids
@@ -656,9 +722,9 @@ function buildTaskItemUi(app, state, id, depth, list) {
     ? `<div class="tb"><textarea class="edit-area" id="ea-${id}" data-id="${id}">${esc(t.content)}</textarea><div class="iac" id="iac-${id}"></div></div>`
     : `<div class="tb"><div class="tline"><div class="tc">${pfx}${rendered}</div>${metaH ? `<div class="tmeta">${metaH}</div>` : ''}</div>${detailH}${notesH}</div>`;
 
-  let html = `<div class="ti${sCls}${colCls}${selCls}${mselCls}" data-id="${id}" data-depth="${depth}" draggable="true">
+    let html = `<div class="ti${sCls}${colCls}${selCls}${mselCls}${branchCls}${depthCls}${focusCls}" data-id="${id}" data-depth="${depth}" draggable="true">
       ${t.color > 0 ? '<div class="cbar"></div>' : ''}
-      <div style="display:flex">${guides}</div>${tog}${cb}${bodyH}</div>`;
+      <div class="igw">${guides}</div>${tog}${cb}${bodyH}</div>`;
 
   if (hasKids && !t._collapsed) html += buildTaskTreeUi(app, state, t.tasks || [], depth + 1, list);
   return html;
