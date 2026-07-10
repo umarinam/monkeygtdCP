@@ -25,10 +25,10 @@ function renderCalUi(app, state) {
   const d = state.calDate;
   const yr = d.getFullYear();
   const mo = d.getMonth();
-  const fd = new Date(yr, mo, 1).getDay();
+  const fd = (new Date(yr, mo, 1).getDay() + 6) % 7;
   const dm = new Date(yr, mo + 1, 0).getDate();
   const MN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const DN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const DN = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
   const t2 = state.data.tasks[state.selId];
   const sel = t2 ? t2.due : '';
   const td = todayS();

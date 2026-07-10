@@ -104,18 +104,32 @@ function registerAppQueries(app, deps) {
     });
     const td = todayS();
     const tm = tomorrowS();
-    const sections = [
-      { title: 'Overdue', filter: t => !!t.due && t.due < td },
-      { title: 'ASAP', filter: t => t.due_asap },
-      { title: 'Today', filter: t => t.due === td },
-      { title: 'Tomorrow', filter: t => t.due === tm },
-      { title: 'Upcoming', filter: t => !!t.due && t.due > tm },
-      { title: 'Repeating', filter: t => !!t.repeating_due }
-    ];
+    const sections = [];
+
+    const priorityRank = t => {
+      const n = Number.parseInt(String((t && t.color) ?? ''), 10);
+      return Number.isFinite(n) && n >= 1 && n <= 9 ? n : 0;
+    };
+
+    const parseYmd = s => new Date(`${s}T00:00:00`);
+    const ymd = d2 => `${d2.getFullYear()}-${String(d2.getMonth() + 1).padStart(2, '0')}-${String(d2.getDate()).padStart(2, '0')}`;
+    const addDays = (s, days) => {
+      const d2 = parseYmd(s);
+      d2.setDate(d2.getDate() + days);
+      return ymd(d2);
+    };
+
+    const tdDate = parseYmd(td);
+    const weekStartShift = (tdDate.getDay() + 6) % 7;
+    const thisWeekStart = addDays(td, -weekStartShift);
+    const thisWeekEnd = addDays(thisWeekStart, 6);
+    const nextWeekStart = addDays(thisWeekStart, 7);
+    const nextWeekEnd = addDays(thisWeekStart, 13);
+    const monthEnd = ymd(new Date(tdDate.getFullYear(), tdDate.getMonth() + 1, 0));
 
     const byPriorityThenDue = (a, b) => {
-      const pa = Number(a.color || 0);
-      const pb = Number(b.color || 0);
+      const pa = priorityRank(a);
+      const pb = priorityRank(b);
       if (pb !== pa) return pb - pa;
 
       const dueCmp = cmpDate(a.due || '', b.due || '');
@@ -124,12 +138,31 @@ function registerAppQueries(app, deps) {
       return String(a.content || '').localeCompare(String(b.content || ''));
     };
 
-    return sections
-      .map(sec => ({
-        title: sec.title,
-        items: tasks.filter(sec.filter).sort(byPriorityThenDue)
-      }))
-      .filter(sec => sec.items.length > 0);
+    const dueTasks = tasks.filter(t => !!t.due);
+    const assigned = new Set();
+    const take = (title, predicate) => {
+      const items = dueTasks
+        .filter(t => !assigned.has(t.id) && predicate(t))
+        .sort(byPriorityThenDue);
+      items.forEach(t => assigned.add(t.id));
+      if (items.length) sections.push({ title, items });
+    };
+
+    const asapItems = tasks.filter(t => t.due_asap).sort(byPriorityThenDue);
+    if (asapItems.length) sections.push({ title: 'ASAP', items: asapItems });
+
+    take('Overdue', t => t.due < td);
+    take('Today', t => t.due === td);
+    take('Tomorrow', t => t.due === tm);
+    take('This Week', t => t.due >= thisWeekStart && t.due <= thisWeekEnd);
+    take('Next Week', t => t.due >= nextWeekStart && t.due <= nextWeekEnd);
+    take('This Month', t => t.due > nextWeekEnd && t.due <= monthEnd);
+    take('Upcoming', () => true);
+
+    const repeatingItems = tasks.filter(t => !!t.repeating_due).sort(byPriorityThenDue);
+    if (repeatingItems.length) sections.push({ title: 'Repeating', items: repeatingItems });
+
+    return sections;
   });
 
   app.queryService.register('tags.cloud', () => {

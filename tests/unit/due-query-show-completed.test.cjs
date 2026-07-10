@@ -134,3 +134,69 @@ test('due.sections sorts by priority before due date', () => {
 
   assert.deepEqual(ids.slice(0, 3), ['b', 'd', 'a']);
 });
+
+test('due.sections sorts robustly when some priorities are invalid strings', () => {
+  const state = buildState(true);
+  state.data.tasks.a.color = 'high';
+  state.data.tasks.b.color = '5';
+  state.data.tasks.b.status = 0;
+  state.data.tasks.d = {
+    id: 'd',
+    checklist_id: 'l1',
+    deleted: false,
+    status: 0,
+    content: 'No priority',
+    due: '2026-07-01',
+    due_asap: false,
+    color: '',
+    tasks: []
+  };
+
+  const ctx = loadQueryContext(state);
+  const sections = ctx.dueSections();
+  const overdue = sections.find(s => s.title === 'Overdue');
+  const ids = Array.from(overdue?.items || [], t => t.id);
+
+  assert.equal(ids[0], 'b');
+});
+
+test('due.sections includes This Week, Next Week, and This Month buckets', () => {
+  const state = buildState(true);
+  state.data.tasks.a.due = '2026-07-11'; // this week (today is 2026-07-09)
+  state.data.tasks.a.status = 0;
+  state.data.tasks.b.due = '2026-07-14'; // next week
+  state.data.tasks.b.status = 0;
+  state.data.tasks.d = {
+    id: 'd',
+    checklist_id: 'l1',
+    deleted: false,
+    status: 0,
+    content: 'This month item',
+    due: '2026-07-22',
+    due_asap: false,
+    tasks: []
+  };
+  state.data.tasks.e = {
+    id: 'e',
+    checklist_id: 'l1',
+    deleted: false,
+    status: 0,
+    content: 'Upcoming item',
+    due: '2026-08-02',
+    due_asap: false,
+    tasks: []
+  };
+
+  const ctx = loadQueryContext(state);
+  const sections = ctx.dueSections();
+
+  const thisWeek = sections.find(s => s.title === 'This Week');
+  const nextWeek = sections.find(s => s.title === 'Next Week');
+  const thisMonth = sections.find(s => s.title === 'This Month');
+  const upcoming = sections.find(s => s.title === 'Upcoming');
+
+  assert.equal(Array.from(thisWeek?.items || [], t => t.id).includes('a'), true);
+  assert.equal(Array.from(nextWeek?.items || [], t => t.id).includes('b'), true);
+  assert.equal(Array.from(thisMonth?.items || [], t => t.id).includes('d'), true);
+  assert.equal(Array.from(upcoming?.items || [], t => t.id).includes('e'), true);
+});

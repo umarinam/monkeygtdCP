@@ -19,7 +19,7 @@ function loadContext(overrides = {}) {
   vm.runInContext(utilsSource, sandbox, { filename: 'utils.js' });
   vm.runInContext(modalSource, sandbox, { filename: 'modal-controller.js' });
   vm.runInContext(
-    'globalThis.__exports = { mkTask, getDueCls, pickDateUi, todayS };',
+    'globalThis.__exports = { mkTask, getDueCls, pickDateUi, todayS, renderCalUi };',
     sandbox,
     { filename: 'exports.js' }
   );
@@ -76,4 +76,31 @@ test('pickDateUi acknowledges overdue when same overdue date is selected', () =>
   assert.equal(task.due, '2020-01-01');
   assert.equal(task.overdue_ack_due, '2020-01-01');
   assert.equal(getDueCls(task), '');
+});
+
+test('renderCalUi starts week on Monday with Monday-based alignment', () => {
+  const calWidget = { innerHTML: '' };
+  const { renderCalUi } = loadContext({
+    document: {
+      getElementById: () => calWidget
+    }
+  });
+
+  const state = {
+    selId: 't1',
+    calDate: new Date('2025-06-01T00:00:00'),
+    data: { tasks: { t1: { due: '' } } }
+  };
+
+  renderCalUi({}, state);
+
+  assert.equal(
+    calWidget.innerHTML.includes('<div class="cdh">Mo</div><div class="cdh">Tu</div><div class="cdh">We</div><div class="cdh">Th</div><div class="cdh">Fr</div><div class="cdh">Sa</div><div class="cdh">Su</div>'),
+    true
+  );
+
+  const dayOneIndex = calWidget.innerHTML.indexOf(">1</div>");
+  const beforeDayOne = calWidget.innerHTML.slice(0, dayOneIndex);
+  const blanks = (beforeDayOne.match(/<div class="cd"><\/div>/g) || []).length;
+  assert.equal(blanks, 6);
 });
