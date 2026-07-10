@@ -414,7 +414,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-10T11:56:25+05:00',commit:'fa558ba'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-10T18:42:30+05:00',commit:'1b37928'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -7209,7 +7209,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => moveUpDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.renderList();
     this.toast(`Moved up ${ids.length} task(s)`);
@@ -7222,7 +7221,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => [...ids].reverse().forEach(id => moveDownDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.renderList();
     this.toast(`Moved down ${ids.length} task(s)`);
@@ -7235,7 +7233,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => indentDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.renderList();
     this.toast(`Indented ${ids.length} task(s)`);
@@ -7248,7 +7245,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => unindentDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.renderList();
     this.toast(`Un-indented ${ids.length} task(s)`);

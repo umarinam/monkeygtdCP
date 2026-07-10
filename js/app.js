@@ -310,7 +310,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => moveUpDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.renderList();
     this.toast(`Moved up ${ids.length} task(s)`);
@@ -323,7 +322,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => [...ids].reverse().forEach(id => moveDownDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.renderList();
     this.toast(`Moved down ${ids.length} task(s)`);
@@ -336,7 +334,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => indentDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.renderList();
     this.toast(`Indented ${ids.length} task(s)`);
@@ -349,7 +346,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => unindentDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.renderList();
     this.toast(`Un-indented ${ids.length} task(s)`);
