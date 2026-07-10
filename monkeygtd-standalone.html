@@ -395,7 +395,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-09T11:47:03+05:00',commit:'7d50f59'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-10T10:57:59+05:00',commit:'b78fbc0'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1296,7 +1296,7 @@ function registerAppQueries(app, deps) {
 
     const priorityRank = t => {
       const n = Number.parseInt(String((t && t.color) ?? ''), 10);
-      return Number.isFinite(n) && n >= 1 && n <= 9 ? n : 0;
+      return Number.isFinite(n) && n >= 1 && n <= 9 ? n : 99;
     };
 
     const parseYmd = s => new Date(`${s}T00:00:00`);
@@ -1318,7 +1318,7 @@ function registerAppQueries(app, deps) {
     const byPriorityThenDue = (a, b) => {
       const pa = priorityRank(a);
       const pb = priorityRank(b);
-      if (pb !== pa) return pb - pa;
+      if (pa !== pb) return pa - pb;
 
       const dueCmp = cmpDate(a.due || '', b.due || '');
       if (dueCmp !== 0) return dueCmp;
@@ -2329,6 +2329,11 @@ function applySortDomain(app, state, internal, payload) {
   const list = state.data.lists[state.listId];
   if (!list) return;
 
+  const priorityRank = t => {
+    const n = Number.parseInt(String((t && t.color) ?? ''), 10);
+    return Number.isFinite(n) && n >= 1 && n <= 9 ? n : 99;
+  };
+
   const cmp = (a, b) => {
     const ta = state.data.tasks[a];
     const tb = state.data.tasks[b];
@@ -2339,7 +2344,7 @@ function applySortDomain(app, state, internal, payload) {
     else if (f === 'due') r = cmpDate(ta.due || (ta.due_asap ? '0000-00-00' : ''), tb.due || (tb.due_asap ? '0000-00-00' : ''));
     else if (f === 'created') r = (tb.created_at || '') < (ta.created_at || '') ? -1 : 1;
     else if (f === 'updated') r = (tb.updated_at || '') < (ta.updated_at || '') ? -1 : 1;
-    else if (f === 'priority') r = (tb.color || 0) - (ta.color || 0);
+    else if (f === 'priority') r = priorityRank(ta) - priorityRank(tb);
 
     return rev ? -r : r;
   };

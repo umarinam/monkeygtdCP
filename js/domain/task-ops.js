@@ -81,6 +81,11 @@ function applySortDomain(app, state, internal, payload) {
   const list = state.data.lists[state.listId];
   if (!list) return;
 
+  const priorityRank = t => {
+    const n = Number.parseInt(String((t && t.color) ?? ''), 10);
+    return Number.isFinite(n) && n >= 1 && n <= 9 ? n : 99;
+  };
+
   const cmp = (a, b) => {
     const ta = state.data.tasks[a];
     const tb = state.data.tasks[b];
@@ -91,7 +96,7 @@ function applySortDomain(app, state, internal, payload) {
     else if (f === 'due') r = cmpDate(ta.due || (ta.due_asap ? '0000-00-00' : ''), tb.due || (tb.due_asap ? '0000-00-00' : ''));
     else if (f === 'created') r = (tb.created_at || '') < (ta.created_at || '') ? -1 : 1;
     else if (f === 'updated') r = (tb.updated_at || '') < (ta.updated_at || '') ? -1 : 1;
-    else if (f === 'priority') r = (tb.color || 0) - (ta.color || 0);
+    else if (f === 'priority') r = priorityRank(ta) - priorityRank(tb);
 
     return rev ? -r : r;
   };

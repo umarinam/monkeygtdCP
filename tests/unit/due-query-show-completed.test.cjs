@@ -132,7 +132,7 @@ test('due.sections sorts by priority before due date', () => {
   const overdue = sections.find(s => s.title === 'Overdue');
   const ids = Array.from(overdue?.items || [], t => t.id);
 
-  assert.deepEqual(ids.slice(0, 3), ['b', 'd', 'a']);
+  assert.deepEqual(ids.slice(0, 3), ['a', 'd', 'b']);
 });
 
 test('due.sections sorts robustly when some priorities are invalid strings', () => {
@@ -158,6 +158,7 @@ test('due.sections sorts robustly when some priorities are invalid strings', () 
   const ids = Array.from(overdue?.items || [], t => t.id);
 
   assert.equal(ids[0], 'b');
+  assert.equal(ids[ids.length - 1], 'a');
 });
 
 test('due.sections includes This Week, Next Week, and This Month buckets', () => {

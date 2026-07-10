@@ -108,7 +108,7 @@ function registerAppQueries(app, deps) {
 
     const priorityRank = t => {
       const n = Number.parseInt(String((t && t.color) ?? ''), 10);
-      return Number.isFinite(n) && n >= 1 && n <= 9 ? n : 0;
+      return Number.isFinite(n) && n >= 1 && n <= 9 ? n : 99;
     };
 
     const parseYmd = s => new Date(`${s}T00:00:00`);
@@ -130,7 +130,7 @@ function registerAppQueries(app, deps) {
     const byPriorityThenDue = (a, b) => {
       const pa = priorityRank(a);
       const pb = priorityRank(b);
-      if (pb !== pa) return pb - pa;
+      if (pa !== pb) return pa - pb;
 
       const dueCmp = cmpDate(a.due || '', b.due || '');
       if (dueCmp !== 0) return dueCmp;
