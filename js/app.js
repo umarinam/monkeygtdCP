@@ -166,7 +166,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => toggleStatusDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.render();
     this.toast(`Status toggled for ${ids.length} task(s)`);
@@ -179,7 +178,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => invalidateDomain(this, S, id)));
-    S.msel.clear();
     this.save();
     this.render();
     this.toast(`Invalidated ${ids.length} task(s)`);
@@ -192,7 +190,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => clearDueUi(this, S, id, true, !!removeRepeat)));
-    S.msel.clear();
     this.save();
     this.render();
     this.toast(`Due cleared for ${ids.length} task(s)`);
@@ -205,7 +202,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => clearTagsUi(this, S, id, true)));
-    S.msel.clear();
     this.save();
     this.render();
     this.toast(`Tags cleared for ${ids.length} task(s)`);
@@ -239,7 +235,6 @@ const App={
       }
     }));
 
-    S.msel.clear();
     this.save();
     this.render();
     this.toast(`Added #${raw} to ${ids.length} task(s)`);
@@ -252,7 +247,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => clearNotesUi(this, S, id, true)));
-    S.msel.clear();
     this.save();
     this.render();
     this.toast(`Notes cleared for ${ids.length} task(s)`);
@@ -265,7 +259,6 @@ const App={
       return;
     }
     this.withUndoBatch(() => ids.forEach(id => setDueQuickUi(this, S, preset, true, id)));
-    S.msel.clear();
     this.save();
     this.render();
     this.toast(`Due set (${preset}) for ${ids.length} task(s)`);
@@ -297,7 +290,6 @@ const App={
         logTaskHistory(t, 'assignment', { from: before, to: [] });
       }
     }));
-    S.msel.clear();
     this.save();
     this.render();
     this.toast(`Assignees cleared for ${ids.length} task(s)`);
