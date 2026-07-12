@@ -67,7 +67,9 @@ function bindTaskListEvents(app, state) {
     }
 
     if (e.ctrlKey || e.metaKey) {
+      // Ctrl/Cmd+click: toggle task in multi-select, set as primary selection
       state.msel.has(id) ? state.msel.delete(id) : state.msel.add(id);
+      state.selId = id;
     } else {
       state.selId = id;
       state.msel.clear();

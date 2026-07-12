@@ -16,6 +16,9 @@ function closeAllOverlays(app, state) {
 
 function openDueModalUi(app, state) {
   if (!state.selId) return;
+  // Store the task IDs to apply due date to (multi-select support)
+  const ids = typeof app.selectedIds === 'function' ? app.selectedIds() : [state.selId];
+  state.dueTaskIds = ids.length ? ids : [state.selId];
   state.calDate = new Date();
   renderCalUi(app, state);
   app.openModal('ov-due');
@@ -29,7 +32,9 @@ function renderCalUi(app, state) {
   const dm = new Date(yr, mo + 1, 0).getDate();
   const MN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const DN = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-  const t2 = state.data.tasks[state.selId];
+  // For multi-select, show due date from first selected task
+  const firstTaskId = (state.dueTaskIds && state.dueTaskIds[0]) || state.selId;
+  const t2 = state.data.tasks[firstTaskId];
   const sel = t2 ? t2.due : '';
   const td = todayS();
   let h = `<div class="cal"><div class="calh"><button class="calnav" onclick="App.calPrev()">‹</button><span style="font-weight:600;font-size:13px">${MN[mo]} ${yr}</span><button class="calnav" onclick="App.calNext()">›</button></div><div class="calg">`;
@@ -55,19 +60,24 @@ function calNextUi(app, state) {
 
 function pickDateUi(app, state, ds) {
   if (!state.selId) return;
+  // Apply date to all selected tasks (multi-select support)
+  const taskIds = (state.dueTaskIds && state.dueTaskIds.length) ? state.dueTaskIds : [state.selId];
   app.pushUndo(app.snap());
-  const t = state.data.tasks[state.selId];
-  const before = { due: t.due || '', due_asap: !!t.due_asap };
-  const wasOverdueSameDate = !!before.due && before.due === ds && before.due < todayS();
-  t.due = ds;
-  t.due_asap = false;
-  t.overdue_ack_due = wasOverdueSameDate ? ds : '';
-  t.updated_at = now();
-  logTaskHistory(t, 'scheduling', { from: before, to: { due: t.due || '', due_asap: !!t.due_asap } });
+  taskIds.forEach(taskId => {
+    const t = state.data.tasks[taskId];
+    if (!t) return;
+    const before = { due: t.due || '', due_asap: !!t.due_asap };
+    const wasOverdueSameDate = !!before.due && before.due === ds && before.due < todayS();
+    t.due = ds;
+    t.due_asap = false;
+    t.overdue_ack_due = wasOverdueSameDate ? ds : '';
+    t.updated_at = now();
+    logTaskHistory(t, 'scheduling', { from: before, to: { due: t.due || '', due_asap: !!t.due_asap } });
+  });
   app.save();
   app.closeModal('ov-due');
   app.render();
-  app.toast(`Due: ${dispDate(ds)}`);
+  app.toast(`Due: ${dispDate(ds)}${taskIds.length > 1 ? ` (${taskIds.length} tasks)` : ''}`);
 }
 
 function setDueQuickUi(app, state, p, internal, taskId) {
