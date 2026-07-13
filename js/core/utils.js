@@ -103,7 +103,7 @@ const getDueCls = t => {
   if(t.due<td){
     // Selecting the same overdue date in the due picker acknowledges the overdue state.
     if((t.overdue_ack_due||'')===t.due) return '';
-    return 'ov';
+    return 'overdue';
   }
   if(t.due===td) return 'tod'; if(t.due===tomorrowS()) return 'tom';
   return '';

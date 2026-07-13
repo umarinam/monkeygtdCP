@@ -16,7 +16,7 @@ function canCopyChildTask(state, task) {
     if (task.due_asap) return true;
     if (!task.due) return true;
     const dueClass = getDueCls(task);
-    return ['ov', 'tod', 'tom', ''].includes(dueClass);
+    return ['overdue', 'tod', 'tom', ''].includes(dueClass);
   }
   return true;
 }

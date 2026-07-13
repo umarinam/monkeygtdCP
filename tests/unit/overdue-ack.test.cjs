@@ -36,13 +36,13 @@ test('overdue task remains overdue until acknowledged or changed', () => {
     due_asap: false
   });
 
-  assert.equal(getDueCls(task), 'ov');
+  assert.equal(getDueCls(task), 'overdue');
 
   task.overdue_ack_due = '2020-01-01';
   assert.equal(getDueCls(task), '');
 
   task.due = '2020-01-02';
-  assert.equal(getDueCls(task), 'ov');
+  assert.equal(getDueCls(task), 'overdue');
 });
 
 test('pickDateUi acknowledges overdue when same overdue date is selected', () => {
@@ -69,7 +69,7 @@ test('pickDateUi acknowledges overdue when same overdue date is selected', () =>
     toast: () => {}
   };
 
-  assert.equal(getDueCls(task), 'ov');
+  assert.equal(getDueCls(task), 'overdue');
 
   pickDateUi(app, state, '2020-01-01');
 

@@ -588,7 +588,7 @@ function buildTaskTreeUi(app, state, ids, depth, list) {
       if (!t) return false;
       if (!t.due && !t.due_asap) return true;
       const c = getDueCls(t);
-      return ['ov', 'tod', 'tom', 'asap', ''].includes(c);
+      return ['overdue', 'tod', 'tom', 'asap', ''].includes(c);
     });
   }
 

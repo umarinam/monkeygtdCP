@@ -100,11 +100,11 @@ body.zen #topbar{display:none}
 .tmeta{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap}
 .tdue{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
       color:var(--muted);border:1px solid var(--border);white-space:nowrap;cursor:pointer}
-.tdue.ov{color:#ef4444;border-color:#fca5a5;background:#fef2f2}
+.tdue.overdue{color:#ef4444;border-color:#fca5a5;background:#fef2f2}
 .tdue.tod{color:#2563eb;border-color:#bfdbfe;background:#eff6ff}
 .tdue.tom{color:#059669;border-color:#a7f3d0;background:#ecfdf5}
 .tdue.asap{color:#d97706;border-color:#fde68a;background:#fffbeb}
-[data-theme=dark] .tdue.ov{background:#450a0a;border-color:#7f1d1d}
+[data-theme=dark] .tdue.overdue{background:#450a0a;border-color:#7f1d1d}
 [data-theme=dark] .tdue.tod{background:#1e3a5f;border-color:#1d4ed8}
 [data-theme=dark] .tdue.tom{background:#064e3b;border-color:#065f46}
 [data-theme=dark] .tdue.asap{background:#451a03;border-color:#92400e}
@@ -228,7 +228,7 @@ body.zen #topbar{display:none}
 .kact{border:1px solid var(--border);background:var(--bg-alt);color:var(--muted);padding:1px 8px;border-radius:999px;font-size:11px;cursor:pointer}
 .kact:hover{background:var(--bg-hover);color:var(--text)}
 .kdue{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);color:var(--muted);border:1px solid var(--border);white-space:nowrap}
-.kdue.ov{color:#ef4444;border-color:#fca5a5;background:#fef2f2}
+.kdue.overdue{color:#ef4444;border-color:#fca5a5;background:#fef2f2}
 .kdue.tod{color:#2563eb;border-color:#bfdbfe;background:#eff6ff}
 .kdue.tom{color:#059669;border-color:#a7f3d0;background:#ecfdf5}
 .kdue.asap{color:#d97706;border-color:#fde68a;background:#fffbeb}
@@ -414,7 +414,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-12T11:18:44+05:00',commit:'e3fe219'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-12T11:45:16+05:00',commit:'962b15d'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1095,7 +1095,7 @@ const getDueCls = t => {
   if(t.due<td){
     // Selecting the same overdue date in the due picker acknowledges the overdue state.
     if((t.overdue_ack_due||'')===t.due) return '';
-    return 'ov';
+    return 'overdue';
   }
   if(t.due===td) return 'tod'; if(t.due===tomorrowS()) return 'tom';
   return '';
@@ -1817,7 +1817,7 @@ function canCopyChildTask(state, task) {
     if (task.due_asap) return true;
     if (!task.due) return true;
     const dueClass = getDueCls(task);
-    return ['ov', 'tod', 'tom', ''].includes(dueClass);
+    return ['overdue', 'tod', 'tom', ''].includes(dueClass);
   }
   return true;
 }
@@ -5852,7 +5852,7 @@ function buildTaskTreeUi(app, state, ids, depth, list) {
       if (!t) return false;
       if (!t.due && !t.due_asap) return true;
       const c = getDueCls(t);
-      return ['ov', 'tod', 'tom', 'asap', ''].includes(c);
+      return ['overdue', 'tod', 'tom', 'asap', ''].includes(c);
     });
   }
 
