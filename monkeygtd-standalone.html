@@ -414,7 +414,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-13T10:55:43+05:00',commit:'90b20b9'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-18T11:46:10+05:00',commit:'6d21a61'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -428,7 +428,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
       <span id="search-x" onclick="App.clearSearch()">✕</span>
     </div>
     <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
-      <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncGistNow()" title="Sync now">Sync</button>
+      <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
       <button class="tbtn" onclick="App.showPage('report')" title="Reporting (gr)">📊</button>
       <button class="tbtn" onclick="App.showPage('kanban')" title="Kanban Board (gk)">🗂</button>
@@ -878,29 +878,66 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
       </div>
       <div style="margin-bottom:18px">
         <div class="sst">GitHub Gist Sync</div>
+        <div class="fg">
+          <label>Sync provider</label>
+          <select id="s-sync-provider" onchange="App.setSyncProvider(this.value)">
+            <option value="gist">GitHub Gist</option>
+            <option value="repo">GitHub Repo (private/public)</option>
+          </select>
+        </div>
         <div class="ssi"><div><div class="ssl">Auto Sync</div><div class="ssd">Sync in background at a fixed interval</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-gist-auto" onchange="App.setGistAutoSyncEnabled(this.checked)"><span class="tslider"></span></label></div>
         <div class="fg">
           <label>Auto sync interval (minutes)</label>
           <input id="s-gist-interval" type="number" min="1" step="1" placeholder="5" onchange="App.setGistAutoSyncInterval(this.value)">
         </div>
-        <div class="fg">
-          <label>Personal Access Token</label>
-          <input id="gist-token" type="password" placeholder="ghp_..." onchange="App.setGistToken(this.value)">
+        <div id="gist-sync-fields">
+          <div class="fg">
+            <label>Gist Personal Access Token</label>
+            <input id="gist-token" type="password" placeholder="ghp_..." onchange="App.setGistToken(this.value)">
+          </div>
+          <div class="fg">
+            <label>Gist ID</label>
+            <input id="gist-id" type="text" placeholder="e.g. 0123abcd4567" onchange="App.setGistId(this.value)">
+          </div>
+          <div class="fg">
+            <label>Gist backup file name</label>
+            <input id="gist-file" type="text" placeholder="monkeygtd-backup.json" onchange="App.setGistFilename(this.value)">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="btn btn-sm" onclick="App.syncFromGist()">Pull from Gist</button>
+            <button class="btn btn-sm" onclick="App.syncToGist()">Push to Gist</button>
+          </div>
         </div>
-        <div class="fg">
-          <label>Gist ID</label>
-          <input id="gist-id" type="text" placeholder="e.g. 0123abcd4567" onchange="App.setGistId(this.value)">
-        </div>
-        <div class="fg">
-          <label>Backup file name</label>
-          <input id="gist-file" type="text" placeholder="monkeygtd-backup.json" onchange="App.setGistFilename(this.value)">
+        <div id="repo-sync-fields" style="display:none">
+          <div class="fg">
+            <label>Repo Personal Access Token</label>
+            <input id="repo-token" type="password" placeholder="github_pat_..." onchange="App.setRepoToken(this.value)">
+          </div>
+          <div class="fg">
+            <label>Repo owner</label>
+            <input id="repo-owner" type="text" placeholder="your-org-or-user" onchange="App.setRepoOwner(this.value)">
+          </div>
+          <div class="fg">
+            <label>Repo name</label>
+            <input id="repo-name" type="text" placeholder="your-private-repo" onchange="App.setRepoName(this.value)">
+          </div>
+          <div class="fg">
+            <label>Branch</label>
+            <input id="repo-branch" type="text" placeholder="main" onchange="App.setRepoBranch(this.value)">
+          </div>
+          <div class="fg">
+            <label>Backup file path in repo</label>
+            <input id="repo-path" type="text" placeholder="backups/monkeygtd-backup.json" onchange="App.setRepoPath(this.value)">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="btn btn-sm" onclick="App.syncFromRepo()">Pull from Repo</button>
+            <button class="btn btn-sm" onclick="App.syncToRepo()">Push to Repo</button>
+          </div>
         </div>
         <div id="gist-sync-status" style="padding:8px;background:var(--bg2);border-radius:4px;margin-bottom:10px;font-size:12px;color:var(--fg2)">Not configured</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="App.syncGistNow()">Sync now</button>
-          <button class="btn btn-sm" onclick="App.syncFromGist()">Pull from Gist</button>
-          <button class="btn btn-sm" onclick="App.syncToGist()">Push to Gist</button>
+          <button class="btn btn-sm" onclick="App.syncNow()">Sync now</button>
         </div>
       </div>
     </div>
@@ -1233,7 +1270,8 @@ const seedData = () => {
               taskDensity:'comfortable',emphasizeParentTasks:true,indentGuideStyle:'subtle',
               branchSpacing:'relaxed',focusMode:'off',contentWidth:'measure',
               listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,copyStatusPrefix:false,
-              gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5},
+              gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5,
+              syncProvider:'gist',repoBranch:'main',repoPath:'monkeygtd-backup.json'},
     deletedItems:[],currentListId:lid
   };
 };
@@ -3556,6 +3594,399 @@ async function syncGistBidirectionalRemote(app, state, options) {
     return false;
   }
 }
+
+'use strict';
+
+function repoIsoToMs(value) {
+  const ms = Date.parse(value || '');
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function repoGetToken(state) {
+  const fromSettings = state.data?.settings?.repoToken || '';
+  if (fromSettings) return fromSettings;
+  try {
+    return localStorage.getItem('mgtd3_repo_token') || '';
+  } catch {
+    return '';
+  }
+}
+
+function repoGetConfig(state) {
+  const s = state.data?.settings || {};
+  return {
+    token: repoGetToken(state),
+    owner: String(s.repoOwner || '').trim(),
+    repo: String(s.repoName || '').trim(),
+    branch: String(s.repoBranch || 'main').trim() || 'main',
+    path: String(s.repoPath || 'monkeygtd-backup.json').trim() || 'monkeygtd-backup.json'
+  };
+}
+
+function repoSetStatus(message, isError) {
+  const el = document.getElementById('gist-sync-status');
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = isError ? 'var(--danger)' : 'var(--fg2)';
+}
+
+function repoEncodePath(path) {
+  return String(path || '')
+    .split('/')
+    .map(part => encodeURIComponent(part))
+    .join('/');
+}
+
+function repoContentsUrl(config, path, withRef) {
+  const base = `https://api.github.com/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}/contents/${repoEncodePath(path || config.path)}`;
+  if (!withRef) return base;
+  return `${base}?ref=${encodeURIComponent(config.branch)}`;
+}
+
+function repoDecodeBase64(content) {
+  const b64 = String(content || '').replace(/\n/g, '');
+  if (!b64) return '';
+
+  if (typeof atob === 'function') {
+    const bin = atob(b64);
+    try {
+      return decodeURIComponent(escape(bin));
+    } catch {
+      return bin;
+    }
+  }
+
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(b64, 'base64').toString('utf8');
+  }
+
+  return '';
+}
+
+function repoEncodeBase64(content) {
+  const text = String(content || '');
+
+  if (typeof btoa === 'function') {
+    return btoa(unescape(encodeURIComponent(text)));
+  }
+
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(text, 'utf8').toString('base64');
+  }
+
+  return text;
+}
+
+function repoParsePayload(raw) {
+  const parsed = JSON.parse(raw);
+  if (parsed && parsed.data && parsed.version) {
+    return {
+      data: parsed.data,
+      exportedAt: parsed.exportedAt || ''
+    };
+  }
+  return {
+    data: parsed,
+    exportedAt: ''
+  };
+}
+
+function repoRememberSyncSummary(state, summary, at) {
+  state.data.settings = state.data.settings || {};
+  const stamp = String(at || state.data.settings.syncLastAt || new Date().toISOString()).trim();
+  const text = String(summary || '').trim();
+
+  state.data.settings.syncLastSummary = text;
+  state.data.settings.syncLastAt = stamp;
+  state.data.settings.repoLastSyncSummary = text;
+  state.data.settings.repoLastSyncAt = stamp;
+}
+
+function repoPreserveSyncSettings(state, previousSettings) {
+  const current = state.data.settings || {};
+  const preservedKeys = [
+    'gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary',
+    'gistLastLocalSaveAt', 'gistAutoSyncEnabled', 'gistAutoSyncIntervalMin',
+    'syncProvider', 'repoToken', 'repoOwner', 'repoName', 'repoBranch', 'repoPath',
+    'repoLastSyncAt', 'repoLastSyncSummary', 'syncLastAt', 'syncLastSummary'
+  ];
+
+  for (const key of preservedKeys) {
+    if ((current[key] === undefined || current[key] === null || current[key] === '') && previousSettings[key] !== undefined) {
+      current[key] = previousSettings[key];
+    }
+  }
+
+  state.data.settings = current;
+}
+
+function repoResolveRemoteVsLocal(remoteMs, localMs) {
+  if (remoteMs > localMs) return 'pull';
+  if (localMs > remoteMs) return 'push';
+  return 'noop';
+}
+
+async function repoFetchFile(config) {
+  const res = await fetch(repoContentsUrl(config, config.path, true), {
+    method: 'GET',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `token ${config.token}`
+    }
+  });
+
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Repo read failed (${res.status})`);
+
+  const json = await res.json();
+  return {
+    sha: json.sha || '',
+    raw: repoDecodeBase64(json.content || ''),
+    name: json.name || config.path
+  };
+}
+
+async function repoWriteFile(config, content, sha) {
+  const body = {
+    message: `MonkeyGTD backup ${new Date().toISOString()}`,
+    content: repoEncodeBase64(content),
+    branch: config.branch
+  };
+  if (sha) body.sha = sha;
+
+  const res = await fetch(repoContentsUrl(config, config.path, false), {
+    method: 'PUT',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      Authorization: `token ${config.token}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = new Error(`Repo write failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+function repoIsWriteConflict(err) {
+  const status = Number(err?.status || 0);
+  if (status === 409 || status === 422) return true;
+  const msg = String(err?.message || '').toLowerCase();
+  return msg.includes('409') || msg.includes('422') || msg.includes('sha');
+}
+
+function repoGetAutoSyncSettings(state) {
+  const s = state?.data?.settings || {};
+  const enabled = s.gistAutoSyncEnabled !== false;
+  const intervalMin = Math.max(1, Number(s.gistAutoSyncIntervalMin || 5));
+  return {
+    enabled,
+    intervalMs: intervalMin * 60 * 1000
+  };
+}
+
+function startRepoAutoSyncRemote(app, state, options) {
+  const opts = options || {};
+  const auto = repoGetAutoSyncSettings(state);
+  const intervalMs = Number.isFinite(opts.intervalMs) ? opts.intervalMs : auto.intervalMs;
+
+  if (state.repoAutoSyncTimer) {
+    clearInterval(state.repoAutoSyncTimer);
+    state.repoAutoSyncTimer = null;
+  }
+
+  if (opts.enabled === false || !auto.enabled) {
+    return false;
+  }
+
+  state.repoAutoSyncTimer = setInterval(() => {
+    syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+  }, intervalMs);
+
+  return true;
+}
+
+async function syncFromRepoRemote(app, state, options) {
+  const opts = options || {};
+  const config = repoGetConfig(state);
+  if (!config.token || !config.owner || !config.repo || !config.path) {
+    if (!opts.silent) {
+      app.toast('Set repo token/owner/name/path first');
+      repoSetStatus('Missing repo configuration', true);
+    }
+    return false;
+  }
+
+  try {
+    repoSetStatus('Pulling from GitHub repo...', false);
+    const remote = await repoFetchFile(config);
+    if (!remote) {
+      repoSetStatus('Backup file not found in repo', true);
+      if (!opts.silent) app.toast('Repo backup file not found');
+      return false;
+    }
+
+    const payload = repoParsePayload(remote.raw);
+    const remoteMs = repoIsoToMs(payload.exportedAt);
+    const localMs = Math.max(
+      repoIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
+      repoIsoToMs(state.data?.settings?.repoLastSyncAt),
+      repoIsoToMs(state.data?.settings?.syncLastAt)
+    );
+
+    if (opts.auto && remoteMs <= localMs) {
+      repoSetStatus('Repo copy is not newer', false);
+      return false;
+    }
+
+    const prevSettings = state.data.settings || {};
+    state.data = payload.data;
+    state.data.settings = state.data.settings || {};
+    repoPreserveSyncSettings(state, prevSettings);
+    state.data.currentListId = state.data.currentListId || Object.keys(state.data.lists || {})[0] || null;
+    state.listId = state.data.currentListId;
+    state.selId = null;
+    state.editId = null;
+    state.hoistId = null;
+    state.filter = '';
+    state.msel.clear();
+
+    const at = payload.exportedAt || new Date().toISOString();
+    repoRememberSyncSummary(state, 'Pulled', at);
+
+    app.save();
+    app.render();
+    app.syncSettings();
+    if (app.syncSB) app.syncSB();
+
+    repoSetStatus(`Pulled ${config.path}`, false);
+    if (!opts.silent) app.toast('Repo sync: pulled latest');
+    return true;
+  } catch (err) {
+    const msg = err?.message || 'Repo pull failed';
+    repoSetStatus(msg, true);
+    if (!opts.silent) app.toast(msg);
+    return false;
+  }
+}
+
+async function syncToRepoRemote(app, state, options) {
+  const opts = options || {};
+  const config = repoGetConfig(state);
+  if (!config.token || !config.owner || !config.repo || !config.path) {
+    if (!opts.silent) {
+      app.toast('Set repo token/owner/name/path first');
+      repoSetStatus('Missing repo configuration', true);
+    }
+    return false;
+  }
+
+  try {
+    repoSetStatus('Pushing to GitHub repo...', false);
+
+    const backupData = JSON.parse(JSON.stringify(state.data));
+    if (backupData.settings) {
+      delete backupData.settings.gistToken;
+      delete backupData.settings.repoToken;
+    }
+
+    const exportedAt = new Date().toISOString();
+    const content = JSON.stringify({ version: 1, exportedAt, data: backupData }, null, 2);
+
+    // Repo writes can race when another client updates the file between read and write.
+    // Retry once with a fresh SHA so users do not hit transient conflict errors.
+    let pushed = false;
+    for (let attempt = 0; attempt < 2 && !pushed; attempt++) {
+      try {
+        const remote = await repoFetchFile(config);
+        await repoWriteFile(config, content, remote?.sha || '');
+        pushed = true;
+      } catch (err) {
+        if (attempt === 0 && repoIsWriteConflict(err)) {
+          repoSetStatus('Remote updated; retrying push...', false);
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    state.data.settings = state.data.settings || {};
+    repoRememberSyncSummary(state, 'Pushed', exportedAt);
+    app.save();
+    app.syncSettings();
+    if (app.syncSB) app.syncSB();
+
+    repoSetStatus(`Pushed ${config.path}`, false);
+    if (!opts.silent) app.toast('Repo sync: pushed');
+    return true;
+  } catch (err) {
+    const msg = err?.message || 'Repo push failed';
+    repoSetStatus(msg, true);
+    if (!opts.silent) app.toast(msg);
+    return false;
+  }
+}
+
+async function checkRepoOnRefreshRemote(app, state) {
+  const config = repoGetConfig(state);
+  if (!config.token || !config.owner || !config.repo || !config.path) return false;
+  return syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+}
+
+async function syncRepoBidirectionalRemote(app, state, options) {
+  const opts = options || {};
+  const config = repoGetConfig(state);
+  if (!config.token || !config.owner || !config.repo || !config.path) {
+    if (!opts.silent) {
+      app.toast('Set repo token/owner/name/path first');
+      repoSetStatus('Missing repo configuration', true);
+    }
+    return false;
+  }
+
+  try {
+    repoSetStatus('Syncing with GitHub repo...', false);
+
+    const remote = await repoFetchFile(config);
+    if (!remote) {
+      return syncToRepoRemote(app, state, { silent: opts.silent });
+    }
+
+    const payload = repoParsePayload(remote.raw);
+    const remoteMs = repoIsoToMs(payload.exportedAt);
+    const localMs = Math.max(
+      repoIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
+      repoIsoToMs(state.data?.settings?.repoLastSyncAt),
+      repoIsoToMs(state.data?.settings?.syncLastAt)
+    );
+
+    const action = repoResolveRemoteVsLocal(remoteMs, localMs);
+
+    if (action === 'pull') {
+      return syncFromRepoRemote(app, state, { silent: opts.silent, auto: false });
+    }
+    if (action === 'push') {
+      return syncToRepoRemote(app, state, { silent: opts.silent });
+    }
+
+    repoRememberSyncSummary(state, 'In sync', new Date().toISOString());
+    app.syncSettings();
+    if (app.syncSB) app.syncSB();
+    repoSetStatus('Repo and local are in sync', false);
+    if (!opts.silent) app.toast('Repo sync: already up to date');
+    return true;
+  } catch (err) {
+    const msg = err?.message || 'Repo sync failed';
+    repoSetStatus(msg, true);
+    if (!opts.silent) app.toast(msg);
+    return false;
+  }
+}
+
 
 'use strict';
 
@@ -6162,8 +6593,8 @@ function syncStatusBarUi(state) {
   const ss = document.getElementById('sb-sync');
   if (ss) {
     const settings = state.data?.settings || {};
-    const at = String(settings.gistLastSyncAt || '').trim();
-    const status = String(settings.gistLastSyncSummary || '').trim();
+    const at = String(settings.syncLastAt || settings.repoLastSyncAt || settings.gistLastSyncAt || '').trim();
+    const status = String(settings.syncLastSummary || settings.repoLastSyncSummary || settings.gistLastSyncSummary || '').trim();
     let gistText = '';
     if (at || status) {
       let when = at;
@@ -6273,17 +6704,41 @@ function syncSettingsUi(app, S) {
   const gistFileEl = document.getElementById('gist-file');
   const gistAutoEl = document.getElementById('s-gist-auto');
   const gistIntervalEl = document.getElementById('s-gist-interval');
+  const providerEl = document.getElementById('s-sync-provider');
+  const repoTokenEl = document.getElementById('repo-token');
+  const repoOwnerEl = document.getElementById('repo-owner');
+  const repoNameEl = document.getElementById('repo-name');
+  const repoBranchEl = document.getElementById('repo-branch');
+  const repoPathEl = document.getElementById('repo-path');
+  const gistFieldsEl = document.getElementById('gist-sync-fields');
+  const repoFieldsEl = document.getElementById('repo-sync-fields');
   const token = s.gistToken || localStorage.getItem('mgtd3_gist_token') || '';
+  const repoToken = s.repoToken || localStorage.getItem('mgtd3_repo_token') || '';
+  const provider = String(s.syncProvider || 'gist').trim() === 'repo' ? 'repo' : 'gist';
+
+  if (providerEl) providerEl.value = provider;
   if (tokenEl) tokenEl.value = token;
   if (gistIdEl) gistIdEl.value = s.gistId || '';
   if (gistFileEl) gistFileEl.value = s.gistFilename || 'monkeygtd-backup.json';
   if (gistAutoEl) gistAutoEl.checked = s.gistAutoSyncEnabled !== false;
   if (gistIntervalEl) gistIntervalEl.value = String(Math.max(1, Number(s.gistAutoSyncIntervalMin || 5)));
+  if (repoTokenEl) repoTokenEl.value = repoToken;
+  if (repoOwnerEl) repoOwnerEl.value = s.repoOwner || '';
+  if (repoNameEl) repoNameEl.value = s.repoName || '';
+  if (repoBranchEl) repoBranchEl.value = s.repoBranch || 'main';
+  if (repoPathEl) repoPathEl.value = s.repoPath || 'monkeygtd-backup.json';
+  if (gistFieldsEl) gistFieldsEl.style.display = provider === 'gist' ? '' : 'none';
+  if (repoFieldsEl) repoFieldsEl.style.display = provider === 'repo' ? '' : 'none';
 
   const statusEl = document.getElementById('gist-sync-status');
   if (statusEl) {
-    const lastSync = s.gistLastSyncAt ? new Date(s.gistLastSyncAt).toLocaleString() : 'never';
-    statusEl.textContent = `Last sync: ${lastSync}`;
+    const at = s.syncLastAt || s.repoLastSyncAt || s.gistLastSyncAt || '';
+    const summary = s.syncLastSummary || s.repoLastSyncSummary || s.gistLastSyncSummary || '';
+    const lastSync = at ? new Date(at).toLocaleString() : 'never';
+    const providerLabel = provider === 'repo' ? 'Repo' : 'Gist';
+    statusEl.textContent = summary
+      ? `${providerLabel}: ${summary} @ ${lastSync}`
+      : `${providerLabel}: Last sync ${lastSync}`;
     statusEl.style.color = 'var(--fg2)';
   }
 }
@@ -6948,9 +7403,9 @@ const App={
     this.render();
     this.syncSettings();
     if (S.data.settings.gistAutoSyncEnabled !== false) {
-      this.checkGistOnRefresh();
+      this.checkSyncOnRefresh();
     }
-    this.startGistAutoSync();
+    this.startSyncAuto();
   },
 
   save(){
@@ -7605,21 +8060,69 @@ const App={
   },
   setGistAutoSyncEnabled(v){
     setSettingDomain(this, S, 'gistAutoSyncEnabled', !!v);
-    this.startGistAutoSync();
+    this.startSyncAuto();
     this.syncSettings();
   },
   setGistAutoSyncInterval(v){
     const n = Math.max(1, parseInt(v, 10) || 5);
     setSettingDomain(this, S, 'gistAutoSyncIntervalMin', n);
-    this.startGistAutoSync();
+    this.startSyncAuto();
+    this.syncSettings();
+  },
+  setSyncProvider(v){
+    const provider = v === 'repo' ? 'repo' : 'gist';
+    setSettingDomain(this, S, 'syncProvider', provider);
+    this.startSyncAuto();
+    this.syncSettings();
+  },
+  setRepoToken(v){
+    const token = String(v || '').trim();
+    setSettingDomain(this, S, 'repoToken', token);
+    try {
+      if (token) localStorage.setItem('mgtd3_repo_token', token);
+      else localStorage.removeItem('mgtd3_repo_token');
+    } catch {}
+    this.syncSettings();
+  },
+  setRepoOwner(v){
+    setSettingDomain(this, S, 'repoOwner', String(v || '').trim());
+    this.syncSettings();
+  },
+  setRepoName(v){
+    setSettingDomain(this, S, 'repoName', String(v || '').trim());
+    this.syncSettings();
+  },
+  setRepoBranch(v){
+    setSettingDomain(this, S, 'repoBranch', String(v || '').trim() || 'main');
+    this.syncSettings();
+  },
+  setRepoPath(v){
+    setSettingDomain(this, S, 'repoPath', String(v || '').trim() || 'monkeygtd-backup.json');
     this.syncSettings();
   },
   async syncFromGist(){ return syncFromGistRemote(this, S, { silent:false, auto:false }); },
   async syncToGist(){ return syncToGistRemote(this, S, { silent:false }); },
   async syncGistNow(){ return syncGistBidirectionalRemote(this, S, { silent:false }); },
+  async syncFromRepo(){ return (typeof syncFromRepoRemote === 'function') ? syncFromRepoRemote(this, S, { silent:false, auto:false }) : false; },
+  async syncToRepo(){ return (typeof syncToRepoRemote === 'function') ? syncToRepoRemote(this, S, { silent:false }) : false; },
+  async syncRepoNow(){ return (typeof syncRepoBidirectionalRemote === 'function') ? syncRepoBidirectionalRemote(this, S, { silent:false }) : false; },
+  syncProvider(){ return String(S.data?.settings?.syncProvider || 'gist').trim() === 'repo' ? 'repo' : 'gist'; },
+  async syncNow(){ return this.syncProvider() === 'repo' ? this.syncRepoNow() : this.syncGistNow(); },
+  async checkSyncOnRefresh(){ return this.syncProvider() === 'repo' ? this.checkRepoOnRefresh() : this.checkGistOnRefresh(); },
+  startSyncAuto(){
+    const provider = this.syncProvider();
+    if (provider === 'repo') {
+      if (typeof startGistAutoSyncRemote === 'function') startGistAutoSyncRemote(this, S, { enabled:false });
+      return this.startRepoAutoSync();
+    }
+    if (typeof startRepoAutoSyncRemote === 'function') startRepoAutoSyncRemote(this, S, { enabled:false });
+    return this.startGistAutoSync();
+  },
   async checkGistNow(){ return this.syncGistNow(); },
   async checkGistOnRefresh(){ return checkGistOnRefreshRemote(this, S); },
   startGistAutoSync(){ return startGistAutoSyncRemote(this, S, {}); },
+  async checkRepoOnRefresh(){ return (typeof checkRepoOnRefreshRemote === 'function') ? checkRepoOnRefreshRemote(this, S) : false; },
+  startRepoAutoSync(){ return (typeof startRepoAutoSyncRemote === 'function') ? startRepoAutoSyncRemote(this, S, {}) : false; },
 
   // â”€ Command palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openCP(mode){ openCommandPalette(this, S, mode); },
@@ -7648,6 +8151,7 @@ App.init();
 
 
 </script>
+
 
 
 

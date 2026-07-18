@@ -20,7 +20,7 @@
       <span id="search-x" onclick="App.clearSearch()">✕</span>
     </div>
     <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
-      <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncGistNow()" title="Sync now">Sync</button>
+      <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
       <button class="tbtn" onclick="App.showPage('report')" title="Reporting (gr)">📊</button>
       <button class="tbtn" onclick="App.showPage('kanban')" title="Kanban Board (gk)">🗂</button>
@@ -470,29 +470,66 @@
       </div>
       <div style="margin-bottom:18px">
         <div class="sst">GitHub Gist Sync</div>
+        <div class="fg">
+          <label>Sync provider</label>
+          <select id="s-sync-provider" onchange="App.setSyncProvider(this.value)">
+            <option value="gist">GitHub Gist</option>
+            <option value="repo">GitHub Repo (private/public)</option>
+          </select>
+        </div>
         <div class="ssi"><div><div class="ssl">Auto Sync</div><div class="ssd">Sync in background at a fixed interval</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-gist-auto" onchange="App.setGistAutoSyncEnabled(this.checked)"><span class="tslider"></span></label></div>
         <div class="fg">
           <label>Auto sync interval (minutes)</label>
           <input id="s-gist-interval" type="number" min="1" step="1" placeholder="5" onchange="App.setGistAutoSyncInterval(this.value)">
         </div>
-        <div class="fg">
-          <label>Personal Access Token</label>
-          <input id="gist-token" type="password" placeholder="ghp_..." onchange="App.setGistToken(this.value)">
+        <div id="gist-sync-fields">
+          <div class="fg">
+            <label>Gist Personal Access Token</label>
+            <input id="gist-token" type="password" placeholder="ghp_..." onchange="App.setGistToken(this.value)">
+          </div>
+          <div class="fg">
+            <label>Gist ID</label>
+            <input id="gist-id" type="text" placeholder="e.g. 0123abcd4567" onchange="App.setGistId(this.value)">
+          </div>
+          <div class="fg">
+            <label>Gist backup file name</label>
+            <input id="gist-file" type="text" placeholder="monkeygtd-backup.json" onchange="App.setGistFilename(this.value)">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="btn btn-sm" onclick="App.syncFromGist()">Pull from Gist</button>
+            <button class="btn btn-sm" onclick="App.syncToGist()">Push to Gist</button>
+          </div>
         </div>
-        <div class="fg">
-          <label>Gist ID</label>
-          <input id="gist-id" type="text" placeholder="e.g. 0123abcd4567" onchange="App.setGistId(this.value)">
-        </div>
-        <div class="fg">
-          <label>Backup file name</label>
-          <input id="gist-file" type="text" placeholder="monkeygtd-backup.json" onchange="App.setGistFilename(this.value)">
+        <div id="repo-sync-fields" style="display:none">
+          <div class="fg">
+            <label>Repo Personal Access Token</label>
+            <input id="repo-token" type="password" placeholder="github_pat_..." onchange="App.setRepoToken(this.value)">
+          </div>
+          <div class="fg">
+            <label>Repo owner</label>
+            <input id="repo-owner" type="text" placeholder="your-org-or-user" onchange="App.setRepoOwner(this.value)">
+          </div>
+          <div class="fg">
+            <label>Repo name</label>
+            <input id="repo-name" type="text" placeholder="your-private-repo" onchange="App.setRepoName(this.value)">
+          </div>
+          <div class="fg">
+            <label>Branch</label>
+            <input id="repo-branch" type="text" placeholder="main" onchange="App.setRepoBranch(this.value)">
+          </div>
+          <div class="fg">
+            <label>Backup file path in repo</label>
+            <input id="repo-path" type="text" placeholder="backups/monkeygtd-backup.json" onchange="App.setRepoPath(this.value)">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="btn btn-sm" onclick="App.syncFromRepo()">Pull from Repo</button>
+            <button class="btn btn-sm" onclick="App.syncToRepo()">Push to Repo</button>
+          </div>
         </div>
         <div id="gist-sync-status" style="padding:8px;background:var(--bg2);border-radius:4px;margin-bottom:10px;font-size:12px;color:var(--fg2)">Not configured</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="App.syncGistNow()">Sync now</button>
-          <button class="btn btn-sm" onclick="App.syncFromGist()">Pull from Gist</button>
-          <button class="btn btn-sm" onclick="App.syncToGist()">Push to Gist</button>
+          <button class="btn btn-sm" onclick="App.syncNow()">Sync now</button>
         </div>
       </div>
     </div>
@@ -542,6 +579,7 @@
 <script src="js/application/smoke-checks.js"></script>
 <script src="js/infra/storage.js"></script>
 <script src="js/infra/gist-sync.js"></script>
+<script src="js/infra/repo-sync.js"></script>
 <script src="js/ui/modal-controller.js"></script>
 <script src="js/ui/keyboard-controller.js"></script>
 <script src="js/ui/editor-controller.js"></script>

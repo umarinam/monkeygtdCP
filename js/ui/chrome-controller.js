@@ -34,8 +34,8 @@ function syncStatusBarUi(state) {
   const ss = document.getElementById('sb-sync');
   if (ss) {
     const settings = state.data?.settings || {};
-    const at = String(settings.gistLastSyncAt || '').trim();
-    const status = String(settings.gistLastSyncSummary || '').trim();
+    const at = String(settings.syncLastAt || settings.repoLastSyncAt || settings.gistLastSyncAt || '').trim();
+    const status = String(settings.syncLastSummary || settings.repoLastSyncSummary || settings.gistLastSyncSummary || '').trim();
     let gistText = '';
     if (at || status) {
       let when = at;

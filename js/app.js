@@ -37,9 +37,9 @@ const App={
     this.render();
     this.syncSettings();
     if (S.data.settings.gistAutoSyncEnabled !== false) {
-      this.checkGistOnRefresh();
+      this.checkSyncOnRefresh();
     }
-    this.startGistAutoSync();
+    this.startSyncAuto();
   },
 
   save(){
@@ -694,21 +694,69 @@ const App={
   },
   setGistAutoSyncEnabled(v){
     setSettingDomain(this, S, 'gistAutoSyncEnabled', !!v);
-    this.startGistAutoSync();
+    this.startSyncAuto();
     this.syncSettings();
   },
   setGistAutoSyncInterval(v){
     const n = Math.max(1, parseInt(v, 10) || 5);
     setSettingDomain(this, S, 'gistAutoSyncIntervalMin', n);
-    this.startGistAutoSync();
+    this.startSyncAuto();
+    this.syncSettings();
+  },
+  setSyncProvider(v){
+    const provider = v === 'repo' ? 'repo' : 'gist';
+    setSettingDomain(this, S, 'syncProvider', provider);
+    this.startSyncAuto();
+    this.syncSettings();
+  },
+  setRepoToken(v){
+    const token = String(v || '').trim();
+    setSettingDomain(this, S, 'repoToken', token);
+    try {
+      if (token) localStorage.setItem('mgtd3_repo_token', token);
+      else localStorage.removeItem('mgtd3_repo_token');
+    } catch {}
+    this.syncSettings();
+  },
+  setRepoOwner(v){
+    setSettingDomain(this, S, 'repoOwner', String(v || '').trim());
+    this.syncSettings();
+  },
+  setRepoName(v){
+    setSettingDomain(this, S, 'repoName', String(v || '').trim());
+    this.syncSettings();
+  },
+  setRepoBranch(v){
+    setSettingDomain(this, S, 'repoBranch', String(v || '').trim() || 'main');
+    this.syncSettings();
+  },
+  setRepoPath(v){
+    setSettingDomain(this, S, 'repoPath', String(v || '').trim() || 'monkeygtd-backup.json');
     this.syncSettings();
   },
   async syncFromGist(){ return syncFromGistRemote(this, S, { silent:false, auto:false }); },
   async syncToGist(){ return syncToGistRemote(this, S, { silent:false }); },
   async syncGistNow(){ return syncGistBidirectionalRemote(this, S, { silent:false }); },
+  async syncFromRepo(){ return (typeof syncFromRepoRemote === 'function') ? syncFromRepoRemote(this, S, { silent:false, auto:false }) : false; },
+  async syncToRepo(){ return (typeof syncToRepoRemote === 'function') ? syncToRepoRemote(this, S, { silent:false }) : false; },
+  async syncRepoNow(){ return (typeof syncRepoBidirectionalRemote === 'function') ? syncRepoBidirectionalRemote(this, S, { silent:false }) : false; },
+  syncProvider(){ return String(S.data?.settings?.syncProvider || 'gist').trim() === 'repo' ? 'repo' : 'gist'; },
+  async syncNow(){ return this.syncProvider() === 'repo' ? this.syncRepoNow() : this.syncGistNow(); },
+  async checkSyncOnRefresh(){ return this.syncProvider() === 'repo' ? this.checkRepoOnRefresh() : this.checkGistOnRefresh(); },
+  startSyncAuto(){
+    const provider = this.syncProvider();
+    if (provider === 'repo') {
+      if (typeof startGistAutoSyncRemote === 'function') startGistAutoSyncRemote(this, S, { enabled:false });
+      return this.startRepoAutoSync();
+    }
+    if (typeof startRepoAutoSyncRemote === 'function') startRepoAutoSyncRemote(this, S, { enabled:false });
+    return this.startGistAutoSync();
+  },
   async checkGistNow(){ return this.syncGistNow(); },
   async checkGistOnRefresh(){ return checkGistOnRefreshRemote(this, S); },
   startGistAutoSync(){ return startGistAutoSyncRemote(this, S, {}); },
+  async checkRepoOnRefresh(){ return (typeof checkRepoOnRefreshRemote === 'function') ? checkRepoOnRefreshRemote(this, S) : false; },
+  startRepoAutoSync(){ return (typeof startRepoAutoSyncRemote === 'function') ? startRepoAutoSyncRemote(this, S, {}) : false; },
 
   // â”€ Command palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openCP(mode){ openCommandPalette(this, S, mode); },

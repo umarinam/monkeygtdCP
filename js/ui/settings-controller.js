@@ -48,17 +48,41 @@ function syncSettingsUi(app, S) {
   const gistFileEl = document.getElementById('gist-file');
   const gistAutoEl = document.getElementById('s-gist-auto');
   const gistIntervalEl = document.getElementById('s-gist-interval');
+  const providerEl = document.getElementById('s-sync-provider');
+  const repoTokenEl = document.getElementById('repo-token');
+  const repoOwnerEl = document.getElementById('repo-owner');
+  const repoNameEl = document.getElementById('repo-name');
+  const repoBranchEl = document.getElementById('repo-branch');
+  const repoPathEl = document.getElementById('repo-path');
+  const gistFieldsEl = document.getElementById('gist-sync-fields');
+  const repoFieldsEl = document.getElementById('repo-sync-fields');
   const token = s.gistToken || localStorage.getItem('mgtd3_gist_token') || '';
+  const repoToken = s.repoToken || localStorage.getItem('mgtd3_repo_token') || '';
+  const provider = String(s.syncProvider || 'gist').trim() === 'repo' ? 'repo' : 'gist';
+
+  if (providerEl) providerEl.value = provider;
   if (tokenEl) tokenEl.value = token;
   if (gistIdEl) gistIdEl.value = s.gistId || '';
   if (gistFileEl) gistFileEl.value = s.gistFilename || 'monkeygtd-backup.json';
   if (gistAutoEl) gistAutoEl.checked = s.gistAutoSyncEnabled !== false;
   if (gistIntervalEl) gistIntervalEl.value = String(Math.max(1, Number(s.gistAutoSyncIntervalMin || 5)));
+  if (repoTokenEl) repoTokenEl.value = repoToken;
+  if (repoOwnerEl) repoOwnerEl.value = s.repoOwner || '';
+  if (repoNameEl) repoNameEl.value = s.repoName || '';
+  if (repoBranchEl) repoBranchEl.value = s.repoBranch || 'main';
+  if (repoPathEl) repoPathEl.value = s.repoPath || 'monkeygtd-backup.json';
+  if (gistFieldsEl) gistFieldsEl.style.display = provider === 'gist' ? '' : 'none';
+  if (repoFieldsEl) repoFieldsEl.style.display = provider === 'repo' ? '' : 'none';
 
   const statusEl = document.getElementById('gist-sync-status');
   if (statusEl) {
-    const lastSync = s.gistLastSyncAt ? new Date(s.gistLastSyncAt).toLocaleString() : 'never';
-    statusEl.textContent = `Last sync: ${lastSync}`;
+    const at = s.syncLastAt || s.repoLastSyncAt || s.gistLastSyncAt || '';
+    const summary = s.syncLastSummary || s.repoLastSyncSummary || s.gistLastSyncSummary || '';
+    const lastSync = at ? new Date(at).toLocaleString() : 'never';
+    const providerLabel = provider === 'repo' ? 'Repo' : 'Gist';
+    statusEl.textContent = summary
+      ? `${providerLabel}: ${summary} @ ${lastSync}`
+      : `${providerLabel}: Last sync ${lastSync}`;
     statusEl.style.color = 'var(--fg2)';
   }
 }
