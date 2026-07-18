@@ -113,3 +113,72 @@ test('moveUpSelection preserves multi-select after batch move', () => {
   assert.equal(calls.renderList, 1);
   assert.equal(calls.toast, 'Moved up 3 task(s)');
 });
+
+test('indentSelection applies multi-select top-down to preserve sibling order', () => {
+  const { App, S, sandbox } = loadApp();
+  const calls = { indent: [], save: 0, renderList: 0, toast: '' };
+
+  S.msel = new Set(['a', 'b', 'c']);
+  S.selId = 'a';
+
+  App.selectedRootIds = () => ['a', 'b', 'c'];
+  App.withUndoBatch = (fn) => fn();
+  sandbox.indentDomain = (app, state, id) => { calls.indent.push(id); };
+  App.save = () => { calls.save += 1; };
+  App.renderList = () => { calls.renderList += 1; };
+  App.toast = (msg) => { calls.toast = msg; };
+
+  App.indentSelection();
+
+  assert.deepEqual(calls.indent, ['a', 'b', 'c']);
+  assert.deepEqual(Array.from(S.msel), ['a', 'b', 'c']);
+  assert.equal(calls.save, 1);
+  assert.equal(calls.renderList, 1);
+  assert.equal(calls.toast, 'Indented 3 task(s)');
+});
+
+test('unindentSelection applies multi-select bottom-up to preserve order', () => {
+  const { App, S, sandbox } = loadApp();
+  const calls = { unindent: [], save: 0, renderList: 0, toast: '' };
+
+  S.msel = new Set(['a', 'b', 'c']);
+  S.selId = 'a';
+
+  App.selectedRootIds = () => ['a', 'b', 'c'];
+  App.withUndoBatch = (fn) => fn();
+  sandbox.unindentDomain = (app, state, id) => { calls.unindent.push(id); };
+  App.save = () => { calls.save += 1; };
+  App.renderList = () => { calls.renderList += 1; };
+  App.toast = (msg) => { calls.toast = msg; };
+
+  App.unindentSelection();
+
+  assert.deepEqual(calls.unindent, ['c', 'b', 'a']);
+  assert.deepEqual(Array.from(S.msel), ['a', 'b', 'c']);
+  assert.equal(calls.save, 1);
+  assert.equal(calls.renderList, 1);
+  assert.equal(calls.toast, 'Un-indented 3 task(s)');
+});
+
+test('unindent then indent does not chain into hierarchy order', () => {
+  const { App, S, sandbox } = loadApp();
+  const calls = { unindent: [], indent: [] };
+
+  S.msel = new Set(['a', 'b', 'c']);
+  S.selId = 'a';
+
+  App.selectedRootIds = () => ['a', 'b', 'c'];
+  App.withUndoBatch = (fn) => fn();
+  App.save = () => {};
+  App.renderList = () => {};
+  App.toast = () => {};
+
+  sandbox.unindentDomain = (app, state, id) => { calls.unindent.push(id); };
+  sandbox.indentDomain = (app, state, id) => { calls.indent.push(id); };
+
+  App.unindentSelection();
+  App.indentSelection();
+
+  assert.deepEqual(calls.unindent, ['c', 'b', 'a']);
+  assert.deepEqual(calls.indent, ['a', 'b', 'c']);
+});

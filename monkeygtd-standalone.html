@@ -414,7 +414,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-12T11:45:16+05:00',commit:'962b15d'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-13T10:55:43+05:00',commit:'90b20b9'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -7248,7 +7248,7 @@ const App={
       this.unindent(ids[0]);
       return;
     }
-    this.withUndoBatch(() => ids.forEach(id => unindentDomain(this, S, id)));
+    this.withUndoBatch(() => [...ids].reverse().forEach(id => unindentDomain(this, S, id)));
     this.save();
     this.renderList();
     this.toast(`Un-indented ${ids.length} task(s)`);

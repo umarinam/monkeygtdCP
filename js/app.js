@@ -337,7 +337,7 @@ const App={
       this.unindent(ids[0]);
       return;
     }
-    this.withUndoBatch(() => ids.forEach(id => unindentDomain(this, S, id)));
+    this.withUndoBatch(() => [...ids].reverse().forEach(id => unindentDomain(this, S, id)));
     this.save();
     this.renderList();
     this.toast(`Un-indented ${ids.length} task(s)`);
