@@ -61,12 +61,7 @@ function buildCommandPaletteItems(app, state) {
       state.msel.has(state.selId) ? state.msel.delete(state.selId) : state.msel.add(state.selId);
       app.renderList();
     } },
-    { l: 'Open first URL in task', s: 'gg', fn: () => {
-      if (!state.selId) return;
-      const t = state.data.tasks[state.selId];
-      const m = (t && t.content ? t.content.match(/https?:\/\/\S+/) : null);
-      if (m) window.open(m[0], '_blank');
-    } },
+    { l: 'Go to selected task in list', s: 'gg / gl', fn: () => { if (state.selId) app.jumpTo(state.selId); } },
     { l: 'Open lists picker', s: 'll', fn: () => app.openCP('lists') },
     { l: 'Copy task permalink', s: 'tc / lc', fn: () => app.copyPermalink() },
     { l: 'Toggle relative dates', s: 'df', fn: () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); } },
@@ -75,7 +70,6 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Keyboard shortcuts', s: '?', fn: () => app.showShortcuts() },
     { l: 'Lists home', s: 'gh', fn: () => app.showPage('home') },
     { l: 'Due page', s: 'gd', fn: () => app.showPage('due') },
-    { l: 'Go to selected task in list', s: 'gl', fn: () => { if (state.selId) app.jumpTo(state.selId); } },
     { l: 'Reporting page', s: 'gr', fn: () => app.showPage('report') },
     { l: 'Kanban page', s: 'gk', fn: () => app.showPage('kanban') },
     { l: 'Tags page', s: 'gt', fn: () => app.showPage('tags') },

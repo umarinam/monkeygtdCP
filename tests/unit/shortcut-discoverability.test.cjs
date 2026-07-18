@@ -16,7 +16,7 @@ test('command palette includes clear-assignees and key two-key shortcut actions'
     "{ l: 'Toggle details', s: 'sd'",
     "{ l: 'Show branch progress', s: 'pc'",
     "{ l: 'Open lists picker', s: 'll'",
-    "{ l: 'Open first URL in task', s: 'gg'",
+    "{ l: 'Go to selected task in list', s: 'gg / gl'",
     "{ l: 'Add OneNote link', s: 'no'",
     "{ l: 'Add email link', s: 'ne'",
     "{ l: 'Add file link', s: 'nf'",
@@ -26,8 +26,6 @@ test('command palette includes clear-assignees and key two-key shortcut actions'
     "{ l: 'Toggle multi-select for task', s: 'st'",
     "{ l: 'Copy task permalink', s: 'tc / lc'"
   ];
-
-  required.push("{ l: 'Go to selected task in list', s: 'gl'");
 
   required.push("{ l: 'Redo', s: 'Ctrl+Y / Ctrl+Shift+Z'");
 
@@ -45,8 +43,7 @@ test('shortcuts help includes discoverability entries for advanced two-key actio
     "['sd', 'Toggle details']",
     "['pc', 'Show branch progress']",
     "['ll', 'Open lists picker']",
-    "['gg', 'Open first URL in task']",
-    "['gl', 'Go to selected task in list']",
+    "['gg / gl', 'Go to selected task in list']",
     "['no', 'Add OneNote link']",
     "['ne', 'Add email link']",
     "['nf', 'Add file link']",

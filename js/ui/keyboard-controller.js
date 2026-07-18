@@ -452,7 +452,7 @@ function handleTwoKeySequence(app, state, e) {
     'gh': () => app.showPage('home'),
     'gd': () => app.showPage('due'),
     'gl': () => { if (state.selId) app.jumpTo(state.selId); },
-    'gg': () => { if (state.selId) { const t = state.data.tasks[state.selId]; const m = t.content.match(/https?:\/\/\S+/); if (m) window.open(m[0], '_blank'); } },
+    'gg': () => { if (state.selId) app.jumpTo(state.selId); },
     'mm': () => app.openMoveDlg(),
     'rd': () => app.showRestoreDeleted(),
     'wc': () => app.showWC(),
