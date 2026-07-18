@@ -186,7 +186,12 @@ body.zen #topbar{display:none}
         color:var(--muted);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .dti{display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;border-radius:var(--r);position:relative}
 .dti:hover{background:var(--bg-hover)}
+.dti.sel{background:var(--bg-sel);box-shadow:inset 3px 0 0 var(--accent)}
 .dlist{font-size:11px;color:var(--muted)}
+.dacts{display:flex;gap:4px;align-items:center}
+.dgo{border:1px solid var(--border);background:var(--bg-alt);color:var(--muted);border-radius:10px;
+     font-size:11px;line-height:1;padding:4px 8px;cursor:pointer}
+.dgo:hover{border-color:var(--accent);color:var(--text);background:var(--bg-hover)}
 .dpri{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:16px;
      margin-right:6px;padding:0 5px;border-radius:999px;border:1px solid var(--border);font-size:10px;
      font-weight:700;line-height:1;background:var(--bg-alt);color:var(--muted)}
@@ -414,7 +419,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-18T11:46:10+05:00',commit:'6d21a61'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-18T12:26:43+05:00',commit:'8ce7d59'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -5250,7 +5255,7 @@ function handleGlobalKey(app, state, e) {
         logTaskHistory(t, 'priority', { from: before, to: Number(t.color || 0) });
       }
       app.save();
-      app.renderList();
+      app.render();
     }
     return;
   }
@@ -5352,6 +5357,7 @@ function handleTwoKeySequence(app, state, e) {
     'll': () => app.openCP('lists'),
     'gh': () => app.showPage('home'),
     'gd': () => app.showPage('due'),
+    'gl': () => { if (state.selId) app.jumpTo(state.selId); },
     'gg': () => { if (state.selId) { const t = state.data.tasks[state.selId]; const m = t.content.match(/https?:\/\/\S+/); if (m) window.open(m[0], '_blank'); } },
     'mm': () => app.openMoveDlg(),
     'rd': () => app.showRestoreDeleted(),
@@ -6012,15 +6018,21 @@ function renderDueUi(app, state) {
     const items = sec.items;
     if (!items.length) return '';
     return `<div class="dsec"><div class="dsec-h">${sec.title} (${items.length})</div>${items.map(t => {
+      const isSel = state.selId === t.id;
       const l = state.data.lists[t.checklist_id];
       const contentHtml = renderSummaryContentUi(state, t.content || '(untitled)');
       const priorityCls = t.color > 0 ? ` priority-${t.color}` : '';
       const priorityChip = t.color > 0 ? `<span class="dpri priority-${t.color}">P${t.color}</span>` : '';
-      return `<div class="dti${priorityCls}" onclick="App.jumpTo('${t.id}')">
+      return `<div class="dti${priorityCls}${isSel ? ' sel' : ''}" onclick="App.selectDueTask('${t.id}')">
         ${t.color > 0 ? '<div class="cbar"></div>' : ''}
         <input type="checkbox" ${t.status === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
         <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}</div></div>
         <div style="font-size:11px;color:var(--muted)">${fmtDue(t, state.data.settings.relativeDates)}</div>
+        <div class="dacts">
+          <button class="dgo" title="Adjust due date" onclick="event.stopPropagation();App.openDueForTask('${t.id}')">Due</button>
+          <button class="dgo" title="Edit task" onclick="event.stopPropagation();App.editDueTask('${t.id}')">Edit</button>
+          <button class="dgo" title="Go to task in list (gl)" onclick="event.stopPropagation();App.jumpTo('${t.id}')">Go</button>
+        </div>
       </div>`;
     }).join('')}</div>`;
   }).join('');
@@ -6505,6 +6517,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Keyboard shortcuts', s: '?', fn: () => app.showShortcuts() },
     { l: 'Lists home', s: 'gh', fn: () => app.showPage('home') },
     { l: 'Due page', s: 'gd', fn: () => app.showPage('due') },
+    { l: 'Go to selected task in list', s: 'gl', fn: () => { if (state.selId) app.jumpTo(state.selId); } },
     { l: 'Reporting page', s: 'gr', fn: () => app.showPage('report') },
     { l: 'Kanban page', s: 'gk', fn: () => app.showPage('kanban') },
     { l: 'Tags page', s: 'gt', fn: () => app.showPage('tags') },
@@ -7249,6 +7262,7 @@ function showShortcutsUi(app) {
       ['ll', 'Open lists picker'],
       ['gh', 'Lists home'],
       ['gd', 'Due page'],
+      ['gl', 'Go to selected task in list'],
       ['gr', 'Reporting page'],
       ['gt', 'Tags page'],
       ['gg', 'Open first URL in task'],
@@ -7736,6 +7750,29 @@ const App={
 
   // â”€ Due page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   renderDue(){ renderDueUi(this, S); },
+  selectDueTask(id){
+    const t = S.data.tasks[id];
+    if (!t || t.deleted) return;
+    S.selId = id;
+    S.msel.clear();
+    this.renderDue();
+    this.syncSB();
+  },
+  openDueForTask(id){
+    const t = S.data.tasks[id];
+    if (!t || t.deleted) return;
+    S.selId = id;
+    S.msel.clear();
+    this.renderDue();
+    this.syncSB();
+    this.openDueModal();
+  },
+  editDueTask(id){
+    const t = S.data.tasks[id];
+    if (!t || t.deleted) return;
+    this.jumpTo(id);
+    setTimeout(() => this.startEdit(id), 80);
+  },
 
   renderReport(){ renderReportUi(this, S); },
   toggleReportFilter(key){

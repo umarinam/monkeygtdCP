@@ -156,3 +156,47 @@ test('renderDueUi shows priority chip when task has priority', () => {
   assert.equal(docNodes['due-c'].innerHTML.includes('class="dpri priority-5"'), true);
   assert.equal(docNodes['due-c'].innerHTML.includes('P5'), true);
 });
+
+test('renderDueUi keeps due-page selection and provides explicit go-to-list action', () => {
+  const docNodes = {
+    'due-c': { innerHTML: '' }
+  };
+  const { renderDueUi } = loadRenderContext(docNodes);
+
+  const state = {
+    selId: 't1',
+    data: {
+      settings: { relativeDates: false },
+      lists: {
+        l1: { id: 'l1', name: 'Main' }
+      }
+    }
+  };
+
+  const app = {
+    select: (name) => {
+      if (name === 'due.sections') {
+        return [{
+          title: 'Today',
+          items: [{
+            id: 't1',
+            checklist_id: 'l1',
+            status: 0,
+            content: 'Task in due page',
+            due: '2026-07-06',
+            due_asap: false
+          }]
+        }];
+      }
+      return [];
+    }
+  };
+
+  renderDueUi(app, state);
+
+  assert.equal(docNodes['due-c'].innerHTML.includes("onclick=\"App.selectDueTask('t1')\""), true);
+  assert.equal(docNodes['due-c'].innerHTML.includes("onclick=\"event.stopPropagation();App.openDueForTask('t1')\""), true);
+  assert.equal(docNodes['due-c'].innerHTML.includes("onclick=\"event.stopPropagation();App.editDueTask('t1')\""), true);
+  assert.equal(docNodes['due-c'].innerHTML.includes("onclick=\"event.stopPropagation();App.jumpTo('t1')\""), true);
+  assert.equal(docNodes['due-c'].innerHTML.includes('class="dti sel"'), true);
+});

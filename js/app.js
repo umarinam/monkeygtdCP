@@ -370,6 +370,29 @@ const App={
 
   // â”€ Due page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   renderDue(){ renderDueUi(this, S); },
+  selectDueTask(id){
+    const t = S.data.tasks[id];
+    if (!t || t.deleted) return;
+    S.selId = id;
+    S.msel.clear();
+    this.renderDue();
+    this.syncSB();
+  },
+  openDueForTask(id){
+    const t = S.data.tasks[id];
+    if (!t || t.deleted) return;
+    S.selId = id;
+    S.msel.clear();
+    this.renderDue();
+    this.syncSB();
+    this.openDueModal();
+  },
+  editDueTask(id){
+    const t = S.data.tasks[id];
+    if (!t || t.deleted) return;
+    this.jumpTo(id);
+    setTimeout(() => this.startEdit(id), 80);
+  },
 
   renderReport(){ renderReportUi(this, S); },
   toggleReportFilter(key){

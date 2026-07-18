@@ -349,7 +349,7 @@ function handleGlobalKey(app, state, e) {
         logTaskHistory(t, 'priority', { from: before, to: Number(t.color || 0) });
       }
       app.save();
-      app.renderList();
+      app.render();
     }
     return;
   }
@@ -451,6 +451,7 @@ function handleTwoKeySequence(app, state, e) {
     'll': () => app.openCP('lists'),
     'gh': () => app.showPage('home'),
     'gd': () => app.showPage('due'),
+    'gl': () => { if (state.selId) app.jumpTo(state.selId); },
     'gg': () => { if (state.selId) { const t = state.data.tasks[state.selId]; const m = t.content.match(/https?:\/\/\S+/); if (m) window.open(m[0], '_blank'); } },
     'mm': () => app.openMoveDlg(),
     'rd': () => app.showRestoreDeleted(),

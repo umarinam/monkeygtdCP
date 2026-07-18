@@ -27,6 +27,8 @@ test('command palette includes clear-assignees and key two-key shortcut actions'
     "{ l: 'Copy task permalink', s: 'tc / lc'"
   ];
 
+  required.push("{ l: 'Go to selected task in list', s: 'gl'");
+
   required.push("{ l: 'Redo', s: 'Ctrl+Y / Ctrl+Shift+Z'");
 
   for (const snippet of required) {
@@ -44,6 +46,7 @@ test('shortcuts help includes discoverability entries for advanced two-key actio
     "['pc', 'Show branch progress']",
     "['ll', 'Open lists picker']",
     "['gg', 'Open first URL in task']",
+    "['gl', 'Go to selected task in list']",
     "['no', 'Add OneNote link']",
     "['ne', 'Add email link']",
     "['nf', 'Add file link']",

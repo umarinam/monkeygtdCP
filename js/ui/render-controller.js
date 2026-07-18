@@ -317,15 +317,21 @@ function renderDueUi(app, state) {
     const items = sec.items;
     if (!items.length) return '';
     return `<div class="dsec"><div class="dsec-h">${sec.title} (${items.length})</div>${items.map(t => {
+      const isSel = state.selId === t.id;
       const l = state.data.lists[t.checklist_id];
       const contentHtml = renderSummaryContentUi(state, t.content || '(untitled)');
       const priorityCls = t.color > 0 ? ` priority-${t.color}` : '';
       const priorityChip = t.color > 0 ? `<span class="dpri priority-${t.color}">P${t.color}</span>` : '';
-      return `<div class="dti${priorityCls}" onclick="App.jumpTo('${t.id}')">
+      return `<div class="dti${priorityCls}${isSel ? ' sel' : ''}" onclick="App.selectDueTask('${t.id}')">
         ${t.color > 0 ? '<div class="cbar"></div>' : ''}
         <input type="checkbox" ${t.status === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
         <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}</div></div>
         <div style="font-size:11px;color:var(--muted)">${fmtDue(t, state.data.settings.relativeDates)}</div>
+        <div class="dacts">
+          <button class="dgo" title="Adjust due date" onclick="event.stopPropagation();App.openDueForTask('${t.id}')">Due</button>
+          <button class="dgo" title="Edit task" onclick="event.stopPropagation();App.editDueTask('${t.id}')">Edit</button>
+          <button class="dgo" title="Go to task in list (gl)" onclick="event.stopPropagation();App.jumpTo('${t.id}')">Go</button>
+        </div>
       </div>`;
     }).join('')}</div>`;
   }).join('');

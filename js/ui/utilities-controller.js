@@ -344,6 +344,7 @@ function showShortcutsUi(app) {
       ['ll', 'Open lists picker'],
       ['gh', 'Lists home'],
       ['gd', 'Due page'],
+      ['gl', 'Go to selected task in list'],
       ['gr', 'Reporting page'],
       ['gt', 'Tags page'],
       ['gg', 'Open first URL in task'],

@@ -1175,6 +1175,44 @@ test('handleTwoKeySequence routes tt to addTagSelection for multi-select', () =>
   assert.equal(calls.addTagSelection, 1);
 });
 
+test('handleTwoKeySequence routes gl to jumpTo for selected task', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { jumpTo: [] };
+
+  const app = {
+    jumpTo: (id) => { calls.jumpTo.push(id); },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: 't1',
+    kbuf: '',
+    kbtimer: null,
+    msel: new Set(['t1']),
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: 'Task' }
+      }
+    }
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    preventDefault: () => {},
+    key: 'g'
+  };
+
+  handleTwoKeySequence(app, state, e);
+  e.key = 'l';
+  handleTwoKeySequence(app, state, e);
+
+  assert.deepEqual(calls.jumpTo, ['t1']);
+});
+
 test('handleGlobalKey routes Ctrl+ArrowUp to moveUpSelection for multi-select', () => {
   const { handleGlobalKey } = loadKeyboardController();
   const calls = { moveUpSelection: 0 };
