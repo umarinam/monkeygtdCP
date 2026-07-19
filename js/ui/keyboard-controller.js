@@ -47,6 +47,8 @@ function bindGlobalEvents(app, state) {
 }
 
 function handleGlobalKey(app, state, e) {
+  if (e && e.key === 'Escape' && e.__mgtdEscHandled) return;
+
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history shortcuts'.split(' ')].some(
@@ -74,6 +76,7 @@ function handleGlobalKey(app, state, e) {
   }
   if (state.editId) {
     if (e.key === 'Escape') {
+      e.__mgtdEscHandled = true;
       e.preventDefault();
       const editId = state.editId;
       const el = document.getElementById(`ea-${editId}`);
@@ -81,10 +84,14 @@ function handleGlobalKey(app, state, e) {
 
       if (state.pendingNewEditId === editId && !typed) {
         const prevId = state.pendingNewEditPrevId;
+        const prevHoistId = state.hoistId || null;
         state.pendingNewEditId = null;
         state.pendingNewEditPrevId = null;
         state.editId = null;
         app.deleteTask(editId);
+        if (prevHoistId && state.data.tasks[prevHoistId] && !state.data.tasks[prevHoistId].deleted) {
+          state.hoistId = prevHoistId;
+        }
         if (prevId && state.data.tasks[prevId] && !state.data.tasks[prevId].deleted) {
           state.selId = prevId;
           app.renderList();

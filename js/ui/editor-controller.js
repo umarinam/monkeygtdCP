@@ -50,20 +50,26 @@ function editKeyUi(app, S, e, id) {
     }
     if (e.key === 'Escape') {
       e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
       app.hideInlineAutocomplete();
       return;
     }
   }
   if (e.key === 'Escape') {
     e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
     const el = document.getElementById(`ea-${id}`);
     const typed = (el && typeof el.value === 'string') ? el.value.trim() : '';
     if (S.pendingNewEditId === id && !typed) {
       const prevId = S.pendingNewEditPrevId;
+      const prevHoistId = S.hoistId || null;
       S.pendingNewEditId = null;
       S.pendingNewEditPrevId = null;
       S.editId = null;
       app.deleteTask(id);
+      if (prevHoistId && S.data.tasks[prevHoistId] && !S.data.tasks[prevHoistId].deleted) {
+        S.hoistId = prevHoistId;
+      }
       if (prevId && S.data.tasks[prevId] && !S.data.tasks[prevId].deleted) {
         S.selId = prevId;
         app.renderList();

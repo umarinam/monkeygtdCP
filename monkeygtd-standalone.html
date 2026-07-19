@@ -419,7 +419,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-18T12:53:52+05:00',commit:'64bbc4a'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-18T17:34:30+05:00',commit:'92389d2'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -4953,6 +4953,8 @@ function bindGlobalEvents(app, state) {
 }
 
 function handleGlobalKey(app, state, e) {
+  if (e && e.key === 'Escape' && e.__mgtdEscHandled) return;
+
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history shortcuts'.split(' ')].some(
@@ -4980,6 +4982,7 @@ function handleGlobalKey(app, state, e) {
   }
   if (state.editId) {
     if (e.key === 'Escape') {
+      e.__mgtdEscHandled = true;
       e.preventDefault();
       const editId = state.editId;
       const el = document.getElementById(`ea-${editId}`);
@@ -4987,10 +4990,14 @@ function handleGlobalKey(app, state, e) {
 
       if (state.pendingNewEditId === editId && !typed) {
         const prevId = state.pendingNewEditPrevId;
+        const prevHoistId = state.hoistId || null;
         state.pendingNewEditId = null;
         state.pendingNewEditPrevId = null;
         state.editId = null;
         app.deleteTask(editId);
+        if (prevHoistId && state.data.tasks[prevHoistId] && !state.data.tasks[prevHoistId].deleted) {
+          state.hoistId = prevHoistId;
+        }
         if (prevId && state.data.tasks[prevId] && !state.data.tasks[prevId].deleted) {
           state.selId = prevId;
           app.renderList();
@@ -5466,20 +5473,26 @@ function editKeyUi(app, S, e, id) {
     }
     if (e.key === 'Escape') {
       e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
       app.hideInlineAutocomplete();
       return;
     }
   }
   if (e.key === 'Escape') {
     e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
     const el = document.getElementById(`ea-${id}`);
     const typed = (el && typeof el.value === 'string') ? el.value.trim() : '';
     if (S.pendingNewEditId === id && !typed) {
       const prevId = S.pendingNewEditPrevId;
+      const prevHoistId = S.hoistId || null;
       S.pendingNewEditId = null;
       S.pendingNewEditPrevId = null;
       S.editId = null;
       app.deleteTask(id);
+      if (prevHoistId && S.data.tasks[prevHoistId] && !S.data.tasks[prevHoistId].deleted) {
+        S.hoistId = prevHoistId;
+      }
       if (prevId && S.data.tasks[prevId] && !S.data.tasks[prevId].deleted) {
         S.selId = prevId;
         app.renderList();

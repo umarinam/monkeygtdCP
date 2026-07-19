@@ -102,3 +102,88 @@ test('Esc does not delete newly added task when user typed content', () => {
   assert.equal(state.pendingNewEditId, null);
   assert.equal(state.pendingNewEditPrevId, null);
 });
+
+test('Esc keeps hoist mode when canceling untouched newly added task', () => {
+  const docMap = {
+    'ea-new1': { value: '' }
+  };
+  const { editKeyUi } = loadEditorController(docMap);
+
+  const state = {
+    editId: 'new1',
+    selId: 'new1',
+    hoistId: 'h1',
+    pendingNewEditId: 'new1',
+    pendingNewEditPrevId: 'old1',
+    data: {
+      tasks: {
+        h1: { id: 'h1', deleted: false },
+        old1: { id: 'old1', deleted: false },
+        new1: { id: 'new1', deleted: false }
+      }
+    }
+  };
+
+  const app = {
+    isInlineAutocompleteOpen: () => false,
+    deleteTask: (id) => {
+      if (state.data.tasks[id]) state.data.tasks[id].deleted = true;
+      state.hoistId = null;
+    },
+    renderList: () => {}
+  };
+
+  const e = {
+    key: 'Escape',
+    preventDefault: () => {}
+  };
+
+  editKeyUi(app, state, e, 'new1');
+
+  assert.equal(state.hoistId, 'h1');
+  assert.equal(state.selId, 'old1');
+});
+
+test('Esc from editor stops propagation to global handler', () => {
+  const docMap = {
+    'ea-new1': { value: '' }
+  };
+  const { editKeyUi } = loadEditorController(docMap);
+
+  const state = {
+    editId: 'new1',
+    selId: 'new1',
+    hoistId: 'h1',
+    pendingNewEditId: 'new1',
+    pendingNewEditPrevId: 'old1',
+    data: {
+      tasks: {
+        h1: { id: 'h1', deleted: false },
+        old1: { id: 'old1', deleted: false },
+        new1: { id: 'new1', deleted: false }
+      }
+    }
+  };
+
+  let stopped = false;
+  const app = {
+    isInlineAutocompleteOpen: () => false,
+    deleteTask: (id) => {
+      if (state.data.tasks[id]) state.data.tasks[id].deleted = true;
+      state.hoistId = null;
+    },
+    renderList: () => {}
+  };
+
+  const e = {
+    key: 'Escape',
+    preventDefault: () => {},
+    stopPropagation: () => { stopped = true; }
+  };
+
+  editKeyUi(app, state, e, 'new1');
+
+  assert.equal(stopped, true);
+  assert.equal(state.hoistId, 'h1');
+  assert.equal(state.selId, 'old1');
+});
