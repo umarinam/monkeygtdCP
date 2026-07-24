@@ -91,7 +91,7 @@ function editKeyUi(app, S, e, id) {
       app.saveEdit(id, el.value);
       S.editId = null;
     }
-    const asChild = !!S.hoistId;
+    const asChild = !!(S.hoistId && id === S.hoistId);
     const nid = app.addTask(id, asChild, '');
     S.pendingNewEditId = nid;
     S.pendingNewEditPrevId = id;

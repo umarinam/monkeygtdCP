@@ -92,7 +92,7 @@ function toggleExpandCollapseUi(app, S) {
 
 function hoistTaskUi(app, S, id) {
   S.hoistId = id;
-  S.selId = null;
+  S.selId = id;
   app.renderList();
   app.toast('Focused');
 }

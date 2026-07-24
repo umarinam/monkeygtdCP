@@ -162,6 +162,7 @@ body.zen #topbar{display:none}
 #task-list.branches-relaxed .ti.has-kids{margin-bottom:4px}
 #task-list.focus-path .ti{transition:opacity .12s ease, background-color .12s ease}
 #task-list.focus-path .ti.focus-dim{opacity:.42}
+#task-list.focus-path .ti.focus-sibling{opacity:.62}
 #task-list.focus-path .ti.focus-path{opacity:.82}
 #task-list.focus-path .ti.focus-active{opacity:1}
 #task-list.focus-path .ti.focus-active .tc{font-weight:600}
@@ -419,7 +420,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-19T12:30:42+05:00',commit:'c7d37f4'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-25T03:17:43+05:00',commit:'6521c3c'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -5162,7 +5163,8 @@ function handleGlobalKey(app, state, e) {
   }
   if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
     e.preventDefault();
-    const nid = app.dispatch('task.add', { afterId: state.selId, asChild: false, content: '' });
+    const asChild = !!(state.hoistId && state.selId === state.hoistId);
+    const nid = app.dispatch('task.add', { afterId: state.selId, asChild, content: '' });
     state.selId = nid;
     app.renderList();
     app.startEdit(nid);
@@ -5526,7 +5528,7 @@ function editKeyUi(app, S, e, id) {
       app.saveEdit(id, el.value);
       S.editId = null;
     }
-    const asChild = !!S.hoistId;
+    const asChild = !!(S.hoistId && id === S.hoistId);
     const nid = app.addTask(id, asChild, '');
     S.pendingNewEditId = nid;
     S.pendingNewEditPrevId = id;
@@ -6231,6 +6233,7 @@ function getTaskFocusCache(state) {
 
   const tasks = state.data?.tasks || {};
   const branchIds = new Set([selId]);
+  const siblingIds = new Set();
   const selectedTask = tasks[selId];
   let current = selectedTask;
 
@@ -6253,7 +6256,20 @@ function getTaskFocusCache(state) {
 
   addDescendants(selId);
 
-  const cache = { selId, branchIds };
+  // Collect siblings of the selected task (tasks sharing the same parent)
+  const parentId = selectedTask?.parent_id;
+  if (parentId) {
+    const parent = tasks[parentId];
+    if (parent && Array.isArray(parent.tasks)) {
+      parent.tasks.forEach((siblingId) => {
+        if (!branchIds.has(siblingId)) {
+          siblingIds.add(siblingId);
+        }
+      });
+    }
+  }
+
+  const cache = { selId, branchIds, siblingIds };
   state.__taskFocusCache = cache;
   return cache;
 }
@@ -6264,7 +6280,10 @@ function getTaskFocusClassName(state, id) {
   if (state.selId === id) return ' focus-active';
 
   const cache = getTaskFocusCache(state);
-  if (cache && cache.branchIds.has(id)) return ' focus-path';
+  if (cache) {
+    if (cache.branchIds.has(id)) return ' focus-path';
+    if (cache.siblingIds.has(id)) return ' focus-sibling';
+  }
   return ' focus-dim';
 }
 
@@ -6893,7 +6912,7 @@ function toggleExpandCollapseUi(app, S) {
 
 function hoistTaskUi(app, S, id) {
   S.hoistId = id;
-  S.selId = null;
+  S.selId = id;
   app.renderList();
   app.toast('Focused');
 }

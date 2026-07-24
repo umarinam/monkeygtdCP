@@ -504,6 +504,7 @@ function getTaskFocusCache(state) {
 
   const tasks = state.data?.tasks || {};
   const branchIds = new Set([selId]);
+  const siblingIds = new Set();
   const selectedTask = tasks[selId];
   let current = selectedTask;
 
@@ -526,7 +527,20 @@ function getTaskFocusCache(state) {
 
   addDescendants(selId);
 
-  const cache = { selId, branchIds };
+  // Collect siblings of the selected task (tasks sharing the same parent)
+  const parentId = selectedTask?.parent_id;
+  if (parentId) {
+    const parent = tasks[parentId];
+    if (parent && Array.isArray(parent.tasks)) {
+      parent.tasks.forEach((siblingId) => {
+        if (!branchIds.has(siblingId)) {
+          siblingIds.add(siblingId);
+        }
+      });
+    }
+  }
+
+  const cache = { selId, branchIds, siblingIds };
   state.__taskFocusCache = cache;
   return cache;
 }
@@ -537,7 +551,10 @@ function getTaskFocusClassName(state, id) {
   if (state.selId === id) return ' focus-active';
 
   const cache = getTaskFocusCache(state);
-  if (cache && cache.branchIds.has(id)) return ' focus-path';
+  if (cache) {
+    if (cache.branchIds.has(id)) return ' focus-path';
+    if (cache.siblingIds.has(id)) return ' focus-sibling';
+  }
   return ' focus-dim';
 }
 

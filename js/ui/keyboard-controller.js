@@ -244,7 +244,8 @@ function handleGlobalKey(app, state, e) {
   }
   if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
     e.preventDefault();
-    const nid = app.dispatch('task.add', { afterId: state.selId, asChild: false, content: '' });
+    const asChild = !!(state.hoistId && state.selId === state.hoistId);
+    const nid = app.dispatch('task.add', { afterId: state.selId, asChild, content: '' });
     state.selId = nid;
     app.renderList();
     app.startEdit(nid);

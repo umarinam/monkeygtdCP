@@ -155,6 +155,7 @@ body.zen #topbar{display:none}
 #task-list.branches-relaxed .ti.has-kids{margin-bottom:4px}
 #task-list.focus-path .ti{transition:opacity .12s ease, background-color .12s ease}
 #task-list.focus-path .ti.focus-dim{opacity:.42}
+#task-list.focus-path .ti.focus-sibling{opacity:.62}
 #task-list.focus-path .ti.focus-path{opacity:.82}
 #task-list.focus-path .ti.focus-active{opacity:1}
 #task-list.focus-path .ti.focus-active .tc{font-weight:600}
