@@ -405,16 +405,22 @@ async function syncFromGistRemote(app, state, options) {
     }
 
     const prevSettings = state.data.settings || {};
+    const prevHoistId = state.hoistId;
+    const prevSelId = state.selId;
+    const prevFilter = state.filter;
+    const prevMsel = new Set(state.msel);
+    
     state.data = payload.data;
     state.data.settings = state.data.settings || {};
     gistPreserveSyncSettings(state, prevSettings);
     state.data.currentListId = state.data.currentListId || Object.keys(state.data.lists || {})[0] || null;
     state.listId = state.data.currentListId;
-    state.selId = null;
     state.editId = null;
-    state.hoistId = null;
-    state.filter = '';
-    state.msel.clear();
+    
+    state.hoistId = (prevHoistId && state.data.tasks[prevHoistId] && !state.data.tasks[prevHoistId].deleted) ? prevHoistId : null;
+    state.selId = (prevSelId && state.data.tasks[prevSelId] && !state.data.tasks[prevSelId].deleted) ? prevSelId : null;
+    state.filter = prevFilter;
+    state.msel = new Set(Array.from(prevMsel).filter(id => state.data.tasks[id] && !state.data.tasks[id].deleted));
     state.data.settings.gistLastSyncAt = remoteAt || new Date().toISOString();
 
     const inbox = await gistProcessInboxRemote(state, config, meta);

@@ -30,6 +30,7 @@
         "/^node --test tests/unit/task-list-layout-settings\\.test\\.cjs$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        ".\\inline-html.ps1": true
     }
 }
