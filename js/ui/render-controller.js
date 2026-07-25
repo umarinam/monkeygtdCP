@@ -316,7 +316,9 @@ function renderDueUi(app, state) {
   let h = sections.map(sec => {
     const items = sec.items;
     if (!items.length) return '';
-    return `<div class="dsec"><div class="dsec-h">${sec.title} (${items.length})</div>${items.map(t => {
+    const isCollapsed = state.collapsedDueSections && state.collapsedDueSections.has(sec.title);
+    const toggleBtn = `<span class="dsec-tog${isCollapsed ? ' coll' : ' exp'}" onclick="event.stopPropagation();App.toggleDueSection('${esc(sec.title)}')">${isCollapsed ? '▶' : '▼'}</span>`;
+    const itemsHtml = isCollapsed ? '' : items.map(t => {
       const isSel = state.selId === t.id;
       const l = state.data.lists[t.checklist_id];
       const contentHtml = renderSummaryContentUi(state, t.content || '(untitled)');
@@ -333,7 +335,8 @@ function renderDueUi(app, state) {
           <button class="dgo" title="Go to task in list (gl)" onclick="event.stopPropagation();App.jumpTo('${t.id}')">Go</button>
         </div>
       </div>`;
-    }).join('')}</div>`;
+    }).join('');
+    return `<div class="dsec"><div class="dsec-h">${toggleBtn} ${sec.title} (${items.length})</div>${itemsHtml}</div>`;
   }).join('');
 
   if (!h) {

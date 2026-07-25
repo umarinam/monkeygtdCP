@@ -14,6 +14,7 @@ const S={
   showNotes:false, clipboard:null,
   lastClickId:'', lastClickAt:0,
   lastCdAt:0,
+  collapsedDueSections:new Set(),
   iac:{open:false,taskId:null,type:'',query:'',start:0,end:0,items:[],index:0}
 };
 
@@ -29,6 +30,7 @@ const App={
     reportStartDate.setDate(reportStartDate.getDate()-7);
     S.reportStart=dateStr(reportStartDate);
     S.data.settings = S.data.settings || {};
+    S.collapsedDueSections = new Set(S.data.settings.collapsedDueSections || []);
     const gs=d.settings;
     if(gs.darkMode) document.documentElement.setAttribute('data-theme','dark');
     if(gs.zenMode) document.body.classList.add('zen');
@@ -370,6 +372,16 @@ const App={
 
   // â”€ Due page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   renderDue(){ renderDueUi(this, S); },
+  toggleDueSection(title){
+    if (!S.collapsedDueSections.has(title)) {
+      S.collapsedDueSections.add(title);
+    } else {
+      S.collapsedDueSections.delete(title);
+    }
+    S.data.settings.collapsedDueSections = Array.from(S.collapsedDueSections);
+    this.save();
+    this.renderDue();
+  },
   selectDueTask(id){
     const t = S.data.tasks[id];
     if (!t || t.deleted) return;

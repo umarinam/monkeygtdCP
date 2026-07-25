@@ -242,7 +242,8 @@ const seedData = () => {
               branchSpacing:'relaxed',focusMode:'off',contentWidth:'measure',
               listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,copyStatusPrefix:false,
               gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5,
-              syncProvider:'gist',repoBranch:'main',repoPath:'monkeygtd-backup.json'},
+              syncProvider:'gist',repoBranch:'main',repoPath:'monkeygtd-backup.json',
+              collapsedDueSections:[]},
     deletedItems:[],currentListId:lid
   };
 };
