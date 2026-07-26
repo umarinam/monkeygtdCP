@@ -13,29 +13,9 @@ function registerAppQueries(app, deps) {
 
   const getData = () => state.data;
 
-  app.queryService.register('tasks.visible', () => {
-    const data = getData();
-    const list = data.lists[state.listId];
-    if (!list) return [];
-
-    const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
-    const visible = [];
-
-    walkTasks(roots, data.tasks, task => {
-      if (!data.settings.showCompleted && task.status !== 0) return skipChildren;
-      visible.push(task.id);
-      if (task._collapsed) return skipChildren;
-    });
-
-    return visible;
-  });
-
-  app.queryService.register('tasks.filterIds', payload => {
-    const data = getData();
-    const ids = payload.ids || [];
-    const q = String(payload.q || '').toLowerCase();
-
-    const match = id => {
+  const buildTaskMatcher = (qRaw, data) => {
+    const q = String(qRaw || '').toLowerCase();
+    return id => {
       const t = data.tasks[id];
       if (!t || t.deleted) return false;
       const tm = q.match(/#([\w-]+)/);
@@ -78,6 +58,29 @@ function registerAppQueries(app, deps) {
       if (plain) ok = ok && t.content.toLowerCase().includes(plain);
       return ok;
     };
+  };
+
+  app.queryService.register('tasks.visible', () => {
+    const data = getData();
+    const list = data.lists[state.listId];
+    if (!list) return [];
+
+    const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
+    const visible = [];
+
+    walkTasks(roots, data.tasks, task => {
+      if (!data.settings.showCompleted && task.status !== 0) return skipChildren;
+      visible.push(task.id);
+      if (task._collapsed) return skipChildren;
+    });
+
+    return visible;
+  });
+
+  app.queryService.register('tasks.filterIds', payload => {
+    const data = getData();
+    const ids = payload.ids || [];
+    const match = buildTaskMatcher(payload.q || '', data);
 
     const hasMatchingDescendant = (task, fn) => {
       let found = false;
@@ -91,6 +94,14 @@ function registerAppQueries(app, deps) {
     };
 
     return ids.filter(id => match(id) || (data.tasks[id] && hasMatchingDescendant(data.tasks[id], match)));
+  });
+
+  app.queryService.register('tasks.filterMatchOnly', payload => {
+    const data = getData();
+    const id = String(payload?.id || '').trim();
+    if (!id || !data.tasks[id]) return false;
+    const match = buildTaskMatcher(payload?.q || '', data);
+    return match(id);
   });
 
   app.queryService.register('due.sections', () => {

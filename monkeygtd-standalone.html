@@ -421,7 +421,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-25T16:36:56+05:00',commit:'fbcd536'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-26T11:56:20+05:00',commit:'3d59726'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -822,6 +822,8 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           <label class="tog-sw"><input type="checkbox" id="s-rel" onchange="App.setSetting('relativeDates',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Hide Future Due Tasks</div><div class="ssd">Only show overdue / ASAP / today / tomorrow</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-hf" onchange="App.setSetting('hideFuture',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Show Children Of Search Matches</div><div class="ssd">When a task matches search, keep its full child tree visible</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-search-kids" onchange="App.setSetting('showSearchMatchChildren',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Copy Only Visible Subtasks</div><div class="ssd">When on, Copy skips hidden descendants (completed, future, collapsed)</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-copy-visible" onchange="App.setSetting('copyOnlyVisibleSubtasks',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Copy Task Status Prefix</div><div class="ssd">Prefix copied lines with [X] for completed and [ ] for others</div></div>
@@ -1274,6 +1276,7 @@ const seedData = () => {
     settings:{darkMode:false,zenMode:false,showCompleted:true,moveCompletedDown:false,
               relativeDates:false,hideFuture:false,showBreadcrumbs:true,autoCloseParent:true,
               closeChildrenOnParentDone:false,
+              showSearchMatchChildren:false,
               taskDensity:'comfortable',emphasizeParentTasks:true,indentGuideStyle:'subtle',
               branchSpacing:'relaxed',focusMode:'off',contentWidth:'measure',
               listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,copyStatusPrefix:false,
@@ -1300,29 +1303,9 @@ function registerAppQueries(app, deps) {
 
   const getData = () => state.data;
 
-  app.queryService.register('tasks.visible', () => {
-    const data = getData();
-    const list = data.lists[state.listId];
-    if (!list) return [];
-
-    const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
-    const visible = [];
-
-    walkTasks(roots, data.tasks, task => {
-      if (!data.settings.showCompleted && task.status !== 0) return skipChildren;
-      visible.push(task.id);
-      if (task._collapsed) return skipChildren;
-    });
-
-    return visible;
-  });
-
-  app.queryService.register('tasks.filterIds', payload => {
-    const data = getData();
-    const ids = payload.ids || [];
-    const q = String(payload.q || '').toLowerCase();
-
-    const match = id => {
+  const buildTaskMatcher = (qRaw, data) => {
+    const q = String(qRaw || '').toLowerCase();
+    return id => {
       const t = data.tasks[id];
       if (!t || t.deleted) return false;
       const tm = q.match(/#([\w-]+)/);
@@ -1365,6 +1348,29 @@ function registerAppQueries(app, deps) {
       if (plain) ok = ok && t.content.toLowerCase().includes(plain);
       return ok;
     };
+  };
+
+  app.queryService.register('tasks.visible', () => {
+    const data = getData();
+    const list = data.lists[state.listId];
+    if (!list) return [];
+
+    const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
+    const visible = [];
+
+    walkTasks(roots, data.tasks, task => {
+      if (!data.settings.showCompleted && task.status !== 0) return skipChildren;
+      visible.push(task.id);
+      if (task._collapsed) return skipChildren;
+    });
+
+    return visible;
+  });
+
+  app.queryService.register('tasks.filterIds', payload => {
+    const data = getData();
+    const ids = payload.ids || [];
+    const match = buildTaskMatcher(payload.q || '', data);
 
     const hasMatchingDescendant = (task, fn) => {
       let found = false;
@@ -1378,6 +1384,14 @@ function registerAppQueries(app, deps) {
     };
 
     return ids.filter(id => match(id) || (data.tasks[id] && hasMatchingDescendant(data.tasks[id], match)));
+  });
+
+  app.queryService.register('tasks.filterMatchOnly', payload => {
+    const data = getData();
+    const id = String(payload?.id || '').trim();
+    if (!id || !data.tasks[id]) return false;
+    const match = buildTaskMatcher(payload?.q || '', data);
+    return match(id);
   });
 
   app.queryService.register('due.sections', () => {
@@ -6317,11 +6331,26 @@ function renderListUi(app, state) {
   requestAnimationFrame(() => app.scrollSel());
 }
 
-function buildTaskTreeUi(app, state, ids, depth, list) {
+function buildTaskTreeUi(app, state, ids, depth, list, forceShowSearchSubtree) {
   const gs = state.data.settings;
   let list2 = ids || [];
+  const forceShow = !!forceShowSearchSubtree;
 
-  if (state.filter) list2 = filterIdsUi(app, state, list2);
+  if (state.filter && !forceShow) {
+    const filtered = filterIdsUi(app, state, list2);
+    // Keep in-progress entry rows visible even if they do not match the active filter.
+    const keepIds = [state.editId, state.pendingNewEditId, state.pendingNewEditPrevId].filter(Boolean);
+    const needsKeep = keepIds.some(id => list2.includes(id) && !filtered.includes(id));
+    if (needsKeep) {
+      const keep = new Set(filtered);
+      keepIds.forEach(id => {
+        if (list2.includes(id)) keep.add(id);
+      });
+      list2 = list2.filter(id => keep.has(id));
+    } else {
+      list2 = filtered;
+    }
+  }
   if (!gs.showCompleted) list2 = list2.filter(id => {
     const t = state.data.tasks[id];
     return t && t.status === 0;
@@ -6349,7 +6378,7 @@ function buildTaskTreeUi(app, state, ids, depth, list) {
     });
   }
 
-  return list2.map(id => buildTaskItemUi(app, state, id, depth, list)).join('');
+  return list2.map(id => buildTaskItemUi(app, state, id, depth, list, forceShow)).join('');
 }
 
 function resolveWikiTargetTaskId(state, rawTarget) {
@@ -6401,7 +6430,7 @@ function renderSummaryContentUi(state, content) {
   return md(wikiAwareContent);
 }
 
-function buildTaskItemUi(app, state, id, depth, list) {
+function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
   const t = state.data.tasks[id];
   if (!t || t.deleted) return '';
 
@@ -6485,7 +6514,13 @@ function buildTaskItemUi(app, state, id, depth, list) {
       ${t.color > 0 ? '<div class="cbar"></div>' : ''}
       <div class="igw">${guides}</div>${tog}${cb}${bodyH}</div>`;
 
-  if (hasKids && !t._collapsed) html += buildTaskTreeUi(app, state, t.tasks || [], depth + 1, list);
+  if (hasKids && !t._collapsed) {
+    const showChildrenForSearchMatches = state.filter
+      && !forceShowSearchSubtree
+      && state.data.settings.showSearchMatchChildren === true
+      && app.select('tasks.filterMatchOnly', { id, q: state.filter });
+    html += buildTaskTreeUi(app, state, t.tasks || [], depth + 1, list, forceShowSearchSubtree || showChildrenForSearchMatches);
+  }
   return html;
 }
 
@@ -6743,6 +6778,7 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-bc', s.showBreadcrumbs);
   syncCheckbox('s-rel', s.relativeDates);
   syncCheckbox('s-hf', s.hideFuture);
+  syncCheckbox('s-search-kids', s.showSearchMatchChildren === true);
   syncCheckbox('s-copy-visible', s.copyOnlyVisibleSubtasks !== false);
   syncCheckbox('s-copy-status', s.copyStatusPrefix === true);
   syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);

@@ -30,6 +30,7 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-bc', s.showBreadcrumbs);
   syncCheckbox('s-rel', s.relativeDates);
   syncCheckbox('s-hf', s.hideFuture);
+  syncCheckbox('s-search-kids', s.showSearchMatchChildren === true);
   syncCheckbox('s-copy-visible', s.copyOnlyVisibleSubtasks !== false);
   syncCheckbox('s-copy-status', s.copyStatusPrefix === true);
   syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);

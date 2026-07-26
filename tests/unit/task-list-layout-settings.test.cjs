@@ -185,6 +185,8 @@ test('settings modal exposes configurable task list layout controls', () => {
   for (const id of ['s-density', 's-parent-emphasis', 's-guides', 's-branches', 's-focus', 's-measure']) {
     assert.equal(html.includes(`id="${id}"`), true, `Missing settings control ${id}`);
   }
+
+  assert.equal(html.includes('id="s-search-kids"'), true, 'Missing settings control s-search-kids');
 });
 
 test('task list layout falls back to the calmer default profile', () => {
@@ -210,6 +212,7 @@ test('seedData uses the calmer task list layout defaults', () => {
   assert.equal(settings.branchSpacing, 'relaxed');
   assert.equal(settings.focusMode, 'off');
   assert.equal(settings.contentWidth, 'measure');
+  assert.equal(settings.showSearchMatchChildren, false);
 });
 
 test('indent guide modes define explicit and visibly distinct CSS rules', () => {

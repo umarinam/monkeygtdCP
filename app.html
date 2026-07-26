@@ -407,6 +407,8 @@
           <label class="tog-sw"><input type="checkbox" id="s-rel" onchange="App.setSetting('relativeDates',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Hide Future Due Tasks</div><div class="ssd">Only show overdue / ASAP / today / tomorrow</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-hf" onchange="App.setSetting('hideFuture',this.checked)"><span class="tslider"></span></label></div>
+        <div class="ssi"><div><div class="ssl">Show Children Of Search Matches</div><div class="ssd">When a task matches search, keep its full child tree visible</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-search-kids" onchange="App.setSetting('showSearchMatchChildren',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Copy Only Visible Subtasks</div><div class="ssd">When on, Copy skips hidden descendants (completed, future, collapsed)</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-copy-visible" onchange="App.setSetting('copyOnlyVisibleSubtasks',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Copy Task Status Prefix</div><div class="ssd">Prefix copied lines with [X] for completed and [ ] for others</div></div>

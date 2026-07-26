@@ -586,11 +586,26 @@ function renderListUi(app, state) {
   requestAnimationFrame(() => app.scrollSel());
 }
 
-function buildTaskTreeUi(app, state, ids, depth, list) {
+function buildTaskTreeUi(app, state, ids, depth, list, forceShowSearchSubtree) {
   const gs = state.data.settings;
   let list2 = ids || [];
+  const forceShow = !!forceShowSearchSubtree;
 
-  if (state.filter) list2 = filterIdsUi(app, state, list2);
+  if (state.filter && !forceShow) {
+    const filtered = filterIdsUi(app, state, list2);
+    // Keep in-progress entry rows visible even if they do not match the active filter.
+    const keepIds = [state.editId, state.pendingNewEditId, state.pendingNewEditPrevId].filter(Boolean);
+    const needsKeep = keepIds.some(id => list2.includes(id) && !filtered.includes(id));
+    if (needsKeep) {
+      const keep = new Set(filtered);
+      keepIds.forEach(id => {
+        if (list2.includes(id)) keep.add(id);
+      });
+      list2 = list2.filter(id => keep.has(id));
+    } else {
+      list2 = filtered;
+    }
+  }
   if (!gs.showCompleted) list2 = list2.filter(id => {
     const t = state.data.tasks[id];
     return t && t.status === 0;
@@ -618,7 +633,7 @@ function buildTaskTreeUi(app, state, ids, depth, list) {
     });
   }
 
-  return list2.map(id => buildTaskItemUi(app, state, id, depth, list)).join('');
+  return list2.map(id => buildTaskItemUi(app, state, id, depth, list, forceShow)).join('');
 }
 
 function resolveWikiTargetTaskId(state, rawTarget) {
@@ -670,7 +685,7 @@ function renderSummaryContentUi(state, content) {
   return md(wikiAwareContent);
 }
 
-function buildTaskItemUi(app, state, id, depth, list) {
+function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
   const t = state.data.tasks[id];
   if (!t || t.deleted) return '';
 
@@ -754,6 +769,12 @@ function buildTaskItemUi(app, state, id, depth, list) {
       ${t.color > 0 ? '<div class="cbar"></div>' : ''}
       <div class="igw">${guides}</div>${tog}${cb}${bodyH}</div>`;
 
-  if (hasKids && !t._collapsed) html += buildTaskTreeUi(app, state, t.tasks || [], depth + 1, list);
+  if (hasKids && !t._collapsed) {
+    const showChildrenForSearchMatches = state.filter
+      && !forceShowSearchSubtree
+      && state.data.settings.showSearchMatchChildren === true
+      && app.select('tasks.filterMatchOnly', { id, q: state.filter });
+    html += buildTaskTreeUi(app, state, t.tasks || [], depth + 1, list, forceShowSearchSubtree || showChildrenForSearchMatches);
+  }
   return html;
 }
