@@ -44,7 +44,8 @@ function loadApp() {
     'startGistAutoSyncRemote', 'openCommandPalette', 'closeCommandPalette', 'updateCommandPalette',
     'renderCommandPaletteItems', 'executeCommandPaletteItem', 'openOverlay', 'closeOverlay',
     'closeAllOverlays', 'clearSearchUi', 'syncStatusBarUi', 'showToastUi', 'openSettingsUi',
-    'syncSettingsUi', 'setSettingDomain', 'setDarkModeUi', 'setZenModeUi', 'setListStyleUi'
+    'syncSettingsUi', 'setSettingDomain', 'setDarkModeUi', 'setZenModeUi', 'setListStyleUi',
+    'clearDueUi', 'clearTagsUi', 'clearNotesUi', 'setDueQuickUi'
   ].forEach((name) => { sandbox[name] = sandbox[name] || noOp; });
 
   sandbox.DB = { get: () => null, save: noOp };
@@ -181,4 +182,113 @@ test('unindent then indent does not chain into hierarchy order', () => {
 
   assert.deepEqual(calls.unindent, ['c', 'b', 'a']);
   assert.deepEqual(calls.indent, ['a', 'b', 'c']);
+});
+
+test('clearDueSelection batches multi-select due clearing and preserves order', () => {
+  const { App, S, sandbox } = loadApp();
+  const calls = { clearDue: [], save: 0, render: 0, toast: '' };
+
+  S.msel = new Set(['a', 'b', 'c']);
+  S.selId = 'a';
+
+  App.selectedIds = () => ['a', 'b', 'c'];
+  App.withUndoBatch = (fn) => fn();
+  sandbox.clearDueUi = (app, state, id, internal, removeRepeat) => {
+    calls.clearDue.push({ id, internal, removeRepeat });
+  };
+  App.save = () => { calls.save += 1; };
+  App.render = () => { calls.render += 1; };
+  App.toast = (msg) => { calls.toast = msg; };
+
+  App.clearDueSelection(true);
+
+  assert.deepEqual(calls.clearDue, [
+    { id: 'a', internal: true, removeRepeat: true },
+    { id: 'b', internal: true, removeRepeat: true },
+    { id: 'c', internal: true, removeRepeat: true }
+  ]);
+  assert.equal(calls.save, 1);
+  assert.equal(calls.render, 1);
+  assert.equal(calls.toast, 'Due cleared for 3 task(s)');
+});
+
+test('clearTagsSelection batches multi-select tag clearing', () => {
+  const { App, S, sandbox } = loadApp();
+  const calls = { clearTags: [], save: 0, render: 0, toast: '' };
+
+  S.msel = new Set(['a', 'b']);
+  S.selId = 'a';
+
+  App.selectedIds = () => ['a', 'b'];
+  App.withUndoBatch = (fn) => fn();
+  sandbox.clearTagsUi = (app, state, id, internal) => {
+    calls.clearTags.push({ id, internal });
+  };
+  App.save = () => { calls.save += 1; };
+  App.render = () => { calls.render += 1; };
+  App.toast = (msg) => { calls.toast = msg; };
+
+  App.clearTagsSelection();
+
+  assert.deepEqual(calls.clearTags, [
+    { id: 'a', internal: true },
+    { id: 'b', internal: true }
+  ]);
+  assert.equal(calls.save, 1);
+  assert.equal(calls.render, 1);
+  assert.equal(calls.toast, 'Tags cleared for 2 task(s)');
+});
+
+test('clearNotesSelection batches multi-select note clearing', () => {
+  const { App, S, sandbox } = loadApp();
+  const calls = { clearNotes: [], save: 0, render: 0, toast: '' };
+
+  S.msel = new Set(['a', 'b']);
+  S.selId = 'a';
+
+  App.selectedIds = () => ['a', 'b'];
+  App.withUndoBatch = (fn) => fn();
+  sandbox.clearNotesUi = (app, state, id, internal) => {
+    calls.clearNotes.push({ id, internal });
+  };
+  App.save = () => { calls.save += 1; };
+  App.render = () => { calls.render += 1; };
+  App.toast = (msg) => { calls.toast = msg; };
+
+  App.clearNotesSelection();
+
+  assert.deepEqual(calls.clearNotes, [
+    { id: 'a', internal: true },
+    { id: 'b', internal: true }
+  ]);
+  assert.equal(calls.save, 1);
+  assert.equal(calls.render, 1);
+  assert.equal(calls.toast, 'Notes cleared for 2 task(s)');
+});
+
+test('setDueQuickSelection batches multi-select due presets', () => {
+  const { App, S, sandbox } = loadApp();
+  const calls = { setDueQuick: [], save: 0, render: 0, toast: '' };
+
+  S.msel = new Set(['a', 'b']);
+  S.selId = 'a';
+
+  App.selectedIds = () => ['a', 'b'];
+  App.withUndoBatch = (fn) => fn();
+  sandbox.setDueQuickUi = (app, state, preset, internal, taskId) => {
+    calls.setDueQuick.push({ preset, internal, taskId });
+  };
+  App.save = () => { calls.save += 1; };
+  App.render = () => { calls.render += 1; };
+  App.toast = (msg) => { calls.toast = msg; };
+
+  App.setDueQuickSelection('today');
+
+  assert.deepEqual(calls.setDueQuick, [
+    { preset: 'today', internal: true, taskId: 'a' },
+    { preset: 'today', internal: true, taskId: 'b' }
+  ]);
+  assert.equal(calls.save, 1);
+  assert.equal(calls.render, 1);
+  assert.equal(calls.toast, 'Due set (today) for 2 task(s)');
 });
