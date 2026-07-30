@@ -330,6 +330,7 @@ function showShortcutsUi(app) {
       ['cn', 'Clear notes'],
       ['sn', 'Show/hide all notes'],
       ['tj', 'Edit task JSON'],
+      ['lj', 'Edit current list JSON'],
       ['th', 'View task history'],
     ]},
     { heading: 'Copy & Clipboard', items: [

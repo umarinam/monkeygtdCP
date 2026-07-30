@@ -421,7 +421,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-26T15:37:49+05:00',commit:'35a5eff'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-30T11:56:41+05:00',commit:'2b6ac9e'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -659,6 +659,24 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
     </div>
     <div class="mf">
       <button class="btn" onclick="App.closeModal('ov-task-history')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- List JSON -->
+<div id="ov-list-json" class="ov hidden">
+  <div class="modal" style="max-width:760px">
+    <div class="mh"><span class="mt">List JSON</span><span class="mx" onclick="App.closeModal('ov-list-json')">✕</span></div>
+    <div class="mb">
+      <div class="fg">
+        <label>Edit current list and its tasks/subtasks as JSON</label>
+        <textarea id="list-json-input" rows="16" style="font-family:var(--mono);font-size:12px"></textarea>
+      </div>
+      <div id="list-json-error" class="task-json-error"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-list-json')">Cancel</button>
+      <button class="btn btn-p" onclick="App.saveListJson()">Save</button>
     </div>
   </div>
 </div>
@@ -4709,6 +4727,30 @@ function parseTaskJsonInput(raw) {
   return parsed;
 }
 
+function parseListJsonInput(raw) {
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('List JSON must be an object');
+  }
+  return parsed;
+}
+
+function normalizeCurrentListJsonPayload(listId, candidate, state) {
+  if (candidate.list && candidate.tasks) {
+    const listCandidate = candidate.list;
+    const tasksCandidate = candidate.tasks;
+    if (!listCandidate || typeof listCandidate !== 'object' || Array.isArray(listCandidate)) {
+      throw new Error('List JSON payload "list" must be an object');
+    }
+    if (!tasksCandidate || typeof tasksCandidate !== 'object' || Array.isArray(tasksCandidate)) {
+      throw new Error('List JSON payload "tasks" must be an object map');
+    }
+    return { list: listCandidate, tasks: tasksCandidate, mode: 'payload' };
+  }
+
+  return { list: candidate, tasks: null, mode: 'list-only' };
+}
+
 function normalizeTaskFromJson(taskId, candidate, state) {
   const existing = state.data.tasks[taskId] || {};
   const normalized = { ...candidate };
@@ -4740,8 +4782,56 @@ function normalizeTaskFromJson(taskId, candidate, state) {
   return normalized;
 }
 
+function normalizeListFromJson(listId, candidate, state) {
+  const existing = state.data.lists[listId] || {};
+  const normalized = { ...candidate };
+
+  normalized.id = listId;
+  normalized.name = typeof normalized.name === 'string' ? normalized.name.trim() : '';
+  if (!normalized.name) normalized.name = existing.name || 'New List';
+  normalized.tags = Array.isArray(normalized.tags)
+    ? normalized.tags.map(t => String(t || '').trim()).filter(Boolean)
+    : (Array.isArray(existing.tags) ? existing.tags : []);
+  normalized.style = typeof normalized.style === 'string' ? normalized.style : (existing.style || 'none');
+  normalized.archived = !!normalized.archived;
+
+  const topLevelIds = new Set(
+    Object.values(state.data.tasks || {})
+      .filter(t => t && !t.deleted && t.checklist_id === listId && !t.parent_id)
+      .map(t => t.id)
+  );
+
+  const proposedRoots = Array.isArray(normalized.root_tasks) ? normalized.root_tasks : (existing.root_tasks || []);
+  const seen = new Set();
+  const roots = [];
+
+  for (const rawId of proposedRoots) {
+    const id = String(rawId || '');
+    if (!id || seen.has(id)) continue;
+    if (!topLevelIds.has(id)) continue;
+    seen.add(id);
+    roots.push(id);
+  }
+
+  for (const id of topLevelIds) {
+    if (!seen.has(id)) roots.push(id);
+  }
+
+  normalized.root_tasks = roots;
+  normalized.created_at = normalized.created_at || existing.created_at || now();
+  normalized.updated_at = now();
+
+  return normalized;
+}
+
 function setTaskJsonError(message) {
   const el = document.getElementById('task-json-error');
+  if (!el) return;
+  el.textContent = message || '';
+}
+
+function setListJsonError(message) {
+  const el = document.getElementById('list-json-error');
   if (!el) return;
   el.textContent = message || '';
 }
@@ -4830,6 +4920,82 @@ function saveTaskJsonUi(app, state) {
     app.toast('Task JSON saved');
   } catch (err) {
     setTaskJsonError(err?.message || 'Invalid JSON');
+  }
+}
+
+function buildCurrentListJsonPayload(listId, state) {
+  const list = state.data.lists[listId];
+  const taskEntries = Object.entries(state.data.tasks || {})
+    .filter(([, t]) => t && !t.deleted && t.checklist_id === listId)
+    .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+
+  const tasks = {};
+  for (const [id, task] of taskEntries) tasks[id] = task;
+
+  return {
+    list,
+    tasks
+  };
+}
+
+function openListJsonModalUi(app, state, listId) {
+  const id = listId || state.listId;
+  if (!id) {
+    app.toast('Open a list first');
+    return;
+  }
+
+  const list = state.data.lists[id];
+  if (!list) {
+    app.toast('List not found');
+    return;
+  }
+
+  state.listJsonEditId = id;
+  setListJsonError('');
+  const payload = buildCurrentListJsonPayload(id, state);
+  document.getElementById('list-json-input').value = JSON.stringify(payload, null, 2);
+  app.openModal('ov-list-json');
+  setTimeout(() => document.getElementById('list-json-input').focus(), 50);
+}
+
+function saveListJsonUi(app, state) {
+  const id = state.listJsonEditId || state.listId;
+  if (!id) {
+    app.toast('Open a list first');
+    return;
+  }
+
+  const list = state.data.lists[id];
+  if (!list) {
+    setListJsonError('List not found');
+    return;
+  }
+
+  const raw = document.getElementById('list-json-input').value;
+  try {
+    const parsed = parseListJsonInput(raw);
+    const payload = normalizeCurrentListJsonPayload(id, parsed, state);
+    app.pushUndo(app.snap());
+
+    if (payload.tasks) {
+      for (const [taskId, candidate] of Object.entries(payload.tasks)) {
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+        const normalizedTask = normalizeTaskFromJson(String(taskId), candidate, state);
+        normalizedTask.checklist_id = id;
+        state.data.tasks[String(taskId)] = normalizedTask;
+      }
+    }
+
+    const normalized = normalizeListFromJson(id, payload.list, state);
+    state.data.lists[id] = normalized;
+    app.save();
+    setListJsonError('');
+    app.closeModal('ov-list-json');
+    app.render();
+    app.toast('List JSON saved');
+  } catch (err) {
+    setListJsonError(err?.message || 'Invalid JSON');
   }
 }
 
@@ -5004,7 +5170,7 @@ function handleGlobalKey(app, state, e) {
 
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history shortcuts'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json shortcuts'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');
@@ -5388,6 +5554,7 @@ function handleTwoKeySequence(app, state, e) {
     'tt': () => app.addTagSelection(),
     'th': () => { if (state.selId) app.openTaskHistory(state.selId); },
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
+    'lj': () => app.openListJson(state.listId),
     'gt': () => app.showPage('tags'),
     'gr': () => app.showPage('report'),
     'gk': () => app.showPage('kanban'),
@@ -5455,7 +5622,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;
@@ -6026,6 +6193,7 @@ function renderHomeUi(state) {
       <div style="display:flex;gap:6px;align-items:center">
         <span style="font-size:12px;color:var(--muted)">${open} open</span>
         <button class="btn btn-sm" onclick="event.stopPropagation();App.renameList('${l.id}')">✏</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation();App.openListJson('${l.id}')">{ }</button>
         ${l.archived
           ? `<button class="btn btn-sm" onclick="event.stopPropagation();App.unarchiveList('${l.id}')">↩</button>`
           : `<button class="btn btn-sm" onclick="event.stopPropagation();App.archiveList('${l.id}')">📦</button>`}
@@ -6618,6 +6786,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Reporting page', s: 'gr', fn: () => app.showPage('report') },
     { l: 'Kanban page', s: 'gk', fn: () => app.showPage('kanban') },
     { l: 'Tags page', s: 'gt', fn: () => app.showPage('tags') },
+    { l: 'Edit current list JSON', s: 'lj', fn: () => app.openListJson(state.listId) },
     { l: 'New list', fn: () => { app.showPage('home'); app.createList(); } },
     ...app.select('cp.listTargets').map(l => ({ l: `Go to: ${l.name}`, fn: () => app.openList(l.id) }))
   ];
@@ -7346,6 +7515,7 @@ function showShortcutsUi(app) {
       ['cn', 'Clear notes'],
       ['sn', 'Show/hide all notes'],
       ['tj', 'Edit task JSON'],
+      ['lj', 'Edit current list JSON'],
       ['th', 'View task history'],
     ]},
     { heading: 'Copy & Clipboard', items: [
@@ -8053,6 +8223,8 @@ const App={
 
   openTaskJson(id){ openTaskJsonModalUi(this, S, id); },
   saveTaskJson(){ saveTaskJsonUi(this, S); },
+  openListJson(id){ openListJsonModalUi(this, S, id); },
+  saveListJson(){ saveListJsonUi(this, S); },
   openTaskHistory(id){ openTaskHistoryUi(this, S, id); },
 
   // â”€ Assign â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

@@ -319,6 +319,77 @@ test('handleTwoKeySequence opens task JSON editor with tj shortcut', () => {
   assert.equal(calls.openTaskJson, 1);
 });
 
+test('handleTwoKeySequence opens list JSON editor with lj shortcut', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { openListJson: 0 };
+
+  const app = {
+    openListJson: () => { calls.openListJson += 1; },
+    openTaskJson: () => {},
+    showKH: () => {},
+    clearKH: () => {},
+    startEdit: () => {},
+    openDueModal: () => {},
+    dispatch: () => {},
+    pushUndo: () => {},
+    snap: () => ({}),
+    save: () => {},
+    render: () => {},
+    toast: () => {},
+    openRepeatModal: () => {},
+    openTagsModal: () => {},
+    assignTask: () => {},
+    toggleDetails: () => {},
+    showProgress: () => {},
+    setZen: () => {},
+    openSettings: () => {},
+    openSortDlg: () => {},
+    runSmokeChecks: () => {},
+    openCP: () => {},
+    showPage: () => {},
+    openMoveDlg: () => {},
+    showRestoreDeleted: () => {},
+    showWC: () => {},
+    extractBranch: () => {},
+    undo: () => {},
+    renderList: () => {},
+    toggleEC: () => {},
+    openExport: () => {},
+    openImport: () => {},
+    copyPermalink: () => {},
+    wipeCompleted: () => {},
+    resetCompleted: () => {}
+  };
+
+  const state = {
+    selId: null,
+    listId: 'l1',
+    kbuf: '',
+    kbtimer: null,
+    data: {
+      settings: {},
+      tasks: {}
+    },
+    showNotes: false,
+    msel: new Set(),
+    lastCdAt: 0
+  };
+
+  const e = {
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    preventDefault: () => {},
+    key: 'l'
+  };
+
+  handleTwoKeySequence(app, state, e);
+  e.key = 'j';
+  handleTwoKeySequence(app, state, e);
+
+  assert.equal(calls.openListJson, 1);
+});
+
 test('handleTwoKeySequence triggers addWebLink with nw shortcut', () => {
   const { handleTwoKeySequence } = loadKeyboardController();
   const calls = { addWebLink: 0 };

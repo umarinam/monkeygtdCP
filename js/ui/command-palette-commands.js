@@ -73,6 +73,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Reporting page', s: 'gr', fn: () => app.showPage('report') },
     { l: 'Kanban page', s: 'gk', fn: () => app.showPage('kanban') },
     { l: 'Tags page', s: 'gt', fn: () => app.showPage('tags') },
+    { l: 'Edit current list JSON', s: 'lj', fn: () => app.openListJson(state.listId) },
     { l: 'New list', fn: () => { app.showPage('home'); app.createList(); } },
     ...app.select('cp.listTargets').map(l => ({ l: `Go to: ${l.name}`, fn: () => app.openList(l.id) }))
   ];

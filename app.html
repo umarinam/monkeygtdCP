@@ -248,6 +248,24 @@
   </div>
 </div>
 
+<!-- List JSON -->
+<div id="ov-list-json" class="ov hidden">
+  <div class="modal" style="max-width:760px">
+    <div class="mh"><span class="mt">List JSON</span><span class="mx" onclick="App.closeModal('ov-list-json')">✕</span></div>
+    <div class="mb">
+      <div class="fg">
+        <label>Edit current list and its tasks/subtasks as JSON</label>
+        <textarea id="list-json-input" rows="16" style="font-family:var(--mono);font-size:12px"></textarea>
+      </div>
+      <div id="list-json-error" class="task-json-error"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-list-json')">Cancel</button>
+      <button class="btn btn-p" onclick="App.saveListJson()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Move -->
 <div id="ov-move" class="ov hidden">
   <div class="modal">

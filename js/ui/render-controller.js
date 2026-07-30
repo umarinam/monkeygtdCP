@@ -263,6 +263,7 @@ function renderHomeUi(state) {
       <div style="display:flex;gap:6px;align-items:center">
         <span style="font-size:12px;color:var(--muted)">${open} open</span>
         <button class="btn btn-sm" onclick="event.stopPropagation();App.renameList('${l.id}')">✏</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation();App.openListJson('${l.id}')">{ }</button>
         ${l.archived
           ? `<button class="btn btn-sm" onclick="event.stopPropagation();App.unarchiveList('${l.id}')">↩</button>`
           : `<button class="btn btn-sm" onclick="event.stopPropagation();App.archiveList('${l.id}')">📦</button>`}

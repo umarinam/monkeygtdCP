@@ -28,6 +28,7 @@ test('command palette includes clear-assignees and key two-key shortcut actions'
   ];
 
   required.push("{ l: 'Redo', s: 'Ctrl+Y / Ctrl+Shift+Z'");
+  required.push("{ l: 'Edit current list JSON', s: 'lj'");
 
   for (const snippet of required) {
     assert.equal(src.includes(snippet), true, `Missing command palette entry: ${snippet}`);
@@ -54,6 +55,7 @@ test('shortcuts help includes discoverability entries for advanced two-key actio
     "['st', 'Toggle multi-select for task']",
     "['tc / lc', 'Copy task permalink']",
     "['tj', 'Edit task JSON']",
+    "['lj', 'Edit current list JSON']",
     "['th', 'View task history']"
   ];
 

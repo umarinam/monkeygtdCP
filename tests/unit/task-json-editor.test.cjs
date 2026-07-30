@@ -18,7 +18,7 @@ function loadModalController() {
 
   vm.createContext(sandbox);
   vm.runInContext(
-    `${source}\n;globalThis.__taskJsonExports = { parseTaskJsonInput, normalizeTaskFromJson };`,
+    `${source}\n;globalThis.__taskJsonExports = { parseTaskJsonInput, normalizeTaskFromJson, parseListJsonInput, normalizeListFromJson, normalizeCurrentListJsonPayload, buildCurrentListJsonPayload };`,
     sandbox,
     { filename: 'modal-controller.js' }
   );
@@ -108,4 +108,112 @@ test('parseTaskJsonInput and normalizeTaskFromJson reject bad shape and normaliz
   assert.equal(JSON.stringify(normalized.assignees), '[]');
   assert.equal(JSON.stringify(normalized.tasks), '[]');
   assert.equal(normalized.comments_count, 0);
+});
+
+test('normalizeListFromJson keeps list id and sanitizes root task ids', () => {
+  const { parseListJsonInput, normalizeListFromJson } = loadModalController();
+  const state = makeState();
+  state.data.tasks.t2 = {
+    id: 't2',
+    content: 'Top level second',
+    checklist_id: 'l1',
+    parent_id: '',
+    deleted: false,
+    tasks: []
+  };
+  state.data.tasks.t3 = {
+    id: 't3',
+    content: 'Child',
+    checklist_id: 'l1',
+    parent_id: 't1',
+    deleted: false,
+    tasks: []
+  };
+
+  const parsed = parseListJsonInput(JSON.stringify({
+    id: 'hacked-list-id',
+    name: '  Updated List  ',
+    tags: [' team ', '', 'ops'],
+    root_tasks: ['t2', 't2', 't3', 'missing', 't1'],
+    archived: 1
+  }));
+
+  const normalized = normalizeListFromJson('l1', parsed, state);
+
+  assert.equal(normalized.id, 'l1');
+  assert.equal(normalized.name, 'Updated List');
+  assert.equal(JSON.stringify(normalized.tags), '["team","ops"]');
+  assert.equal(JSON.stringify(normalized.root_tasks), '["t2","t1"]');
+  assert.equal(normalized.archived, true);
+  assert.equal(typeof normalized.updated_at, 'string');
+});
+
+test('parseListJsonInput and normalizeListFromJson reject bad shape and preserve defaults', () => {
+  const { parseListJsonInput, normalizeListFromJson } = loadModalController();
+  const state = makeState();
+
+  assert.throws(() => parseListJsonInput('[1,2,3]'), /List JSON must be an object/);
+
+  const parsed = parseListJsonInput(JSON.stringify({
+    name: ' ',
+    tags: {},
+    style: 123,
+    root_tasks: 'bad'
+  }));
+
+  const normalized = normalizeListFromJson('l1', parsed, state);
+
+  assert.equal(normalized.name, 'Inbox');
+  assert.equal(JSON.stringify(normalized.tags), '[]');
+  assert.equal(normalized.style, 'none');
+  assert.equal(JSON.stringify(normalized.root_tasks), '["t1"]');
+});
+
+test('buildCurrentListJsonPayload includes all tasks and subtasks for current list', () => {
+  const { buildCurrentListJsonPayload } = loadModalController();
+  const state = makeState();
+  state.data.tasks.t2 = {
+    id: 't2',
+    content: 'Subtask',
+    status: 0,
+    checklist_id: 'l1',
+    parent_id: 't1',
+    tasks: [],
+    deleted: false
+  };
+  state.data.tasks.t3 = {
+    id: 't3',
+    content: 'Other list task',
+    status: 0,
+    checklist_id: 'l2',
+    parent_id: '',
+    tasks: [],
+    deleted: false
+  };
+
+  const payload = buildCurrentListJsonPayload('l1', state);
+
+  assert.equal(payload.list.id, 'l1');
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.tasks, 't1'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.tasks, 't2'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.tasks, 't3'), false);
+});
+
+test('normalizeCurrentListJsonPayload accepts full payload and rejects invalid tasks map', () => {
+  const { normalizeCurrentListJsonPayload } = loadModalController();
+  const state = makeState();
+
+  const payload = normalizeCurrentListJsonPayload('l1', {
+    list: { id: 'l1', name: 'Inbox', root_tasks: ['t1'] },
+    tasks: { t1: { id: 't1', content: 'Edited', checklist_id: 'l1' } }
+  }, state);
+
+  assert.equal(payload.mode, 'payload');
+  assert.equal(payload.list.name, 'Inbox');
+  assert.equal(payload.tasks.t1.content, 'Edited');
+
+  assert.throws(
+    () => normalizeCurrentListJsonPayload('l1', { list: { name: 'Inbox' }, tasks: [] }, state),
+    /tasks.*object map/
+  );
 });
