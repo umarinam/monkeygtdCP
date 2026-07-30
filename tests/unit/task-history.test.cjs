@@ -231,6 +231,73 @@ test('tree operations record structure history', () => {
   assert.equal(structureEntries.some(h => h.changes.action === 'move-to-list'), true);
 });
 
+test('moveToListDomain updates checklist_id for moved subtree', () => {
+  const ctx = loadContext(['js/core/utils.js', 'js/domain/tree-ops.js'], ['mkTask', 'moveToListDomain']);
+  const parent = ctx.mkTask({ id: 'p1', content: 'Parent', checklist_id: 'l1', parent_id: '', tasks: ['c1'] });
+  const child = ctx.mkTask({ id: 'c1', content: 'Child', checklist_id: 'l1', parent_id: 'p1', tasks: [] });
+  const state = {
+    selId: 'p1',
+    msel: new Set(),
+    data: {
+      tasks: { p1: parent, c1: child },
+      lists: {
+        l1: { id: 'l1', root_tasks: ['p1'], name: 'List 1' },
+        l2: { id: 'l2', root_tasks: [], name: 'List 2' }
+      }
+    }
+  };
+
+  const app = {
+    pushUndo: () => {},
+    snap: () => ({}),
+    save: () => {},
+    render: () => {},
+    closeModal: () => {},
+    toast: () => {}
+  };
+
+  ctx.moveToListDomain(app, state, 'l2');
+
+  assert.equal(parent.checklist_id, 'l2');
+  assert.equal(child.checklist_id, 'l2');
+  assert.deepEqual(state.data.lists.l1.root_tasks, []);
+  assert.deepEqual(state.data.lists.l2.root_tasks, ['p1']);
+});
+
+test('moveToTaskDomain updates checklist_id for moved subtree across lists', () => {
+  const ctx = loadContext(['js/core/utils.js', 'js/domain/tree-ops.js'], ['mkTask', 'moveToTaskDomain']);
+  const parent = ctx.mkTask({ id: 'p1', content: 'Parent', checklist_id: 'l1', parent_id: '', tasks: ['c1'] });
+  const child = ctx.mkTask({ id: 'c1', content: 'Child', checklist_id: 'l1', parent_id: 'p1', tasks: [] });
+  const target = ctx.mkTask({ id: 't2', content: 'Target', checklist_id: 'l2', parent_id: '', tasks: [] });
+  const state = {
+    selId: 'p1',
+    msel: new Set(),
+    data: {
+      tasks: { p1: parent, c1: child, t2: target },
+      lists: {
+        l1: { id: 'l1', root_tasks: ['p1'], name: 'List 1' },
+        l2: { id: 'l2', root_tasks: ['t2'], name: 'List 2' }
+      }
+    }
+  };
+
+  const app = {
+    pushUndo: () => {},
+    snap: () => ({}),
+    save: () => {},
+    render: () => {},
+    closeModal: () => {},
+    toast: () => {}
+  };
+
+  ctx.moveToTaskDomain(app, state, 't2');
+
+  assert.equal(parent.checklist_id, 'l2');
+  assert.equal(child.checklist_id, 'l2');
+  assert.equal(parent.parent_id, 't2');
+  assert.equal((target.tasks || []).includes('p1'), true);
+});
+
 test('moveToTaskDomain blocks moving selected ancestor into descendant target', () => {
   const ctx = loadContext(['js/core/utils.js', 'js/domain/tree-ops.js'], ['mkTask', 'moveToTaskDomain']);
   const t1 = ctx.mkTask({ id: 't1', content: 'Parent', checklist_id: 'l1', parent_id: '', tasks: ['t2'] });

@@ -25,6 +25,21 @@ function sibListDomain(state, id) {
     : (state.data.lists[t.checklist_id]?.root_tasks || null);
 }
 
+function setChecklistOnSubtree(state, rootId, checklistId) {
+  const root = state.data.tasks[rootId];
+  if (!root) return;
+
+  const stack = [...(root.tasks || [])];
+  while (stack.length) {
+    const id = stack.pop();
+    const t = state.data.tasks[id];
+    if (!t) continue;
+    t.checklist_id = checklistId;
+    const kids = t.tasks || [];
+    for (let i = 0; i < kids.length; i++) stack.push(kids[i]);
+  }
+}
+
 function moveUpDomain(app, state, id) {
   app.pushUndo(app.snap());
   const s = sibListDomain(state, id);
@@ -77,6 +92,7 @@ function moveBeforeDomain(app, state, srcId, tgtId) {
     ts.splice(i, 0, srcId);
     src.parent_id = tgt.parent_id;
     src.checklist_id = tgt.checklist_id;
+    setChecklistOnSubtree(state, srcId, src.checklist_id);
     logTaskHistory(src, 'structure', {
       action: 'move-before',
       targetTaskId: tgtId,
@@ -168,6 +184,7 @@ function moveToListDomain(app, state, listId) {
 
     t.parent_id = '';
     t.checklist_id = listId;
+    setChecklistOnSubtree(state, id, listId);
     targetList.root_tasks.push(id);
     logTaskHistory(t, 'structure', {
       action: 'move-to-list',
@@ -213,6 +230,7 @@ function moveToTaskDomain(app, state, targetTaskId) {
     const before = { parent_id: task.parent_id || '', checklist_id: task.checklist_id || '' };
     task.parent_id = targetTaskId;
     task.checklist_id = targetTask.checklist_id;
+    setChecklistOnSubtree(state, id, task.checklist_id);
     targetTask.tasks = [...(targetTask.tasks || []), id];
     targetTask._collapsed = false;
     logTaskHistory(task, 'structure', {
