@@ -266,6 +266,24 @@
   </div>
 </div>
 
+<!-- All Lists JSON -->
+<div id="ov-all-lists-json" class="ov hidden">
+  <div class="modal" style="max-width:820px">
+    <div class="mh"><span class="mt">All Lists JSON</span><span class="mx" onclick="App.closeModal('ov-all-lists-json')">✕</span></div>
+    <div class="mb">
+      <div class="fg">
+        <label>Edit all lists and tasks/subtasks as JSON</label>
+        <textarea id="all-lists-json-input" rows="18" style="font-family:var(--mono);font-size:12px"></textarea>
+      </div>
+      <div id="all-lists-json-error" class="task-json-error"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-all-lists-json')">Cancel</button>
+      <button class="btn btn-p" onclick="App.saveAllListsJson()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Move -->
 <div id="ov-move" class="ov hidden">
   <div class="modal">
@@ -481,6 +499,7 @@
         <div class="sst">Data</div>
         <div id="storage-usage" style="padding:8px;background:var(--bg2);border-radius:4px;margin-bottom:12px;font-size:13px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="App.openAllListsJson()">Edit All Lists JSON</button>
           <button class="btn btn-sm" onclick="App.openExport()">Export (ex)</button>
           <button class="btn btn-sm" onclick="App.openImport()">Import (im)</button>
           <button class="btn btn-sm" onclick="App.showRestoreDeleted()">Restore Deleted (rd)</button>

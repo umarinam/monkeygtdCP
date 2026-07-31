@@ -18,7 +18,7 @@ function loadModalController() {
 
   vm.createContext(sandbox);
   vm.runInContext(
-    `${source}\n;globalThis.__taskJsonExports = { parseTaskJsonInput, normalizeTaskFromJson, parseListJsonInput, normalizeListFromJson, normalizeCurrentListJsonPayload, buildCurrentListJsonPayload };`,
+    `${source}\n;globalThis.__taskJsonExports = { parseTaskJsonInput, normalizeTaskFromJson, parseListJsonInput, normalizeListFromJson, normalizeCurrentListJsonPayload, buildCurrentListJsonPayload, parseAllListsJsonInput, normalizeAllListsJsonPayload, buildAllListsJsonPayload };`,
     sandbox,
     { filename: 'modal-controller.js' }
   );
@@ -214,6 +214,61 @@ test('normalizeCurrentListJsonPayload accepts full payload and rejects invalid t
 
   assert.throws(
     () => normalizeCurrentListJsonPayload('l1', { list: { name: 'Inbox' }, tasks: [] }, state),
+    /tasks.*object map/
+  );
+});
+
+test('buildAllListsJsonPayload includes all non-deleted tasks across lists', () => {
+  const { buildAllListsJsonPayload } = loadModalController();
+  const state = makeState();
+  state.data.tasks.t2 = {
+    id: 't2',
+    content: 'Work root',
+    status: 0,
+    checklist_id: 'l2',
+    parent_id: '',
+    tasks: [],
+    deleted: false
+  };
+  state.data.tasks.t3 = {
+    id: 't3',
+    content: 'Deleted should be excluded',
+    status: 0,
+    checklist_id: 'l2',
+    parent_id: '',
+    tasks: [],
+    deleted: true
+  };
+
+  const payload = buildAllListsJsonPayload(state);
+
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.lists, 'l1'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.lists, 'l2'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.tasks, 't1'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.tasks, 't2'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.tasks, 't3'), false);
+});
+
+test('parseAllListsJsonInput and normalizeAllListsJsonPayload validate object maps', () => {
+  const { parseAllListsJsonInput, normalizeAllListsJsonPayload } = loadModalController();
+
+  assert.throws(() => parseAllListsJsonInput('[1,2,3]'), /All Lists JSON must be an object/);
+
+  const parsed = parseAllListsJsonInput(JSON.stringify({
+    lists: { l1: { id: 'l1', name: 'Inbox', root_tasks: [] } },
+    tasks: { t1: { id: 't1', content: 'Task', checklist_id: 'l1', parent_id: '' } }
+  }));
+
+  const normalized = normalizeAllListsJsonPayload(parsed);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized.lists, 'l1'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized.tasks, 't1'), true);
+
+  assert.throws(
+    () => normalizeAllListsJsonPayload({ lists: [], tasks: {} }),
+    /lists.*object map/
+  );
+  assert.throws(
+    () => normalizeAllListsJsonPayload({ lists: {}, tasks: [] }),
     /tasks.*object map/
   );
 });

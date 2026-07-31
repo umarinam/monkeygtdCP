@@ -578,6 +578,8 @@ const App={
   saveTaskJson(){ saveTaskJsonUi(this, S); },
   openListJson(id){ openListJsonModalUi(this, S, id); },
   saveListJson(){ saveListJsonUi(this, S); },
+  openAllListsJson(){ openAllListsJsonModalUi(this, S); },
+  saveAllListsJson(){ saveAllListsJsonUi(this, S); },
   openTaskHistory(id){ openTaskHistoryUi(this, S, id); },
 
   // â”€ Assign â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

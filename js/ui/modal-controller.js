@@ -675,6 +675,14 @@ function parseListJsonInput(raw) {
   return parsed;
 }
 
+function parseAllListsJsonInput(raw) {
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('All Lists JSON must be an object');
+  }
+  return parsed;
+}
+
 function normalizeCurrentListJsonPayload(listId, candidate, state) {
   if (candidate.list && candidate.tasks) {
     const listCandidate = candidate.list;
@@ -689,6 +697,20 @@ function normalizeCurrentListJsonPayload(listId, candidate, state) {
   }
 
   return { list: candidate, tasks: null, mode: 'list-only' };
+}
+
+function normalizeAllListsJsonPayload(candidate) {
+  const lists = candidate && candidate.lists;
+  const tasks = candidate && candidate.tasks;
+
+  if (!lists || typeof lists !== 'object' || Array.isArray(lists)) {
+    throw new Error('All Lists JSON payload "lists" must be an object map');
+  }
+  if (!tasks || typeof tasks !== 'object' || Array.isArray(tasks)) {
+    throw new Error('All Lists JSON payload "tasks" must be an object map');
+  }
+
+  return { lists, tasks };
 }
 
 function normalizeTaskFromJson(taskId, candidate, state) {
@@ -772,6 +794,12 @@ function setTaskJsonError(message) {
 
 function setListJsonError(message) {
   const el = document.getElementById('list-json-error');
+  if (!el) return;
+  el.textContent = message || '';
+}
+
+function setAllListsJsonError(message) {
+  const el = document.getElementById('all-lists-json-error');
   if (!el) return;
   el.textContent = message || '';
 }
@@ -878,6 +906,22 @@ function buildCurrentListJsonPayload(listId, state) {
   };
 }
 
+function buildAllListsJsonPayload(state) {
+  const listEntries = Object.entries(state.data.lists || {})
+    .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+  const taskEntries = Object.entries(state.data.tasks || {})
+    .filter(([, t]) => t && !t.deleted)
+    .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+
+  const lists = {};
+  for (const [id, list] of listEntries) lists[id] = list;
+
+  const tasks = {};
+  for (const [id, task] of taskEntries) tasks[id] = task;
+
+  return { lists, tasks };
+}
+
 function openListJsonModalUi(app, state, listId) {
   const id = listId || state.listId;
   if (!id) {
@@ -936,6 +980,91 @@ function saveListJsonUi(app, state) {
     app.toast('List JSON saved');
   } catch (err) {
     setListJsonError(err?.message || 'Invalid JSON');
+  }
+}
+
+function openAllListsJsonModalUi(app, state) {
+  app.closeModal('ov-settings');
+  setAllListsJsonError('');
+  const payload = buildAllListsJsonPayload(state);
+  document.getElementById('all-lists-json-input').value = JSON.stringify(payload, null, 2);
+  app.openModal('ov-all-lists-json');
+  setTimeout(() => document.getElementById('all-lists-json-input').focus(), 50);
+}
+
+function saveAllListsJsonUi(app, state) {
+  const raw = document.getElementById('all-lists-json-input').value;
+
+  try {
+    const parsed = parseAllListsJsonInput(raw);
+    const payload = normalizeAllListsJsonPayload(parsed);
+    const listIds = Object.keys(payload.lists || {});
+
+    if (!listIds.length) throw new Error('At least one list is required');
+
+    app.pushUndo(app.snap());
+
+    const listLookup = {};
+    for (const id of listIds) listLookup[String(id)] = { id: String(id) };
+
+    const taskNormState = {
+      listId: state.listId,
+      data: {
+        lists: listLookup,
+        tasks: state.data.tasks || {}
+      }
+    };
+
+    const nextTasks = {};
+    for (const [rawTaskId, candidate] of Object.entries(payload.tasks || {})) {
+      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+      const taskId = String(rawTaskId || '').trim();
+      if (!taskId) continue;
+      const normalizedTask = normalizeTaskFromJson(taskId, candidate, taskNormState);
+      if (!listLookup[normalizedTask.checklist_id]) continue;
+      nextTasks[taskId] = normalizedTask;
+    }
+
+    const listNormState = {
+      listId: state.listId,
+      data: {
+        lists: payload.lists,
+        tasks: nextTasks
+      }
+    };
+
+    const nextLists = {};
+    for (const [rawListId, candidate] of Object.entries(payload.lists || {})) {
+      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+      const listId = String(rawListId || '').trim();
+      if (!listId) continue;
+      nextLists[listId] = normalizeListFromJson(listId, candidate, listNormState);
+    }
+
+    const ensuredListIds = Object.keys(nextLists);
+    if (!ensuredListIds.length) throw new Error('At least one valid list is required');
+
+    state.data.tasks = nextTasks;
+    state.data.lists = nextLists;
+
+    if (!state.listId || !state.data.lists[state.listId]) {
+      state.listId = state.data.currentListId && state.data.lists[state.data.currentListId]
+        ? state.data.currentListId
+        : ensuredListIds[0];
+    }
+    state.data.currentListId = state.listId;
+
+    if (!state.selId || !state.data.tasks[state.selId] || state.data.tasks[state.selId].deleted) state.selId = null;
+    if (!state.hoistId || !state.data.tasks[state.hoistId] || state.data.tasks[state.hoistId].deleted) state.hoistId = null;
+    state.msel = new Set(Array.from(state.msel || []).filter(id => state.data.tasks[id] && !state.data.tasks[id].deleted));
+
+    app.save();
+    setAllListsJsonError('');
+    app.closeModal('ov-all-lists-json');
+    app.render();
+    app.toast('All lists JSON saved');
+  } catch (err) {
+    setAllListsJsonError(err?.message || 'Invalid JSON');
   }
 }
 
