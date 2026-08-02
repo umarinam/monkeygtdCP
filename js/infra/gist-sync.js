@@ -68,7 +68,18 @@ async function gistReadFileContent(file) {
 }
 
 function gistParsePayload(raw) {
-  const parsed = JSON.parse(raw);
+  const text = String(raw || '').trim();
+  if (!text) {
+    throw new Error('Remote backup file is empty. Push local data to repair it.');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('Remote backup file has invalid JSON. Push local data to repair it.');
+  }
+
   if (parsed && parsed.data && parsed.version) {
     return {
       data: parsed.data,

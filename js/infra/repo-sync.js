@@ -81,7 +81,18 @@ function repoEncodeBase64(content) {
 }
 
 function repoParsePayload(raw) {
-  const parsed = JSON.parse(raw);
+  const text = String(raw || '').trim();
+  if (!text) {
+    throw new Error('Remote backup file is empty. Push local data to repair it.');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('Remote backup file has invalid JSON. Push local data to repair it.');
+  }
+
   if (parsed && parsed.data && parsed.version) {
     return {
       data: parsed.data,
@@ -142,6 +153,10 @@ async function repoFetchFile(config) {
   if (!res.ok) throw new Error(`Repo read failed (${res.status})`);
 
   const json = await res.json();
+  if (Array.isArray(json)) {
+    throw new Error(`Repo path points to a directory: ${config.path}`);
+  }
+
   return {
     sha: json.sha || '',
     raw: repoDecodeBase64(json.content || ''),

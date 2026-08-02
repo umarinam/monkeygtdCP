@@ -421,7 +421,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-31T15:50:01+05:00',commit:'266737e'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-02T17:45:00+05:00',commit:'814e272'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -3180,7 +3180,18 @@ async function gistReadFileContent(file) {
 }
 
 function gistParsePayload(raw) {
-  const parsed = JSON.parse(raw);
+  const text = String(raw || '').trim();
+  if (!text) {
+    throw new Error('Remote backup file is empty. Push local data to repair it.');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('Remote backup file has invalid JSON. Push local data to repair it.');
+  }
+
   if (parsed && parsed.data && parsed.version) {
     return {
       data: parsed.data,
@@ -3765,7 +3776,18 @@ function repoEncodeBase64(content) {
 }
 
 function repoParsePayload(raw) {
-  const parsed = JSON.parse(raw);
+  const text = String(raw || '').trim();
+  if (!text) {
+    throw new Error('Remote backup file is empty. Push local data to repair it.');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('Remote backup file has invalid JSON. Push local data to repair it.');
+  }
+
   if (parsed && parsed.data && parsed.version) {
     return {
       data: parsed.data,
@@ -3826,6 +3848,10 @@ async function repoFetchFile(config) {
   if (!res.ok) throw new Error(`Repo read failed (${res.status})`);
 
   const json = await res.json();
+  if (Array.isArray(json)) {
+    throw new Error(`Repo path points to a directory: ${config.path}`);
+  }
+
   return {
     sha: json.sha || '',
     raw: repoDecodeBase64(json.content || ''),

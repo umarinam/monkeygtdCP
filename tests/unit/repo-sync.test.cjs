@@ -208,3 +208,33 @@ test('syncRepoBidirectionalRemote retries once when repo write conflicts', async
   assert.equal(putAttempts, 2);
   assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 2);
 });
+
+test('syncRepoBidirectionalRemote returns clear error when remote backup file is empty', async () => {
+  const localTs = '2026-07-18T12:00:00.000Z';
+  const statusEl = { textContent: '', style: {} };
+
+  const fetchMock = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      sha: 'sha-1',
+      content: ''
+    })
+  });
+
+  const documentMock = {
+    getElementById: (id) => (id === 'gist-sync-status' ? statusEl : null)
+  };
+
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock, document: documentMock });
+  const state = makeState(localTs);
+  const { app, calls } = makeAppCounters();
+
+  const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, false);
+  assert.equal(calls.save, 0);
+  assert.equal(calls.render, 0);
+  assert.equal(calls.syncSettings, 0);
+  assert.equal(statusEl.textContent, 'Remote backup file is empty. Push local data to repair it.');
+});
