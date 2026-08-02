@@ -421,7 +421,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-02T18:33:17+05:00',commit:'c49fe4e'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-02T18:35:35+05:00',commit:'c4a9503'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -3838,6 +3838,7 @@ function repoResolveRemoteVsLocal(remoteMs, localMs) {
 async function repoFetchFile(config) {
   const res = await fetch(repoContentsUrl(config, config.path, true), {
     method: 'GET',
+    cache: 'no-store',
     headers: {
       Accept: 'application/vnd.github+json',
       Authorization: `token ${config.token}`
@@ -3856,6 +3857,7 @@ async function repoFetchFile(config) {
   if (!raw && json.git_url) {
     const blobRes = await fetch(String(json.git_url), {
       method: 'GET',
+      cache: 'no-store',
       headers: {
         Accept: 'application/vnd.github+json',
         Authorization: `token ${config.token}`
@@ -3870,6 +3872,7 @@ async function repoFetchFile(config) {
   if (!raw) {
     const rawRes = await fetch(repoContentsUrl(config, config.path, true), {
       method: 'GET',
+      cache: 'no-store',
       headers: {
         Accept: 'application/vnd.github.raw',
         Authorization: `token ${config.token}`
@@ -3881,7 +3884,10 @@ async function repoFetchFile(config) {
   }
 
   if (!raw && json.download_url) {
-    const downloadRes = await fetch(String(json.download_url), { method: 'GET' });
+    const downloadRes = await fetch(String(json.download_url), {
+      method: 'GET',
+      cache: 'no-store'
+    });
     if (downloadRes.ok) {
       raw = await downloadRes.text();
     }

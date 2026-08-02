@@ -143,6 +143,7 @@ function repoResolveRemoteVsLocal(remoteMs, localMs) {
 async function repoFetchFile(config) {
   const res = await fetch(repoContentsUrl(config, config.path, true), {
     method: 'GET',
+    cache: 'no-store',
     headers: {
       Accept: 'application/vnd.github+json',
       Authorization: `token ${config.token}`
@@ -161,6 +162,7 @@ async function repoFetchFile(config) {
   if (!raw && json.git_url) {
     const blobRes = await fetch(String(json.git_url), {
       method: 'GET',
+      cache: 'no-store',
       headers: {
         Accept: 'application/vnd.github+json',
         Authorization: `token ${config.token}`
@@ -175,6 +177,7 @@ async function repoFetchFile(config) {
   if (!raw) {
     const rawRes = await fetch(repoContentsUrl(config, config.path, true), {
       method: 'GET',
+      cache: 'no-store',
       headers: {
         Accept: 'application/vnd.github.raw',
         Authorization: `token ${config.token}`
@@ -186,7 +189,10 @@ async function repoFetchFile(config) {
   }
 
   if (!raw && json.download_url) {
-    const downloadRes = await fetch(String(json.download_url), { method: 'GET' });
+    const downloadRes = await fetch(String(json.download_url), {
+      method: 'GET',
+      cache: 'no-store'
+    });
     if (downloadRes.ok) {
       raw = await downloadRes.text();
     }
