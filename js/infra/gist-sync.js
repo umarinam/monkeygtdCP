@@ -83,7 +83,7 @@ function gistParsePayload(raw) {
 
 function gistPreserveSyncSettings(state, previousSettings) {
   const current = state.data.settings || {};
-  const preservedKeys = ['gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary', 'gistLastLocalSaveAt'];
+  const preservedKeys = ['gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary', 'gistLastLocalSaveAt', 'syncLastAt', 'syncLastSummary'];
   for (const key of preservedKeys) {
     if (!current[key] && previousSettings[key]) {
       current[key] = previousSettings[key];
@@ -94,8 +94,12 @@ function gistPreserveSyncSettings(state, previousSettings) {
 
 function gistRememberSyncSummary(state, summary, at) {
   state.data.settings = state.data.settings || {};
-  state.data.settings.gistLastSyncSummary = String(summary || '').trim();
-  state.data.settings.gistLastSyncAt = String(at || state.data.settings.gistLastSyncAt || new Date().toISOString()).trim();
+  const text = String(summary || '').trim();
+  const stamp = String(at || state.data.settings.gistLastSyncAt || state.data.settings.syncLastAt || new Date().toISOString()).trim();
+  state.data.settings.gistLastSyncSummary = text;
+  state.data.settings.gistLastSyncAt = stamp;
+  state.data.settings.syncLastSummary = text;
+  state.data.settings.syncLastAt = stamp;
 }
 
 function gistResolveRemoteVsLocal(remoteMs, localMs) {

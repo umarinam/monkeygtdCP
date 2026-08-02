@@ -287,7 +287,41 @@ test('syncGistBidirectionalRemote pushes when local is newer', async () => {
   assert.equal(calls.render, 0);
   assert.equal(calls.syncSettings, 1);
   assert.equal(state.data.settings.gistLastSyncSummary, 'Pushed');
+  assert.equal(state.data.settings.syncLastSummary, 'Pushed');
+  assert.ok(state.data.settings.syncLastAt);
   assert.equal(fetchCalls.filter(c => c.method === 'PATCH').length, 1);
+});
+
+test('syncGistBidirectionalRemote refreshes global sync timestamp when previous global sync exists', async () => {
+  const localTs = '2026-06-27T12:00:00.000Z';
+  const remoteTs = '2026-06-27T10:00:00.000Z';
+  const previousGlobalSync = '2026-06-26T09:00:00.000Z';
+
+  const fetchMock = async (url, options = {}) => {
+    if ((options.method || 'GET') === 'PATCH') {
+      return { ok: true, json: async () => ({}) };
+    }
+
+    if (String(url).includes('/gists/')) {
+      return { ok: true, json: async () => metaResponse(remoteTs) };
+    }
+
+    return { ok: true, text: async () => '' };
+  };
+
+  const { syncGistBidirectionalRemote } = loadGistSyncModule({ fetch: fetchMock });
+  const state = makeState(localTs);
+  state.data.settings.syncLastSummary = 'Pulled';
+  state.data.settings.syncLastAt = previousGlobalSync;
+  const { app } = makeAppCounters();
+
+  const changed = await syncGistBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(state.data.settings.gistLastSyncSummary, 'Pushed');
+  assert.equal(state.data.settings.syncLastSummary, 'Pushed');
+  assert.notEqual(state.data.settings.syncLastAt, previousGlobalSync);
+  assert.equal(state.data.settings.syncLastAt, state.data.settings.gistLastSyncAt);
 });
 
 test('syncGistBidirectionalRemote does nothing when versions are equal', async () => {

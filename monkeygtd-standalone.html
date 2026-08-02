@@ -421,7 +421,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-30T14:03:04+05:00',commit:'3cf6475'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-07-31T15:50:01+05:00',commit:'266737e'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -3195,7 +3195,7 @@ function gistParsePayload(raw) {
 
 function gistPreserveSyncSettings(state, previousSettings) {
   const current = state.data.settings || {};
-  const preservedKeys = ['gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary', 'gistLastLocalSaveAt'];
+  const preservedKeys = ['gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary', 'gistLastLocalSaveAt', 'syncLastAt', 'syncLastSummary'];
   for (const key of preservedKeys) {
     if (!current[key] && previousSettings[key]) {
       current[key] = previousSettings[key];
@@ -3206,8 +3206,12 @@ function gistPreserveSyncSettings(state, previousSettings) {
 
 function gistRememberSyncSummary(state, summary, at) {
   state.data.settings = state.data.settings || {};
-  state.data.settings.gistLastSyncSummary = String(summary || '').trim();
-  state.data.settings.gistLastSyncAt = String(at || state.data.settings.gistLastSyncAt || new Date().toISOString()).trim();
+  const text = String(summary || '').trim();
+  const stamp = String(at || state.data.settings.gistLastSyncAt || state.data.settings.syncLastAt || new Date().toISOString()).trim();
+  state.data.settings.gistLastSyncSummary = text;
+  state.data.settings.gistLastSyncAt = stamp;
+  state.data.settings.syncLastSummary = text;
+  state.data.settings.syncLastAt = stamp;
 }
 
 function gistResolveRemoteVsLocal(remoteMs, localMs) {
@@ -6909,7 +6913,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Extract branch as new list', s: 'xx', fn: () => app.extractBranch() },
     { l: 'Undo', s: 'Ctrl+Z / uu', fn: () => app.undo() },
     { l: 'Redo', s: 'Ctrl+Y / Ctrl+Shift+Z', fn: () => app.redo() },
-    { l: 'Sync now', s: 'sg', fn: () => app.syncGistNow() },
+    { l: 'Sync now', s: 'sg', fn: () => app.syncNow() },
     { l: 'Pull from Gist', s: 'sp', fn: () => app.syncFromGist() },
     { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
     { l: 'Hide/show completed', s: 'hc', fn: () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); } },
