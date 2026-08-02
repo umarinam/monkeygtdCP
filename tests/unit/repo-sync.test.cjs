@@ -209,6 +209,45 @@ test('syncRepoBidirectionalRemote retries once when repo write conflicts', async
   assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 2);
 });
 
+test('syncRepoBidirectionalRemote fails gracefully after repeated repo write conflicts', async () => {
+  const localTs = '2026-07-18T12:00:00.000Z';
+  const remoteTs = '2026-07-18T10:00:00.000Z';
+  const statusEl = { textContent: '', style: {} };
+  let putAttempts = 0;
+
+  const fetchMock = async (url, options = {}) => {
+    const method = options.method || 'GET';
+
+    if (method === 'PUT') {
+      putAttempts += 1;
+      return {
+        ok: false,
+        status: 409,
+        json: async () => ({ message: 'sha does not match latest commit' })
+      };
+    }
+
+    return { ok: true, status: 200, json: async () => repoGetResponse(remoteTs) };
+  };
+
+  const documentMock = {
+    getElementById: (id) => (id === 'gist-sync-status' ? statusEl : null)
+  };
+
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock, document: documentMock });
+  const state = makeState(localTs);
+  const { app, calls } = makeAppCounters();
+
+  const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, false);
+  assert.equal(calls.save, 0);
+  assert.equal(calls.render, 0);
+  assert.equal(calls.syncSettings, 0);
+  assert.equal(putAttempts, 4);
+  assert.equal(statusEl.textContent, 'Repo write conflict after multiple retries. Remote changed repeatedly; run Sync now again.');
+});
+
 test('syncRepoBidirectionalRemote returns clear error when remote backup file is empty', async () => {
   const localTs = '2026-07-18T12:00:00.000Z';
   const statusEl = { textContent: '', style: {} };

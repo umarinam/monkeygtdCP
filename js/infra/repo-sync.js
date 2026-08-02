@@ -218,8 +218,16 @@ async function repoWriteFile(config, content, sha) {
   });
 
   if (!res.ok) {
-    const err = new Error(`Repo write failed (${res.status})`);
+    let detail = '';
+    try {
+      const body = await res.json();
+      detail = String(body?.message || '').trim();
+    } catch {}
+
+    const suffix = detail ? `: ${detail}` : '';
+    const err = new Error(`Repo write failed (${res.status})${suffix}`);
     err.status = res.status;
+    err.detail = detail;
     throw err;
   }
   return res.json();
@@ -359,15 +367,19 @@ async function syncToRepoRemote(app, state, options) {
     // Repo writes can race when another client updates the file between read and write.
     // Retry once with a fresh SHA so users do not hit transient conflict errors.
     let pushed = false;
-    for (let attempt = 0; attempt < 2 && !pushed; attempt++) {
+    const maxAttempts = 4;
+    for (let attempt = 0; attempt < maxAttempts && !pushed; attempt++) {
       try {
         const remote = await repoFetchFile(config);
         await repoWriteFile(config, content, remote?.sha || '');
         pushed = true;
       } catch (err) {
-        if (attempt === 0 && repoIsWriteConflict(err)) {
-          repoSetStatus('Remote updated; retrying push...', false);
+        if (repoIsWriteConflict(err) && attempt < (maxAttempts - 1)) {
+          repoSetStatus(`Remote updated; retrying push (${attempt + 2}/${maxAttempts})...`, false);
           continue;
+        }
+        if (repoIsWriteConflict(err)) {
+          throw new Error('Repo write conflict after multiple retries. Remote changed repeatedly; run Sync now again.');
         }
         throw err;
       }
