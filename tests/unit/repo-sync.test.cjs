@@ -213,14 +213,32 @@ test('syncRepoBidirectionalRemote returns clear error when remote backup file is
   const localTs = '2026-07-18T12:00:00.000Z';
   const statusEl = { textContent: '', style: {} };
 
-  const fetchMock = async () => ({
-    ok: true,
-    status: 200,
-    json: async () => ({
-      sha: 'sha-1',
-      content: ''
-    })
-  });
+  const fetchMock = async (url, options = {}) => {
+    const method = options.method || 'GET';
+    const asText = String(url);
+    const accept = String(options?.headers?.Accept || '');
+
+    if (method === 'GET' && asText.includes('/contents/') && accept.includes('vnd.github+json')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          sha: 'sha-1',
+          content: ''
+        })
+      };
+    }
+
+    if (method === 'GET' && asText.includes('/contents/') && accept.includes('vnd.github.raw')) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => ''
+      };
+    }
+
+    return { ok: false, status: 500, json: async () => ({}) };
+  };
 
   const documentMock = {
     getElementById: (id) => (id === 'gist-sync-status' ? statusEl : null)
@@ -257,8 +275,9 @@ test('syncRepoBidirectionalRemote pulls successfully via download_url when conte
   const fetchMock = async (url, options = {}) => {
     const method = options.method || 'GET';
     const asText = String(url);
+    const accept = String(options?.headers?.Accept || '');
 
-    if (method === 'GET' && asText.includes('/contents/')) {
+    if (method === 'GET' && asText.includes('/contents/') && accept.includes('vnd.github+json')) {
       return {
         ok: true,
         status: 200,
@@ -271,11 +290,77 @@ test('syncRepoBidirectionalRemote pulls successfully via download_url when conte
       };
     }
 
+    if (method === 'GET' && asText.includes('/contents/') && accept.includes('vnd.github.raw')) {
+      return {
+        ok: false,
+        status: 404,
+        text: async () => ''
+      };
+    }
+
     if (method === 'GET' && asText.includes('raw.githubusercontent.test/backup.json')) {
       return {
         ok: true,
         status: 200,
         text: async () => payloadText
+      };
+    }
+
+    return { ok: false, status: 500, json: async () => ({}) };
+  };
+
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock });
+  const state = makeState(localTs);
+  const { app, calls } = makeAppCounters();
+
+  const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(calls.save, 1);
+  assert.equal(calls.render, 1);
+  assert.equal(calls.syncSettings, 1);
+  assert.equal(state.data.settings.repoLastSyncSummary, 'Pulled');
+});
+
+test('syncRepoBidirectionalRemote pulls successfully via git_url blob when content field is empty', async () => {
+  const localTs = '2026-07-18T10:00:00.000Z';
+  const remoteTs = '2026-07-18T12:00:00.000Z';
+
+  const payloadText = JSON.stringify({
+    version: 1,
+    exportedAt: remoteTs,
+    data: {
+      tasks: {},
+      lists: { l1: { id: 'l1', name: 'Inbox', root_tasks: [] } },
+      currentListId: 'l1',
+      settings: {}
+    }
+  });
+
+  const fetchMock = async (url, options = {}) => {
+    const method = options.method || 'GET';
+    const asText = String(url);
+
+    if (method === 'GET' && asText.includes('/contents/')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          sha: 'sha-2',
+          content: '',
+          git_url: 'https://api.github.com/repos/octocat/private-backups/git/blobs/blob-sha',
+          name: 'monkeygtd-backup.json'
+        })
+      };
+    }
+
+    if (method === 'GET' && asText.includes('/git/blobs/')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          content: Buffer.from(payloadText, 'utf8').toString('base64')
+        })
       };
     }
 

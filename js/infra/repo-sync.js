@@ -158,18 +158,38 @@ async function repoFetchFile(config) {
   }
 
   let raw = repoDecodeBase64(json.content || '');
-  if (!raw && json.download_url) {
-    const downloadRes = await fetch(String(json.download_url), {
+  if (!raw && json.git_url) {
+    const blobRes = await fetch(String(json.git_url), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `token ${config.token}`
+      }
+    });
+    if (blobRes.ok) {
+      const blobJson = await blobRes.json();
+      raw = repoDecodeBase64(blobJson?.content || '');
+    }
+  }
+
+  if (!raw) {
+    const rawRes = await fetch(repoContentsUrl(config, config.path, true), {
       method: 'GET',
       headers: {
         Accept: 'application/vnd.github.raw',
         Authorization: `token ${config.token}`
       }
     });
-    if (!downloadRes.ok) {
-      throw new Error(`Repo raw download failed (${downloadRes.status})`);
+    if (rawRes.ok) {
+      raw = await rawRes.text();
     }
-    raw = await downloadRes.text();
+  }
+
+  if (!raw && json.download_url) {
+    const downloadRes = await fetch(String(json.download_url), { method: 'GET' });
+    if (downloadRes.ok) {
+      raw = await downloadRes.text();
+    }
   }
 
   return {
