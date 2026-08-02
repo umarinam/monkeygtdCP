@@ -238,3 +238,59 @@ test('syncRepoBidirectionalRemote returns clear error when remote backup file is
   assert.equal(calls.syncSettings, 0);
   assert.equal(statusEl.textContent, 'Remote backup file is empty. Push local data to repair it.');
 });
+
+test('syncRepoBidirectionalRemote pulls successfully via download_url when content field is empty', async () => {
+  const localTs = '2026-07-18T10:00:00.000Z';
+  const remoteTs = '2026-07-18T12:00:00.000Z';
+
+  const payloadText = JSON.stringify({
+    version: 1,
+    exportedAt: remoteTs,
+    data: {
+      tasks: {},
+      lists: { l1: { id: 'l1', name: 'Inbox', root_tasks: [] } },
+      currentListId: 'l1',
+      settings: {}
+    }
+  });
+
+  const fetchMock = async (url, options = {}) => {
+    const method = options.method || 'GET';
+    const asText = String(url);
+
+    if (method === 'GET' && asText.includes('/contents/')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          sha: 'sha-1',
+          content: '',
+          download_url: 'https://raw.githubusercontent.test/backup.json',
+          name: 'monkeygtd-backup.json'
+        })
+      };
+    }
+
+    if (method === 'GET' && asText.includes('raw.githubusercontent.test/backup.json')) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => payloadText
+      };
+    }
+
+    return { ok: false, status: 500, json: async () => ({}) };
+  };
+
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock });
+  const state = makeState(localTs);
+  const { app, calls } = makeAppCounters();
+
+  const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(calls.save, 1);
+  assert.equal(calls.render, 1);
+  assert.equal(calls.syncSettings, 1);
+  assert.equal(state.data.settings.repoLastSyncSummary, 'Pulled');
+});

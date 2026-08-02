@@ -421,7 +421,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-02T17:45:00+05:00',commit:'814e272'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-02T18:26:41+05:00',commit:'81a45a9'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -3852,9 +3852,24 @@ async function repoFetchFile(config) {
     throw new Error(`Repo path points to a directory: ${config.path}`);
   }
 
+  let raw = repoDecodeBase64(json.content || '');
+  if (!raw && json.download_url) {
+    const downloadRes = await fetch(String(json.download_url), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.github.raw',
+        Authorization: `token ${config.token}`
+      }
+    });
+    if (!downloadRes.ok) {
+      throw new Error(`Repo raw download failed (${downloadRes.status})`);
+    }
+    raw = await downloadRes.text();
+  }
+
   return {
     sha: json.sha || '',
-    raw: repoDecodeBase64(json.content || ''),
+    raw,
     name: json.name || config.path
   };
 }

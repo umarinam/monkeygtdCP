@@ -157,9 +157,24 @@ async function repoFetchFile(config) {
     throw new Error(`Repo path points to a directory: ${config.path}`);
   }
 
+  let raw = repoDecodeBase64(json.content || '');
+  if (!raw && json.download_url) {
+    const downloadRes = await fetch(String(json.download_url), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.github.raw',
+        Authorization: `token ${config.token}`
+      }
+    });
+    if (!downloadRes.ok) {
+      throw new Error(`Repo raw download failed (${downloadRes.status})`);
+    }
+    raw = await downloadRes.text();
+  }
+
   return {
     sha: json.sha || '',
-    raw: repoDecodeBase64(json.content || ''),
+    raw,
     name: json.name || config.path
   };
 }
