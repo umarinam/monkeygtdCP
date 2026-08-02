@@ -37,6 +37,15 @@
             margin-bottom: 30px;
             font-size: 14px;
         }
+        .sync-info {
+            display: inline-block;
+            margin: -20px 0 20px;
+            padding: 4px 10px;
+            background: #eef1ff;
+            color: #4a4f7a;
+            border-radius: 12px;
+            font-size: 12px;
+        }
         .form-group {
             margin-bottom: 24px;
         }
@@ -220,7 +229,8 @@
     <div class="container">
         <h1>📬 MonkeyGTD Inbox</h1>
         <p class="subtitle">Send a new task to your GTD system</p>
-        
+        <div class="sync-info" id="syncInfo"></div>
+
         <div class="auth-warning" id="authWarning" style="display: none;">
             ⚠️ Authentication credentials not found. Please configure your token and ID first.
         </div>
@@ -240,6 +250,32 @@
             </div>
             <div class="creds-help">
                 Already configured in the app? <a href="app.html" target="_blank" rel="noopener noreferrer">Open MonkeyGTD settings</a> and update Gist Token/Gist ID there.
+            </div>
+        </div>
+
+        <div class="creds-setup" id="credsSetupRepo" style="display: none;">
+            <h3>Configure Repo Credentials</h3>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label for="credsRepoToken">Repo Token</label>
+                <input type="text" id="credsRepoToken" placeholder="ghp_...">
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label for="credsRepoOwner">Repo Owner</label>
+                <input type="text" id="credsRepoOwner" placeholder="your-github-username">
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label for="credsRepoName">Repo Name</label>
+                <input type="text" id="credsRepoName" placeholder="your-repo-name">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="credsRepoBranch">Repo Branch</label>
+                <input type="text" id="credsRepoBranch" placeholder="main">
+            </div>
+            <div class="creds-actions">
+                <button type="button" class="btn-save-creds" id="saveRepoCredsBtn">Save Credentials</button>
+            </div>
+            <div class="creds-help">
+                Already configured in the app? <a href="app.html" target="_blank" rel="noopener noreferrer">Open MonkeyGTD settings</a> and update repo sync settings there.
             </div>
         </div>
 
@@ -286,10 +322,17 @@
         const statusMessage = document.getElementById('statusMessage');
         const authWarning = document.getElementById('authWarning');
         const submitBtn = document.getElementById('submitBtn');
+        const syncInfo = document.getElementById('syncInfo');
         const credsSetup = document.getElementById('credsSetup');
         const credsTokenInput = document.getElementById('credsToken');
         const credsIdInput = document.getElementById('credsId');
         const saveCredsBtn = document.getElementById('saveCredsBtn');
+        const credsSetupRepo = document.getElementById('credsSetupRepo');
+        const credsRepoTokenInput = document.getElementById('credsRepoToken');
+        const credsRepoOwnerInput = document.getElementById('credsRepoOwner');
+        const credsRepoNameInput = document.getElementById('credsRepoName');
+        const credsRepoBranchInput = document.getElementById('credsRepoBranch');
+        const saveRepoCredsBtn = document.getElementById('saveRepoCredsBtn');
         const parentIdInput = document.getElementById('taskParentId');
         const parentTitleInput = document.getElementById('taskParentTitle');
         const dueDateInput = document.getElementById('taskDueDate');
@@ -471,6 +514,72 @@
             }
         }
 
+        async function queueRepoInboxRequest(creds, request) {
+            const encodePath = (path) => String(path || '')
+                .split('/')
+                .map((part) => encodeURIComponent(part))
+                .join('/');
+            const contentsUrl = (withRef) => {
+                const base = `https://api.github.com/repos/${encodeURIComponent(creds.owner)}/${encodeURIComponent(creds.repo)}/contents/${encodePath(creds.inboxPath)}`;
+                return withRef ? `${base}?ref=${encodeURIComponent(creds.branch)}` : base;
+            };
+            const headers = {
+                Accept: 'application/vnd.github+json',
+                Authorization: `token ${creds.token}`
+            };
+
+            let existing = '';
+            let sha = '';
+            const getRes = await fetch(contentsUrl(true), { method: 'GET', headers, cache: 'no-store' });
+            if (getRes.status === 404) {
+                existing = '';
+            } else if (getRes.ok) {
+                const json = await getRes.json();
+                sha = json.sha || '';
+                existing = decodeBase64(json.content || '');
+            } else {
+                throw new Error(`Repo queue read failed (${getRes.status})`);
+            }
+
+            const line = JSON.stringify(request);
+            const trimmed = String(existing || '').replace(/[\r\n]+$/g, '');
+            const nextContent = trimmed ? `${trimmed}\n${line}` : line;
+
+            const body = {
+                message: `MonkeyGTD inbox queue ${new Date().toISOString()}`,
+                content: encodeBase64(nextContent),
+                branch: creds.branch
+            };
+            if (sha) body.sha = sha;
+
+            const putRes = await fetch(contentsUrl(false), {
+                method: 'PUT',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!putRes.ok) {
+                throw new Error(`Repo queue write failed (${putRes.status})`);
+            }
+        }
+
+        function decodeBase64(content) {
+            const b64 = String(content || '').replace(/\n/g, '');
+            if (!b64) return '';
+            try {
+                return decodeURIComponent(escape(atob(b64)));
+            } catch {
+                return atob(b64);
+            }
+        }
+
+        function encodeBase64(text) {
+            return btoa(unescape(encodeURIComponent(String(text || ''))));
+        }
+
         parentIdInput.addEventListener('input', () => {
             const id = parentIdInput.value.trim();
             if (!id) {
@@ -484,7 +593,7 @@
             }
         });
 
-        function getAppCredentials() {
+        function getAppSettings() {
             let data = null;
             try {
                 const raw = localStorage.getItem('mgtd3');
@@ -492,15 +601,41 @@
             } catch {
                 data = null;
             }
+            return (data && data.settings) ? data.settings : {};
+        }
 
-            const settings = (data && data.settings) ? data.settings : {};
+        function getProvider() {
+            const settings = getAppSettings();
+            return String(settings.syncProvider || 'gist').trim() === 'repo' ? 'repo' : 'gist';
+        }
+
+        function repoDefaultInboxPath(backupPath) {
+            const path = String(backupPath || '').trim() || 'monkeygtd-backup.json';
+            const idx = path.lastIndexOf('/');
+            if (idx === -1) return 'monkeygtd-inbox.ndjson';
+            return `${path.slice(0, idx)}/monkeygtd-inbox.ndjson`;
+        }
+
+        function getGistCredentials() {
+            const settings = getAppSettings();
             const token = settings.gistToken || localStorage.getItem('mgtd3_gist_token') || localStorage.getItem('gtd_token') || '';
             const id = settings.gistId || localStorage.getItem('gtd_id') || '';
             const inboxFilename = settings.gistInboxFilename || 'monkeygtd-inbox.ndjson';
             return { token, id, inboxFilename };
         }
 
-        function saveAppCredentials(token, id) {
+        function getRepoCredentials() {
+            const settings = getAppSettings();
+            const token = settings.repoToken || localStorage.getItem('mgtd3_repo_token') || '';
+            const owner = String(settings.repoOwner || '').trim();
+            const repo = String(settings.repoName || '').trim();
+            const branch = String(settings.repoBranch || 'main').trim() || 'main';
+            const backupPath = String(settings.repoPath || 'monkeygtd-backup.json').trim() || 'monkeygtd-backup.json';
+            const inboxPath = String(settings.repoInboxPath || '').trim() || repoDefaultInboxPath(backupPath);
+            return { token, owner, repo, branch, inboxPath };
+        }
+
+        function saveGistCredentials(token, id) {
             let data = null;
             try {
                 const raw = localStorage.getItem('mgtd3');
@@ -519,8 +654,60 @@
             localStorage.setItem('mgtd3_gist_token', token);
         }
 
+        function saveRepoCredentials(token, owner, repo, branch) {
+            let data = null;
+            try {
+                const raw = localStorage.getItem('mgtd3');
+                data = raw ? JSON.parse(raw) : null;
+            } catch {
+                data = null;
+            }
+
+            if (!data || typeof data !== 'object') data = {};
+            if (!data.settings || typeof data.settings !== 'object') data.settings = {};
+
+            data.settings.repoToken = token;
+            data.settings.repoOwner = owner;
+            data.settings.repoName = repo;
+            data.settings.repoBranch = branch;
+
+            localStorage.setItem('mgtd3', JSON.stringify(data));
+            localStorage.setItem('mgtd3_repo_token', token);
+        }
+
+        function updateSyncInfo(provider) {
+            if (!syncInfo) return;
+            const inboxLabel = provider === 'repo' ? getRepoCredentials().inboxPath : getGistCredentials().inboxFilename;
+            const providerLabel = provider === 'repo' ? 'Repo' : 'Gist';
+            syncInfo.textContent = `${providerLabel} mode • Inbox: ${inboxLabel}`;
+        }
+
         function checkAuthentication() {
-            const creds = getAppCredentials();
+            const provider = getProvider();
+            updateSyncInfo(provider);
+
+            if (provider === 'repo') {
+                const creds = getRepoCredentials();
+                credsSetup.style.display = 'none';
+
+                if (!creds.token || !creds.owner || !creds.repo) {
+                    authWarning.style.display = 'block';
+                    credsSetupRepo.style.display = 'block';
+                    if (!credsRepoTokenInput.value) credsRepoTokenInput.value = creds.token || '';
+                    if (!credsRepoOwnerInput.value) credsRepoOwnerInput.value = creds.owner || '';
+                    if (!credsRepoNameInput.value) credsRepoNameInput.value = creds.repo || '';
+                    if (!credsRepoBranchInput.value) credsRepoBranchInput.value = creds.branch || 'main';
+                    submitBtn.disabled = true;
+                } else {
+                    authWarning.style.display = 'none';
+                    credsSetupRepo.style.display = 'none';
+                    submitBtn.disabled = false;
+                }
+                return;
+            }
+
+            const creds = getGistCredentials();
+            credsSetupRepo.style.display = 'none';
 
             if (!creds.token || !creds.id) {
                 authWarning.style.display = 'block';
@@ -545,7 +732,27 @@
             }
 
             try {
-                saveAppCredentials(token, id);
+                saveGistCredentials(token, id);
+                checkAuthentication();
+                showStatus('✓ Credentials saved. You can now send tasks.', 'success');
+            } catch (error) {
+                showStatus(`Error saving credentials: ${error.message}`, 'error');
+            }
+        });
+
+        saveRepoCredsBtn.addEventListener('click', () => {
+            const token = credsRepoTokenInput.value.trim();
+            const owner = credsRepoOwnerInput.value.trim();
+            const repo = credsRepoNameInput.value.trim();
+            const branch = credsRepoBranchInput.value.trim() || 'main';
+
+            if (!token || !owner || !repo) {
+                showStatus('Please enter Repo Token, Owner, and Name.', 'error');
+                return;
+            }
+
+            try {
+                saveRepoCredentials(token, owner, repo, branch);
                 checkAuthentication();
                 showStatus('✓ Credentials saved. You can now send tasks.', 'success');
             } catch (error) {
@@ -554,12 +761,16 @@
         });
 
         async function submitTask() {
-            const creds = getAppCredentials();
-            const token = creds.token;
-            const id = creds.id;
+            const provider = getProvider();
+            const creds = provider === 'repo' ? getRepoCredentials() : getGistCredentials();
 
-            if (!token || !id) {
-                showStatus('Authentication credentials not found. Please configure Gist token and Gist ID in MonkeyGTD settings.', 'error');
+            const hasCreds = provider === 'repo'
+                ? (creds.token && creds.owner && creds.repo)
+                : (creds.token && creds.id);
+
+            if (!hasCreds) {
+                const providerLabel = provider === 'repo' ? 'repo token/owner/name' : 'Gist token and Gist ID';
+                showStatus(`Authentication credentials not found. Please configure ${providerLabel} in MonkeyGTD settings.`, 'error');
                 return;
             }
 
@@ -597,10 +808,15 @@
                 if (taskParentId) request.parentTaskId = taskParentId;
                 if (taskDueDate) request.due = taskDueDate;
 
-                await queueInboxRequest({ token, id, inboxFilename: creds.inboxFilename }, request);
+                if (provider === 'repo') {
+                    await queueRepoInboxRequest(creds, request);
+                    showStatus('✓ Task queued to Repo inbox successfully!', 'success');
+                } else {
+                    await queueInboxRequest(creds, request);
+                    showStatus('✓ Task queued to Gist inbox successfully!', 'success');
+                }
 
                 cacheParentReference(taskParentId, taskParentTitle);
-                showStatus('✓ Task queued to Gist inbox successfully!', 'success');
                 form.reset();
                 setTimeout(() => {
                     statusMessage.style.display = 'none';

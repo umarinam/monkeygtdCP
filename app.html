@@ -535,6 +535,10 @@
             <label>Gist backup file name</label>
             <input id="gist-file" type="text" placeholder="monkeygtd-backup.json" onchange="App.setGistFilename(this.value)">
           </div>
+          <div class="fg">
+            <label>Gist inbox queue file name</label>
+            <input id="gist-inbox-file" type="text" placeholder="monkeygtd-inbox.ndjson" onchange="App.setGistInboxFilename(this.value)">
+          </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
             <button class="btn btn-sm" onclick="App.syncFromGist()">Pull from Gist</button>
             <button class="btn btn-sm" onclick="App.syncToGist()">Push to Gist</button>
@@ -561,12 +565,17 @@
             <label>Backup file path in repo</label>
             <input id="repo-path" type="text" placeholder="backups/monkeygtd-backup.json" onchange="App.setRepoPath(this.value)">
           </div>
+          <div class="fg">
+            <label>Inbox queue file path (optional)</label>
+            <input id="repo-inbox-path" type="text" placeholder="defaults next to backup file" onchange="App.setRepoInboxPath(this.value)">
+          </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
             <button class="btn btn-sm" onclick="App.syncFromRepo()">Pull from Repo</button>
             <button class="btn btn-sm" onclick="App.syncToRepo()">Push to Repo</button>
           </div>
         </div>
-        <div id="gist-sync-status" style="padding:8px;background:var(--bg2);border-radius:4px;margin-bottom:10px;font-size:12px;color:var(--fg2)">Not configured</div>
+        <div id="gist-sync-status" style="padding:8px;background:var(--bg2);border-radius:4px;margin-bottom:4px;font-size:12px;color:var(--fg2)">Not configured</div>
+        <div id="sync-inbox-path" style="padding:4px 8px;font-size:11px;color:var(--fg2);margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="App.syncNow()">Sync now</button>
         </div>

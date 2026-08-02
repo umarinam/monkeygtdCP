@@ -66,10 +66,17 @@ function bootInbox(localSeed = {}) {
     statusMessage: createElement('statusMessage'),
     authWarning: createElement('authWarning'),
     submitBtn: createElement('submitBtn'),
+    syncInfo: createElement('syncInfo'),
     credsSetup: createElement('credsSetup'),
     credsToken: createElement('credsToken'),
     credsId: createElement('credsId'),
     saveCredsBtn: createElement('saveCredsBtn'),
+    credsSetupRepo: createElement('credsSetupRepo'),
+    credsRepoToken: createElement('credsRepoToken'),
+    credsRepoOwner: createElement('credsRepoOwner'),
+    credsRepoName: createElement('credsRepoName'),
+    credsRepoBranch: createElement('credsRepoBranch'),
+    saveRepoCredsBtn: createElement('saveRepoCredsBtn'),
     taskTitle: createElement('taskTitle'),
     taskParentId: createElement('taskParentId'),
     taskParentTitle: createElement('taskParentTitle'),
@@ -113,6 +120,8 @@ function bootInbox(localSeed = {}) {
   const localStorage = createStorage(localSeed);
   const fetchCalls = [];
   let inboxContent = '';
+  let repoInboxContent = '';
+  let repoInboxSha = '';
 
   const context = {
     window,
@@ -145,6 +154,26 @@ function bootInbox(localSeed = {}) {
         }
       }
 
+      if (String(url).includes('/contents/monkeygtd-inbox.ndjson')) {
+        if (method === 'GET') {
+          if (!repoInboxContent) return { ok: false, status: 404, json: async () => ({}) };
+          return {
+            ok: true,
+            json: async () => ({
+              sha: repoInboxSha,
+              content: Buffer.from(repoInboxContent, 'utf8').toString('base64')
+            })
+          };
+        }
+
+        if (method === 'PUT') {
+          const body = JSON.parse(options.body || '{}');
+          repoInboxContent = Buffer.from(body.content || '', 'base64').toString('utf8');
+          repoInboxSha = 'repo-inbox-sha-2';
+          return { ok: true, json: async () => ({ content: { sha: repoInboxSha } }) };
+        }
+      }
+
       return { ok: true, text: async () => inboxContent, json: async () => ({}) };
     },
     setTimeout: () => {},
@@ -153,7 +182,9 @@ function bootInbox(localSeed = {}) {
     console,
     crypto: {
       randomUUID: () => 'uuid-fixed'
-    }
+    },
+    btoa: (text) => Buffer.from(String(text), 'binary').toString('base64'),
+    atob: (b64) => Buffer.from(String(b64), 'base64').toString('binary')
   };
 
   vm.runInNewContext(readInboxScript(), context);
@@ -166,13 +197,29 @@ function bootInbox(localSeed = {}) {
     elements,
     localStorage,
     fetchCalls,
-    getInboxContent: () => inboxContent
+    getInboxContent: () => inboxContent,
+    getRepoInboxContent: () => repoInboxContent
   };
 }
 
 function credsSeed() {
   return {
     mgtd3: JSON.stringify({ settings: { gistToken: 'tok_123', gistId: 'gid_123' } })
+  };
+}
+
+function repoCredsSeed() {
+  return {
+    mgtd3: JSON.stringify({
+      settings: {
+        syncProvider: 'repo',
+        repoToken: 'repo_tok_123',
+        repoOwner: 'octocat',
+        repoName: 'private-backups',
+        repoBranch: 'main',
+        repoPath: 'monkeygtd-backup.json'
+      }
+    })
   };
 }
 
@@ -222,6 +269,27 @@ test('Inbox submit without parent queues addInbox request', async () => {
   assert.equal(queued.due, '2026-07-30');
 });
 
+test('Inbox submit in repo provider mode queues via Repo Contents API', async () => {
+  const { elements, fetchCalls, getRepoInboxContent } = bootInbox(repoCredsSeed());
+
+  elements.taskTitle.value = 'Queued via repo';
+  elements.taskDescription.value = '';
+  elements.taskParentId.value = '';
+  elements.taskParentTitle.value = '';
+  elements.taskDueDate.value = '2026-08-01';
+
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+
+  assert.equal(fetchCalls.some((c) => c.method === 'GET' && String(c.url).includes('/contents/monkeygtd-inbox.ndjson')), true);
+  assert.equal(fetchCalls.some((c) => c.method === 'PUT' && String(c.url).includes('/contents/monkeygtd-inbox.ndjson')), true);
+
+  const line = getRepoInboxContent().trim();
+  const queued = JSON.parse(line);
+  assert.equal(queued.action, 'addInbox');
+  assert.equal(queued.due, '2026-08-01');
+  assert.equal(queued.title, 'Queued via repo');
+});
+
 test('Inbox shows default parent seeds when cache is empty', () => {
   const { elements } = bootInbox(credsSeed());
   // 4 default parents should be rendered
@@ -229,6 +297,16 @@ test('Inbox shows default parent seeds when cache is empty', () => {
   assert.equal(elements.recentParents.style.display, 'flex');
   const firstPill = elements.recentParents.children[0].children[0];
   assert.equal(firstPill.textContent.includes('Email'), true);
+});
+
+test('Inbox displays Gist mode and inbox file name on load', () => {
+  const { elements } = bootInbox(credsSeed());
+  assert.equal(elements.syncInfo.textContent, 'Gist mode • Inbox: monkeygtd-inbox.ndjson');
+});
+
+test('Inbox displays Repo mode and computed inbox path on load', () => {
+  const { elements } = bootInbox(repoCredsSeed());
+  assert.equal(elements.syncInfo.textContent, 'Repo mode • Inbox: monkeygtd-inbox.ndjson');
 });
 
 test('Inbox parent suggestions load from cache and auto-fill parent title for known IDs', () => {

@@ -418,3 +418,170 @@ test('syncRepoBidirectionalRemote pulls successfully via git_url blob when conte
   assert.equal(calls.syncSettings, 1);
   assert.equal(state.data.settings.repoLastSyncSummary, 'Pulled');
 });
+
+test('syncRepoBidirectionalRemote applies queued addChild inbox requests', async () => {
+  const sameTs = '2026-07-18T12:00:00.000Z';
+  const queueLine = JSON.stringify({
+    id: 'req-1',
+    action: 'addChild',
+    parentTaskId: 'p1',
+    content: 'Queued child task',
+    due: '2026-07-21'
+  });
+  const fetchCalls = [];
+
+  const fetchMock = async (url, options = {}) => {
+    const method = options.method || 'GET';
+    const urlStr = String(url);
+    fetchCalls.push({ url: urlStr, method, body: options.body || '' });
+
+    if (method === 'PUT') {
+      return { ok: true, status: 200, json: async () => ({}) };
+    }
+
+    if (urlStr.includes('monkeygtd-inbox.ndjson')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          sha: 'inbox-sha-1',
+          content: Buffer.from(queueLine, 'utf8').toString('base64')
+        })
+      };
+    }
+
+    return { ok: true, status: 200, json: async () => repoGetResponse(sameTs) };
+  };
+
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock });
+  const state = makeState(sameTs);
+  state.data.tasks.p1 = {
+    id: 'p1',
+    content: 'Parent',
+    status: 0,
+    checklist_id: 'l1',
+    parent_id: '',
+    tasks: [],
+    tags: {},
+    tags_as_text: '',
+    color: 0,
+    due: '',
+    due_asap: false,
+    assignees: [],
+    notes: [],
+    comments_count: 0,
+    history: [],
+    updated_at: sameTs,
+    created_at: sameTs,
+    completed_at: '',
+    deleted: false,
+    _collapsed: false
+  };
+  state.data.lists.l1.root_tasks = ['p1'];
+  const { app, calls } = makeAppCounters();
+
+  const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(calls.save >= 1, true);
+  assert.equal(calls.render >= 1, true);
+
+  const parent = state.data.tasks.p1;
+  assert.equal(Array.isArray(parent.tasks), true);
+  assert.equal(parent.tasks.length, 1);
+  const child = state.data.tasks[parent.tasks[0]];
+  assert.equal(!!child, true);
+  assert.equal(child.parent_id, 'p1');
+  assert.equal(child.content, 'Queued child task');
+  assert.equal(child.due, '2026-07-21');
+
+  const queuePut = fetchCalls.find(c => c.method === 'PUT' && String(c.url).includes('monkeygtd-inbox.ndjson'));
+  assert.equal(!!queuePut, true);
+  const putBody = JSON.parse(queuePut.body);
+  const writtenRaw = Buffer.from(putBody.content, 'base64').toString('utf8');
+  assert.equal(writtenRaw, '');
+});
+
+test('syncRepoBidirectionalRemote applies queued addInbox inbox requests with due date', async () => {
+  const sameTs = '2026-07-18T12:00:00.000Z';
+  const queueLine = JSON.stringify({
+    id: 'req-inbox-1',
+    action: 'addInbox',
+    content: 'Queued root task',
+    due: '2026-07-20'
+  });
+  const fetchCalls = [];
+
+  const fetchMock = async (url, options = {}) => {
+    const method = options.method || 'GET';
+    const urlStr = String(url);
+    fetchCalls.push({ url: urlStr, method, body: options.body || '' });
+
+    if (method === 'PUT') {
+      return { ok: true, status: 200, json: async () => ({}) };
+    }
+
+    if (urlStr.includes('monkeygtd-inbox.ndjson')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          sha: 'inbox-sha-2',
+          content: Buffer.from(queueLine, 'utf8').toString('base64')
+        })
+      };
+    }
+
+    return { ok: true, status: 200, json: async () => repoGetResponse(sameTs) };
+  };
+
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock });
+  const state = makeState(sameTs);
+  const { app, calls } = makeAppCounters();
+
+  const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(calls.save >= 1, true);
+  assert.equal(calls.render >= 1, true);
+
+  const roots = state.data.lists.l1.root_tasks || [];
+  assert.equal(roots.length, 1);
+  const task = state.data.tasks[roots[0]];
+  assert.equal(!!task, true);
+  assert.equal(task.parent_id, '');
+  assert.equal(task.content, 'Queued root task');
+  assert.equal(task.due, '2026-07-20');
+
+  const queuePut = fetchCalls.find(c => c.method === 'PUT' && String(c.url).includes('monkeygtd-inbox.ndjson'));
+  assert.equal(!!queuePut, true);
+});
+
+test('syncRepoBidirectionalRemote leaves inbox queue untouched when there is nothing to process', async () => {
+  const sameTs = '2026-07-18T12:00:00.000Z';
+  const fetchCalls = [];
+
+  const fetchMock = async (url, options = {}) => {
+    const method = options.method || 'GET';
+    const urlStr = String(url);
+    fetchCalls.push({ url: urlStr, method });
+
+    if (urlStr.includes('monkeygtd-inbox.ndjson')) {
+      return { ok: false, status: 404, json: async () => ({}) };
+    }
+
+    return { ok: true, status: 200, json: async () => repoGetResponse(sameTs) };
+  };
+
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock });
+  const state = makeState(sameTs);
+  const { app, calls } = makeAppCounters();
+
+  const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(calls.save, 0);
+  assert.equal(calls.render, 0);
+  assert.equal(state.data.settings.repoLastSyncSummary, 'In sync');
+  assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 0);
+});

@@ -731,6 +731,10 @@ const App={
     setSettingDomain(this, S, 'gistFilename', v.trim() || 'monkeygtd-backup.json');
     this.syncSettings();
   },
+  setGistInboxFilename(v){
+    setSettingDomain(this, S, 'gistInboxFilename', v.trim() || 'monkeygtd-inbox.ndjson');
+    this.syncSettings();
+  },
   setGistAutoSyncEnabled(v){
     setSettingDomain(this, S, 'gistAutoSyncEnabled', !!v);
     this.startSyncAuto();
@@ -771,6 +775,10 @@ const App={
   },
   setRepoPath(v){
     setSettingDomain(this, S, 'repoPath', String(v || '').trim() || 'monkeygtd-backup.json');
+    this.syncSettings();
+  },
+  setRepoInboxPath(v){
+    setSettingDomain(this, S, 'repoInboxPath', String(v || '').trim());
     this.syncSettings();
   },
   async syncFromGist(){ return syncFromGistRemote(this, S, { silent:false, auto:false }); },

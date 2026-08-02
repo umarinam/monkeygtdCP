@@ -47,6 +47,7 @@ function syncSettingsUi(app, S) {
   const tokenEl = document.getElementById('gist-token');
   const gistIdEl = document.getElementById('gist-id');
   const gistFileEl = document.getElementById('gist-file');
+  const gistInboxFileEl = document.getElementById('gist-inbox-file');
   const gistAutoEl = document.getElementById('s-gist-auto');
   const gistIntervalEl = document.getElementById('s-gist-interval');
   const providerEl = document.getElementById('s-sync-provider');
@@ -55,6 +56,7 @@ function syncSettingsUi(app, S) {
   const repoNameEl = document.getElementById('repo-name');
   const repoBranchEl = document.getElementById('repo-branch');
   const repoPathEl = document.getElementById('repo-path');
+  const repoInboxPathEl = document.getElementById('repo-inbox-path');
   const gistFieldsEl = document.getElementById('gist-sync-fields');
   const repoFieldsEl = document.getElementById('repo-sync-fields');
   const token = s.gistToken || localStorage.getItem('mgtd3_gist_token') || '';
@@ -65,6 +67,7 @@ function syncSettingsUi(app, S) {
   if (tokenEl) tokenEl.value = token;
   if (gistIdEl) gistIdEl.value = s.gistId || '';
   if (gistFileEl) gistFileEl.value = s.gistFilename || 'monkeygtd-backup.json';
+  if (gistInboxFileEl) gistInboxFileEl.value = s.gistInboxFilename || 'monkeygtd-inbox.ndjson';
   if (gistAutoEl) gistAutoEl.checked = s.gistAutoSyncEnabled !== false;
   if (gistIntervalEl) gistIntervalEl.value = String(Math.max(1, Number(s.gistAutoSyncIntervalMin || 5)));
   if (repoTokenEl) repoTokenEl.value = repoToken;
@@ -72,6 +75,7 @@ function syncSettingsUi(app, S) {
   if (repoNameEl) repoNameEl.value = s.repoName || '';
   if (repoBranchEl) repoBranchEl.value = s.repoBranch || 'main';
   if (repoPathEl) repoPathEl.value = s.repoPath || 'monkeygtd-backup.json';
+  if (repoInboxPathEl) repoInboxPathEl.value = s.repoInboxPath || '';
   if (gistFieldsEl) gistFieldsEl.style.display = provider === 'gist' ? '' : 'none';
   if (repoFieldsEl) repoFieldsEl.style.display = provider === 'repo' ? '' : 'none';
 
@@ -85,6 +89,14 @@ function syncSettingsUi(app, S) {
       ? `${providerLabel}: ${summary} @ ${lastSync}`
       : `${providerLabel}: Last sync ${lastSync}`;
     statusEl.style.color = 'var(--fg2)';
+  }
+
+  const inboxPathEl = document.getElementById('sync-inbox-path');
+  if (inboxPathEl) {
+    const inboxPath = provider === 'repo'
+      ? (s.repoInboxPath || (typeof repoDefaultInboxPath === 'function' ? repoDefaultInboxPath(s.repoPath || 'monkeygtd-backup.json') : 'monkeygtd-inbox.ndjson'))
+      : (s.gistInboxFilename || 'monkeygtd-inbox.ndjson');
+    inboxPathEl.textContent = `Inbox queue file: ${inboxPath}`;
   }
 }
 
