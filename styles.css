@@ -159,6 +159,8 @@ body.zen #topbar{display:none}
 #task-list.focus-path .ti.focus-path{opacity:.82}
 #task-list.focus-path .ti.focus-active{opacity:1}
 #task-list.focus-path .ti.focus-active .tc{font-weight:600}
+#task-list.focus-path .ti.focus-dim .tc{color:var(--muted)}
+#task-list.focus-path .ti.focus-dim .cbar{background:var(--muted)}
 #task-list.measure-readable .tb{padding-right:16px}
 #task-list.measure-readable .tc{max-width:72ch}
 

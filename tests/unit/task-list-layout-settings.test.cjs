@@ -226,3 +226,10 @@ test('indent guide modes define explicit and visibly distinct CSS rules', () => 
   assert.equal(css.includes('border-left:1px solid color-mix(in srgb, var(--border) 45%, transparent)'), true);
   assert.equal(css.includes('border-left:none'), true);
 });
+
+test('focus-dim rows neutralize priority coloring so dimmed tasks fade regardless of their color', () => {
+  const css = fs.readFileSync(path.join(process.cwd(), 'styles.css'), 'utf8');
+
+  assert.equal(css.includes('#task-list.focus-path .ti.focus-dim .tc{color:var(--muted)}'), true);
+  assert.equal(css.includes('#task-list.focus-path .ti.focus-dim .cbar{background:var(--muted)}'), true);
+});
