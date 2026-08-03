@@ -44,10 +44,13 @@ const App={
     this.startSyncAuto();
   },
 
-  save(){
+  save(options){
+    const opts = options || {};
     S.data.currentListId=S.listId;
     S.data.settings = S.data.settings || {};
-    S.data.settings.gistLastLocalSaveAt = now();
+    if (opts.touchLocalSaveAt !== false) {
+      S.data.settings.gistLastLocalSaveAt = now();
+    }
     DB.save(S.data);
   },
 

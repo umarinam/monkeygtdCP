@@ -421,7 +421,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-02T19:53:47+05:00',commit:'e54b291'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-03T11:00:02+05:00',commit:'0e47fdb'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -3562,7 +3562,7 @@ async function syncFromGistRemote(app, state, options) {
     const inbox = await gistProcessInboxRemote(state, config, meta);
     gistRememberSyncSummary(state, inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled', remoteAt || new Date().toISOString());
 
-    app.save();
+    app.save({ touchLocalSaveAt: false });
     app.render();
     app.syncSettings();
     if (app.syncSB) app.syncSB();
@@ -3621,7 +3621,7 @@ async function syncToGistRemote(app, state, options) {
 
     state.data.settings = state.data.settings || {};
     gistRememberSyncSummary(state, 'Pushed', exportedAt);
-    app.save();
+    app.save({ touchLocalSaveAt: false });
     app.syncSettings();
     if (app.syncSB) app.syncSB();
 
@@ -3663,7 +3663,7 @@ async function syncGistBidirectionalRemote(app, state, options) {
     const inbox = await gistProcessInboxRemote(state, config, meta);
     if (inbox.applied > 0) {
       gistRememberSyncSummary(state, `Inbox imported ${inbox.applied}`, new Date().toISOString());
-      app.save();
+      app.save({ touchLocalSaveAt: false });
       app.render();
       app.syncSettings();
       if (app.syncSB) app.syncSB();
@@ -4263,7 +4263,7 @@ async function syncFromRepoRemote(app, state, options) {
     const inbox = await repoProcessInboxRemote(state, config);
     repoRememberSyncSummary(state, inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled', at);
 
-    app.save();
+    app.save({ touchLocalSaveAt: false });
     app.render();
     app.syncSettings();
     if (app.syncSB) app.syncSB();
@@ -4326,7 +4326,7 @@ async function syncToRepoRemote(app, state, options) {
 
     state.data.settings = state.data.settings || {};
     repoRememberSyncSummary(state, 'Pushed', exportedAt);
-    app.save();
+    app.save({ touchLocalSaveAt: false });
     app.syncSettings();
     if (app.syncSB) app.syncSB();
 
@@ -4366,7 +4366,7 @@ async function syncRepoBidirectionalRemote(app, state, options) {
     const inbox = await repoProcessInboxRemote(state, config);
     if (inbox.applied > 0) {
       repoRememberSyncSummary(state, `Inbox imported ${inbox.applied}`, new Date().toISOString());
-      app.save();
+      app.save({ touchLocalSaveAt: false });
       app.render();
       app.syncSettings();
       if (app.syncSB) app.syncSB();
@@ -8186,10 +8186,13 @@ const App={
     this.startSyncAuto();
   },
 
-  save(){
+  save(options){
+    const opts = options || {};
     S.data.currentListId=S.listId;
     S.data.settings = S.data.settings || {};
-    S.data.settings.gistLastLocalSaveAt = now();
+    if (opts.touchLocalSaveAt !== false) {
+      S.data.settings.gistLastLocalSaveAt = now();
+    }
     DB.save(S.data);
   },
 

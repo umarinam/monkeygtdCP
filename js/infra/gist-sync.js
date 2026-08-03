@@ -441,7 +441,7 @@ async function syncFromGistRemote(app, state, options) {
     const inbox = await gistProcessInboxRemote(state, config, meta);
     gistRememberSyncSummary(state, inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled', remoteAt || new Date().toISOString());
 
-    app.save();
+    app.save({ touchLocalSaveAt: false });
     app.render();
     app.syncSettings();
     if (app.syncSB) app.syncSB();
@@ -500,7 +500,7 @@ async function syncToGistRemote(app, state, options) {
 
     state.data.settings = state.data.settings || {};
     gistRememberSyncSummary(state, 'Pushed', exportedAt);
-    app.save();
+    app.save({ touchLocalSaveAt: false });
     app.syncSettings();
     if (app.syncSB) app.syncSB();
 
@@ -542,7 +542,7 @@ async function syncGistBidirectionalRemote(app, state, options) {
     const inbox = await gistProcessInboxRemote(state, config, meta);
     if (inbox.applied > 0) {
       gistRememberSyncSummary(state, `Inbox imported ${inbox.applied}`, new Date().toISOString());
-      app.save();
+      app.save({ touchLocalSaveAt: false });
       app.render();
       app.syncSettings();
       if (app.syncSB) app.syncSB();

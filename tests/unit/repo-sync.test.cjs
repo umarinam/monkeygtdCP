@@ -197,6 +197,49 @@ test('syncRepoBidirectionalRemote no-op does not bump timestamps or push on next
   assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 0);
 });
 
+test('syncRepoBidirectionalRemote push does not self-trigger another push from sync save timestamp', async () => {
+  const localTs = '2026-07-18T12:00:00.000Z';
+  const remoteTs = '2026-07-18T10:00:00.000Z';
+  const fetchCalls = [];
+  let pushedExportedAt = '';
+
+  const fetchMock = async (url, options = {}) => {
+    const method = options.method || 'GET';
+    fetchCalls.push({ url, method });
+
+    if (method === 'PUT') {
+      const body = JSON.parse(options.body || '{}');
+      const raw = Buffer.from(String(body.content || ''), 'base64').toString('utf8');
+      pushedExportedAt = JSON.parse(raw).exportedAt || '';
+      return { ok: true, status: 200, json: async () => ({}) };
+    }
+
+    const remoteAt = pushedExportedAt || remoteTs;
+    return { ok: true, status: 200, json: async () => repoGetResponse(remoteAt) };
+  };
+
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock });
+  const state = makeState(localTs);
+  const app = {
+    toast: () => {},
+    render: () => {},
+    syncSettings: () => {},
+    save: (options) => {
+      state.data.settings = state.data.settings || {};
+      if (!options || options.touchLocalSaveAt !== false) {
+        state.data.settings.gistLastLocalSaveAt = '2099-01-01T00:00:00.000Z';
+      }
+    }
+  };
+
+  const first = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+  const second = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(first, true);
+  assert.equal(second, true);
+  assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 1);
+});
+
 test('syncRepoBidirectionalRemote retries once when repo write conflicts', async () => {
   const localTs = '2026-07-18T12:00:00.000Z';
   const remoteTs = '2026-07-18T10:00:00.000Z';

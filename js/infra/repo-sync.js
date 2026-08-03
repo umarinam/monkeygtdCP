@@ -559,7 +559,7 @@ async function syncFromRepoRemote(app, state, options) {
     const inbox = await repoProcessInboxRemote(state, config);
     repoRememberSyncSummary(state, inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled', at);
 
-    app.save();
+    app.save({ touchLocalSaveAt: false });
     app.render();
     app.syncSettings();
     if (app.syncSB) app.syncSB();
@@ -622,7 +622,7 @@ async function syncToRepoRemote(app, state, options) {
 
     state.data.settings = state.data.settings || {};
     repoRememberSyncSummary(state, 'Pushed', exportedAt);
-    app.save();
+    app.save({ touchLocalSaveAt: false });
     app.syncSettings();
     if (app.syncSB) app.syncSB();
 
@@ -662,7 +662,7 @@ async function syncRepoBidirectionalRemote(app, state, options) {
     const inbox = await repoProcessInboxRemote(state, config);
     if (inbox.applied > 0) {
       repoRememberSyncSummary(state, `Inbox imported ${inbox.applied}`, new Date().toISOString());
-      app.save();
+      app.save({ touchLocalSaveAt: false });
       app.render();
       app.syncSettings();
       if (app.syncSB) app.syncSB();
