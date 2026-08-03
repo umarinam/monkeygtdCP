@@ -690,7 +690,10 @@ async function syncRepoBidirectionalRemote(app, state, options) {
       return syncToRepoRemote(app, state, { silent: opts.silent });
     }
 
-    repoRememberSyncSummary(state, inbox.applied > 0 ? `Inbox imported ${inbox.applied}` : 'In sync', new Date().toISOString());
+    state.data.settings = state.data.settings || {};
+    const summary = inbox.applied > 0 ? `Inbox imported ${inbox.applied}` : 'In sync';
+    state.data.settings.syncLastSummary = summary;
+    state.data.settings.repoLastSyncSummary = summary;
     app.syncSettings();
     if (app.syncSB) app.syncSB();
     repoSetStatus('Repo and local are in sync', false);

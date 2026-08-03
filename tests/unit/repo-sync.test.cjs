@@ -174,6 +174,29 @@ test('syncRepoBidirectionalRemote does nothing when versions are equal', async (
   assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 0);
 });
 
+test('syncRepoBidirectionalRemote no-op does not bump timestamps or push on next auto tick', async () => {
+  const sameTs = '2026-07-18T12:00:00.000Z';
+  const fetchCalls = [];
+
+  const fetchMock = async (url, options = {}) => {
+    fetchCalls.push({ url, method: options.method || 'GET' });
+    return { ok: true, status: 200, json: async () => repoGetResponse(sameTs) };
+  };
+
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock });
+  const state = makeState(sameTs);
+  const { app } = makeAppCounters();
+
+  const first = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+  const second = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(first, true);
+  assert.equal(second, true);
+  assert.equal(state.data.settings.syncLastAt, sameTs);
+  assert.equal(state.data.settings.repoLastSyncAt, undefined);
+  assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 0);
+});
+
 test('syncRepoBidirectionalRemote retries once when repo write conflicts', async () => {
   const localTs = '2026-07-18T12:00:00.000Z';
   const remoteTs = '2026-07-18T10:00:00.000Z';
