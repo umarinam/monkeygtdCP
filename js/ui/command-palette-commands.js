@@ -2,6 +2,7 @@
 
 function buildCommandPaletteItems(app, state) {
   return [
+    { l: 'Quick add task', s: '+ button', fn: () => app.openQuickAdd() },
     { l: 'Edit task', s: 'ee / F2', fn: () => { if (state.selId) app.startEdit(state.selId); } },
     { l: 'Add task below', s: 'Enter', fn: () => { if (state.selId) { const nid = app.dispatch('task.add', { afterId: state.selId, asChild: false, content: '' }); state.selId = nid; app.renderList(); app.startEdit(nid); } } },
     { l: 'Add child task', s: 'Shift+Enter', fn: () => { if (state.selId) { const nid = app.dispatch('task.add', { afterId: state.selId, asChild: true, content: '' }); state.selId = nid; app.renderList(); app.startEdit(nid); } } },

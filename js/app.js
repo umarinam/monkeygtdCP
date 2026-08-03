@@ -686,6 +686,10 @@ const App={
   },
 
   // â”€ List CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  openQuickAdd(){ openQuickAddUi(this, S); },
+  submitQuickAdd(){ submitQuickAddUi(this, S); },
+  quickAddKey(e){ quickAddKeyUi(this, S, e); },
+
   createList(){ createListUi(this, S); },
   renameList(id){ renameListUi(this, S, id); },
   confirmList(){

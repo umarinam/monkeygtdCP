@@ -296,6 +296,7 @@ function showShortcutsUi(app) {
       ['Ctrl+Shift+→ / ←', 'Expand all / collapse all'],
     ]},
     { heading: 'Editing', items: [
+      ['+ button', 'Quick add task (works on an empty list, touch-friendly)'],
       ['Enter', 'Add task below'],
       ['Shift+Enter', 'Add child task'],
       ['Alt+Enter', 'Add task above'],

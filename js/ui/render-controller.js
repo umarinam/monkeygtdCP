@@ -581,7 +581,7 @@ function renderListUi(app, state) {
   taskListEl.innerHTML = html || `<div class="empty">
       <div style="font-size:40px;margin-bottom:12px">📋</div>
       <div class="empty-t">No tasks yet</div>
-      <div class="empty-d">Press <strong>Enter</strong> to add your first task.</div></div>`;
+      <div class="empty-d">Press <strong>Enter</strong>, or tap <strong>➕</strong> in the toolbar, to add your first task.</div></div>`;
 
   bindTaskListEvents(app, state);
   requestAnimationFrame(() => app.scrollSel());

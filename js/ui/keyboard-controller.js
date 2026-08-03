@@ -44,6 +44,8 @@ function bindGlobalEvents(app, state) {
 
   document.getElementById('move-q').addEventListener('input', () => app.updateMoveR());
   document.getElementById('move-q').addEventListener('keydown', e => app.handleMoveInputKey(e));
+
+  document.getElementById('qa-input').addEventListener('keydown', e => app.quickAddKey(e));
 }
 
 function handleGlobalKey(app, state, e) {
@@ -51,7 +53,7 @@ function handleGlobalKey(app, state, e) {
 
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json shortcuts'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json shortcuts quickadd'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');

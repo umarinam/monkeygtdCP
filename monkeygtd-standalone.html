@@ -421,7 +421,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-03T11:00:02+05:00',commit:'0e47fdb'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-03T11:16:06+05:00',commit:'684f923'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -435,6 +435,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
       <span id="search-x" onclick="App.clearSearch()">✕</span>
     </div>
     <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+      <button id="quickadd-btn" class="tbtn" onclick="App.openQuickAdd()" title="Quick add task">➕</button>
       <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
       <button class="tbtn" onclick="App.showPage('report')" title="Reporting (gr)">📊</button>
@@ -1004,6 +1005,20 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
   <div id="cp">
     <input id="cpi" type="text" placeholder="Type a command or search─¦" autocomplete="off">
     <div id="cpr"></div>
+  </div>
+</div>
+
+<!-- Quick add task -->
+<div id="ov-quickadd" class="ov hidden">
+  <div class="modal" style="max-width:350px">
+    <div class="mh"><span class="mt">Quick Add Task</span><span class="mx" onclick="App.closeModal('ov-quickadd')">✕</span></div>
+    <div class="mb">
+      <div class="fg"><label>Task</label><input id="qa-input" type="text" placeholder="Type a task and press Enter…"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-quickadd')">Cancel</button>
+      <button class="btn btn-p" onclick="App.submitQuickAdd()">Add</button>
+    </div>
   </div>
 </div>
 
@@ -4428,6 +4443,47 @@ function closeAllOverlays(app, state) {
   if (state.page === 'list') app.renderList();
 }
 
+function openQuickAddUi(app, state) {
+  if (!state.listId || !state.data.lists[state.listId]) {
+    app.toast('Open a list first');
+    return;
+  }
+  const el = document.getElementById('qa-input');
+  el.value = '';
+  app.openModal('ov-quickadd');
+  setTimeout(() => el.focus(), 50);
+}
+
+function submitQuickAddUi(app, state) {
+  const el = document.getElementById('qa-input');
+  const content = (el.value || '').trim();
+  if (!content) {
+    app.toast('Type a task first');
+    return;
+  }
+  if (!state.listId || !state.data.lists[state.listId]) {
+    app.toast('Open a list first');
+    return;
+  }
+  const nid = app.dispatch('task.add', { afterId: '', asChild: false, content });
+  state.selId = nid;
+  app.closeModal('ov-quickadd');
+  if (state.page === 'list') app.renderList();
+  app.toast('Task added');
+}
+
+function quickAddKeyUi(app, state, e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    app.submitQuickAdd();
+    return;
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    app.closeModal('ov-quickadd');
+  }
+}
+
 function openDueModalUi(app, state) {
   if (!state.selId) return;
   // Store the task IDs to apply due date to (multi-select support)
@@ -5646,6 +5702,8 @@ function bindGlobalEvents(app, state) {
 
   document.getElementById('move-q').addEventListener('input', () => app.updateMoveR());
   document.getElementById('move-q').addEventListener('keydown', e => app.handleMoveInputKey(e));
+
+  document.getElementById('qa-input').addEventListener('keydown', e => app.quickAddKey(e));
 }
 
 function handleGlobalKey(app, state, e) {
@@ -5653,7 +5711,7 @@ function handleGlobalKey(app, state, e) {
 
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json shortcuts'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json shortcuts quickadd'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');
@@ -6994,7 +7052,7 @@ function renderListUi(app, state) {
   taskListEl.innerHTML = html || `<div class="empty">
       <div style="font-size:40px;margin-bottom:12px">📋</div>
       <div class="empty-t">No tasks yet</div>
-      <div class="empty-d">Press <strong>Enter</strong> to add your first task.</div></div>`;
+      <div class="empty-d">Press <strong>Enter</strong>, or tap <strong>➕</strong> in the toolbar, to add your first task.</div></div>`;
 
   bindTaskListEvents(app, state);
   requestAnimationFrame(() => app.scrollSel());
@@ -7198,6 +7256,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
 
 function buildCommandPaletteItems(app, state) {
   return [
+    { l: 'Quick add task', s: '+ button', fn: () => app.openQuickAdd() },
     { l: 'Edit task', s: 'ee / F2', fn: () => { if (state.selId) app.startEdit(state.selId); } },
     { l: 'Add task below', s: 'Enter', fn: () => { if (state.selId) { const nid = app.dispatch('task.add', { afterId: state.selId, asChild: false, content: '' }); state.selId = nid; app.renderList(); app.startEdit(nid); } } },
     { l: 'Add child task', s: 'Shift+Enter', fn: () => { if (state.selId) { const nid = app.dispatch('task.add', { afterId: state.selId, asChild: true, content: '' }); state.selId = nid; app.renderList(); app.startEdit(nid); } } },
@@ -7976,6 +8035,7 @@ function showShortcutsUi(app) {
       ['Ctrl+Shift+→ / ←', 'Expand all / collapse all'],
     ]},
     { heading: 'Editing', items: [
+      ['+ button', 'Quick add task (works on an empty list, touch-friendly)'],
       ['Enter', 'Add task below'],
       ['Shift+Enter', 'Add child task'],
       ['Alt+Enter', 'Add task above'],
@@ -8828,6 +8888,10 @@ const App={
   },
 
   // â”€ List CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  openQuickAdd(){ openQuickAddUi(this, S); },
+  submitQuickAdd(){ submitQuickAddUi(this, S); },
+  quickAddKey(e){ quickAddKeyUi(this, S, e); },
+
   createList(){ createListUi(this, S); },
   renameList(id){ renameListUi(this, S, id); },
   confirmList(){

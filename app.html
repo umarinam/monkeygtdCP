@@ -20,6 +20,7 @@
       <span id="search-x" onclick="App.clearSearch()">✕</span>
     </div>
     <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+      <button id="quickadd-btn" class="tbtn" onclick="App.openQuickAdd()" title="Quick add task">➕</button>
       <button id="mobile-sync-btn" class="tbtn m-sync-btn" onclick="App.syncNow()" title="Sync now">Sync</button>
       <button class="tbtn" onclick="App.showPage('due')" title="Due (gd)">📅</button>
       <button class="tbtn" onclick="App.showPage('report')" title="Reporting (gr)">📊</button>
@@ -589,6 +590,20 @@
   <div id="cp">
     <input id="cpi" type="text" placeholder="Type a command or search─¦" autocomplete="off">
     <div id="cpr"></div>
+  </div>
+</div>
+
+<!-- Quick add task -->
+<div id="ov-quickadd" class="ov hidden">
+  <div class="modal" style="max-width:350px">
+    <div class="mh"><span class="mt">Quick Add Task</span><span class="mx" onclick="App.closeModal('ov-quickadd')">✕</span></div>
+    <div class="mb">
+      <div class="fg"><label>Task</label><input id="qa-input" type="text" placeholder="Type a task and press Enter…"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-quickadd')">Cancel</button>
+      <button class="btn btn-p" onclick="App.submitQuickAdd()">Add</button>
+    </div>
   </div>
 </div>
 

@@ -14,6 +14,47 @@ function closeAllOverlays(app, state) {
   if (state.page === 'list') app.renderList();
 }
 
+function openQuickAddUi(app, state) {
+  if (!state.listId || !state.data.lists[state.listId]) {
+    app.toast('Open a list first');
+    return;
+  }
+  const el = document.getElementById('qa-input');
+  el.value = '';
+  app.openModal('ov-quickadd');
+  setTimeout(() => el.focus(), 50);
+}
+
+function submitQuickAddUi(app, state) {
+  const el = document.getElementById('qa-input');
+  const content = (el.value || '').trim();
+  if (!content) {
+    app.toast('Type a task first');
+    return;
+  }
+  if (!state.listId || !state.data.lists[state.listId]) {
+    app.toast('Open a list first');
+    return;
+  }
+  const nid = app.dispatch('task.add', { afterId: '', asChild: false, content });
+  state.selId = nid;
+  app.closeModal('ov-quickadd');
+  if (state.page === 'list') app.renderList();
+  app.toast('Task added');
+}
+
+function quickAddKeyUi(app, state, e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    app.submitQuickAdd();
+    return;
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    app.closeModal('ov-quickadd');
+  }
+}
+
 function openDueModalUi(app, state) {
   if (!state.selId) return;
   // Store the task IDs to apply due date to (multi-select support)
