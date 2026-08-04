@@ -104,13 +104,16 @@ function registerAppQueries(app, deps) {
     return match(id);
   });
 
-  app.queryService.register('due.sections', () => {
+  app.queryService.register('due.sections', payload => {
     const data = getData();
     const includeCompleted = data.settings.showCompleted !== false;
+    const q = String(payload?.q || '').trim();
+    const match = q ? buildTaskMatcher(q, data) : null;
     const tasks = Object.values(data.tasks).filter(t => {
       if (t.deleted) return false;
       if (!(t.due || t.due_asap)) return false;
       if (!includeCompleted && t.status !== 0) return false;
+      if (match && !match(t.id)) return false;
       return true;
     });
     const td = todayS();

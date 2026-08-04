@@ -423,7 +423,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-03T13:07:57+05:00',commit:'d0dd7f7'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-03T13:28:03+05:00',commit:'c06f3e2'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1457,13 +1457,16 @@ function registerAppQueries(app, deps) {
     return match(id);
   });
 
-  app.queryService.register('due.sections', () => {
+  app.queryService.register('due.sections', payload => {
     const data = getData();
     const includeCompleted = data.settings.showCompleted !== false;
+    const q = String(payload?.q || '').trim();
+    const match = q ? buildTaskMatcher(q, data) : null;
     const tasks = Object.values(data.tasks).filter(t => {
       if (t.deleted) return false;
       if (!(t.due || t.due_asap)) return false;
       if (!includeCompleted && t.status !== 0) return false;
+      if (match && !match(t.id)) return false;
       return true;
     });
     const td = todayS();
@@ -6786,7 +6789,7 @@ function filterTagUi(app, state, tg) {
 }
 
 function renderDueUi(app, state) {
-  const sections = app.select('due.sections');
+  const sections = app.select('due.sections', { q: state.filter });
   let h = sections.map(sec => {
     const items = sec.items;
     if (!items.length) return '';
@@ -7462,6 +7465,7 @@ function applySearchInputUi(app, state, value) {
   const srch = document.getElementById('search');
   if (srch) srch.classList.toggle('has-v', !!state.filter);
   if (state.page === 'list') app.renderList();
+  else if (state.page === 'due') app.renderDue();
   app.syncSB();
 }
 
@@ -7473,6 +7477,7 @@ function clearSearchUi(app, state) {
     srch.classList.remove('has-v');
   }
   if (state.page === 'list') app.renderList();
+  else if (state.page === 'due') app.renderDue();
   app.syncSB();
 }
 

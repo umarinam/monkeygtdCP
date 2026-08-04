@@ -5,6 +5,7 @@ function applySearchInputUi(app, state, value) {
   const srch = document.getElementById('search');
   if (srch) srch.classList.toggle('has-v', !!state.filter);
   if (state.page === 'list') app.renderList();
+  else if (state.page === 'due') app.renderDue();
   app.syncSB();
 }
 
@@ -16,5 +17,6 @@ function clearSearchUi(app, state) {
     srch.classList.remove('has-v');
   }
   if (state.page === 'list') app.renderList();
+  else if (state.page === 'due') app.renderDue();
   app.syncSB();
 }

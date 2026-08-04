@@ -313,7 +313,7 @@ function filterTagUi(app, state, tg) {
 }
 
 function renderDueUi(app, state) {
-  const sections = app.select('due.sections');
+  const sections = app.select('due.sections', { q: state.filter });
   let h = sections.map(sec => {
     const items = sec.items;
     if (!items.length) return '';
