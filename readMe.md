@@ -1,4 +1,6 @@
-Write a single HTML file using localStorage and JavaScript as a full-featured task manager and outliner app modelled after Checkvist (https://checkvist.com). The app must support all of the following capabilities.
+Write a single HTML file using localStorage and JavaScript as a full-featured task manager and outliner app modelled after Checkvist (https://checkvist.com).
+
+> **Scope note:** This document describes MonkeyGTD's actual behavior as implemented in `js/**` — not a wishlist. Checkvist (the app this one is modelled after) has a much larger feature set — multi-user sharing/collaboration, paid subscription tiers, file attachments, calendar sync, bookmarks, print preview, and more — that MonkeyGTD does **not** implement; those sections have been removed here rather than left in as unimplemented aspirational text. For genuinely forward-looking, not-yet-built proposals, see [Macros.md](Macros.md) and [Scripts.md](Scripts.md), which are explicitly marked as design docs.
 
 ## GitHub Pages Hosting
 
@@ -37,7 +39,7 @@ PowerShell equivalent:
 ./scripts/send-task.ps1 PARENT_TASK_ID Your new child task text
 ```
 
-Then click "Sync now" in the app (or wait for auto-sync) to apply queued tasks.
+Then click "Sync now" in the app (or wait for auto-sync) to apply queued tasks. See `Inbox.html` for a mobile-friendly capture form that queues into the same mechanism.
 
 
 ---
@@ -57,12 +59,10 @@ On first run with no data, populate a default list with sample tasks demonstrati
 ## Lists
 
 - Support **multiple named lists**. A **Lists home page** (shortcut `gh` or `ll`) shows all lists with item counts.
-- From the home page the user can **create**, **rename**, **archive**, **delete**, and **tag** lists. Only the list owner may delete; others may only archive or un-share.
-- Each list has a **unique email address** so tasks can be emailed in (subject → task content, body → note).
-- Every list and every task has an unguessable **permalink** that never changes even if the item is moved or renamed.
-- A list can be **extracted** from a branch: select the top task of a branch and press `xx` — it becomes a new standalone list linked back to the original.
+- From the home page the user can **create**, **rename**, **archive**, **delete**, and **tag** lists (tags are set in the same Create/Rename List dialog as the name, not via a separate inline interaction).
+- Every list and every task has a unique **permalink** id (`#task-<id>`) that never changes even if the item is moved or renamed; `tc` / `lc` copies it to the clipboard.
+- A list can be **extracted** from a branch: select the top task of a branch and press `xx` — it becomes a new standalone list.
 - **List styles** can be set per list: None (default), Numbered, Boxes (checkboxes before every item), Bullets. Individual items can override with smart-syntax prefixes `[]` (checkbox), `[*]` (bullet), `[1]` (numbered children).
-- **Copy list** duplicates the whole list (optionally with or without statuses, tags, due dates). Selecting "As a single node" inlines the entire list as one branch inside another list.
 
 
 ---
@@ -117,20 +117,20 @@ Once marked done a task retains its `completed_at` timestamp. Closed/invalidated
 - While editing, **Shift+Enter** inserts a line break within the task content.
 - **Alt+Enter** while editing splits the task at the cursor position into two tasks.
 - Smart syntax (see **Smart Syntax** section) applies tags, due dates, priorities, and assignees while typing.
+- Touch-only quick add: tap the toolbar's **➕** button for a single-field "Quick Add Task" modal — works even on a brand-new list with zero existing tasks.
 
 
 ---
 
 ## Selection & Navigation
 
-- **Single click** selects a task.
+- **Single click** selects a task; a second click within ~320ms enters edit mode (works as double-tap on touch).
 - **Arrow keys** (↑ / ↓ or `j` / `k`) navigate up and down.
 - **← / →** collapse or expand the selected branch.
 - **Home** / **End** jump to the first / last task in the list.
 - **PgUp** / **PgDn** scroll one page.
-- **g←** / **g→** navigate back and forward through recent locations (history).
 - **`ll`** opens the Lists & Locations palette — type to jump to any list or task across all lists.
-- **`gg`** opens a hyperlink on the selected task in the same tab; **Shift+`gg`** opens in a new tab.
+- **`gg`** / **`gl`** — jump to the selected task within the current list (scrolls it into view and re-selects it).
 - **`gh`** opens the Lists home page; **`gd`** opens the Due page; **`gt`** opens the Tags page.
 - **Shift+Shift** opens the **command palette** — type to find and apply any action without memorising shortcuts.
 
@@ -152,7 +152,6 @@ Once marked done a task retains its `completed_at` timestamp. Closed/invalidated
 - **Ctrl+Home** / **Ctrl+End** — move selected task to the very top / bottom of the list.
 - **Alt+PgUp** / **Alt+PgDn** — move to top / bottom position under the current parent.
 - **`mm`** — open a move dialog to send selected task(s) to any location in any list. Choosing a list moves it to the top of that list; choosing a task moves it as a child of that task.
-- **`mb`** — move selected task(s) to a bookmarked location (see **Bookmarks**).
 
 
 ---
@@ -161,10 +160,12 @@ Once marked done a task retains its `completed_at` timestamp. Closed/invalidated
 
 - Press **Shift+→** on a selected task to **hoist** (focus) — all other tasks hide, only this branch is visible.
 - **Shift+←** un-focuses and moves focus to the parent.
-- While hoisted, parent tasks appear as **breadcrumbs** above the list. Arrow-navigate breadcrumbs and press **Enter** to hoist a parent. Clicking the leading `>>` icon hides breadcrumbs entirely.
+- While hoisted, parent tasks appear as **breadcrumbs** above the list.
 - `ec0` collapses the list and removes the current focus.
 
 A Settings toggle controls whether breadcrumbs are shown while hoisted.
+
+Separately, a **Focus Treatment** display setting ("Selected Path", `focusMode`) dims tasks outside the selected task's ancestor/descendant path and immediate siblings while you have something selected — this is a visual emphasis setting, independent of hoisting.
 
 
 ---
@@ -172,13 +173,8 @@ A Settings toggle controls whether breadcrumbs are shown while hoisted.
 ## Expand & Collapse
 
 - **← / →** arrows collapse/expand individual branches.
-- **`ec`** opens the Expand/Collapse options panel:
-  - Expand all / Collapse all
-  - Show all notes
-  - Collapse to a specific depth level
-- **`ec1`–`ec9`** — collapse the list to depth 1–9.
+- **`ec`** toggles the whole current list between fully expanded and fully collapsed.
 - **Ctrl+Shift+→** — expand all branches; **Ctrl+Shift+←** — collapse all.
-- **Ctrl+Alt+.** — expand selected branch; **Ctrl+Alt+,** — collapse selected branch.
 
 
 ---
@@ -190,8 +186,7 @@ A Settings toggle controls whether breadcrumbs are shown while hoisted.
 - **`td`** — set due today; **`tm`** — set due tomorrow.
 - **`as`** — mark due ASAP (no definite date, but flagged as urgent).
 - **`cd`** — clear the due date (press twice to also remove a repeating pattern).
-- While editing a task, use the `^` smart syntax with autocompletion to attach a due date inline.
-- Checkvist also recognises natural-language dates placed at the end of task text (e.g. "Call John tomorrow") and converts them to due dates automatically.
+- While editing a task, use the `^` smart syntax to attach a due date inline.
 
 ### Due Date Smart Syntax
 
@@ -200,32 +195,24 @@ A Settings toggle controls whether breadcrumbs are shown while hoisted.
 | `^asap` or `^shortlist` | ASAP — no definite date |
 | `^today` / `^tod` | Due today |
 | `^tomorrow` / `^tom` | Due tomorrow |
-| `^friday` / `^fri` | Next Friday to occur |
-| `^next friday` | The second Friday from now |
-| `^25 Apr` or `^Apr 25` | April 25 this year (next year if passed) |
-| `^04/25/2026` | April 25, 2026 (MM/DD/YYYY) |
-| `^2026-04-25` | April 25, 2026 (ISO) |
-| `^any` | Filter: tasks with any due date |
-| `^none` | Filter: tasks without a due date |
+| `^nextweek` | Due next Monday |
+| `^2026-04-25` | April 25, 2026 (ISO `YYYY-MM-DD`) |
+| `^25/04/2026` | April 25, 2026 (`DD/MM/YYYY` — day first, then month) |
+
+Weekday names (`^friday`), month names (`^25 Apr`), and natural-language date recognition are **not** supported — only the exact tokens above are parsed.
 
 ### Due Date Display
 - Toggle between **relative** ("in 2 days", "overdue 3 days") and **exact** date formats with **`df`**. Overdue dates appear in red.
-- All tasks with a due date appear on the **Due page** (shortcut `gd`). The Due page shows overdue, ASAP, today, tomorrow, and future tasks in separate sections. A "Repeating" tab lists all recurring tasks.
+- All tasks with a due date appear on the **Due page** (shortcut `gd`), grouped into sections (Overdue, ASAP, Today, Tomorrow, This Week, Next Week, This Month, Upcoming). The search box filters the Due page the same way it filters the main list.
 
-### Repeating Tasks *(PRO)*
+### Repeating Tasks
 - Press **`dr`** or click "Repeat…" in the Due dialog to set a repeating pattern.
 - Repeat modes: **daily**, **weekly** (choose specific day(s)), **monthly**, **yearly**.
 - **Repeat from** options: *Due date* (next occurrence always calculated from the scheduled date) or *Actual completion date* (next occurrence calculated from when it was actually completed).
 - Set a **Start date** to control when the first recurrence appears.
-- Set a **Re-open** delay so the task only reappears N days before it is due.
 - **Pause** a repeating task (it will not generate until unpaused).
 - Press **`cd`** twice to delete the repeating pattern.
-- Repeating tasks are marked with a special icon. Their data is included in OPML import/export and in calendar sync.
-- Configurable: whether missing a due date marks the task overdue or silently moves to the next occurrence.
-
-### Calendar Integration *(PRO)*
-- **Google Calendar**: 2-way sync — Checkvist tasks appear as events, changes sync in both directions. Deleting a calendar event removes the due date but keeps the task.
-- **iCalendar feed**: a read-only iCal URL for any app that supports iCal subscriptions (Apple Calendar, Outlook, etc.).
+- Repeating tasks are marked with a special icon and included in OPML import/export.
 
 
 ---
@@ -236,15 +223,9 @@ A Settings toggle controls whether breadcrumbs are shown while hoisted.
 - Press **`tt`** on a selected task to open the Tags dialog with autocompletion of existing tags.
 - `#one, #two` — add multiple tags in one go.
 - **`ct`** — clear all tags from the selected task(s).
-- **`gt`** — open the Tags map page showing all tags across all lists.
-- Click any tag in the list to filter tasks by that tag. Press `/` and type `#` or `tag:` to filter with autocompletion.
-- **Tag lists**: double-click a list title and append `#tag` to tag the whole list.
-
-### Tag Management *(PRO)*
-- **Change tag color** — makes important tags more visually prominent (visible only to you).
-- **Rename or merge** — rename a tag across all lists, or merge similar tags into one.
-- **Private tags** — make a tag invisible to other collaborators (only you see it).
-- **Delete** — remove all usages of a tag from all lists (irreversible).
+- **`gt`** — open the Tags map page showing all tags across all lists; click any tag there to filter by it.
+- Click any tag on a task to filter the list by that tag. Press `/` and type `#` or `tag:` to filter with autocompletion.
+- List-level tags are set in the same Create/Rename List dialog as the list name (a `#tag1 #tag2`-style Tags field), not via a separate per-item interaction.
 
 
 ---
@@ -253,9 +234,7 @@ A Settings toggle controls whether breadcrumbs are shown while hoisted.
 
 - With a task selected in command mode, press **`1`–`9`** to apply a priority color. Press **`0`** to remove it.
 - While editing, use `!1`–`!9` smart syntax at the start or end of content.
-- Color is a shared property — all collaborators see the same colors.
 - Search/filter by color: `color:1` or `priority:1`.
-- *(PRO)* Customize the 9-color palette in Profile → Settings; the customization applies to the whole account.
 
 
 ---
@@ -263,34 +242,20 @@ A Settings toggle controls whether breadcrumbs are shown while hoisted.
 ## Notes / Comments
 
 - Press **`nn`** on a selected task to add a note (comment). Notes support Markdown formatting.
-- Double-click a note or press **`ee`** while a note is focused to edit it. Only the note's author can edit their own notes.
+- Double-click a note or press **`ee`** while a note is focused to edit it.
 - **`cn`** — remove all notes from the selected task(s).
 - **`sn`** — show / hide all notes on the page.
 - Notes appear indented under their parent task. They cannot have sub-tasks, tags, or due dates.
-- Note activity (additions) appears in email notifications.
 
 
 ---
 
-## Assignees *(PRO)*
+## Assignees
 
-- Press **`ae`** on a selected task to open the Assign dialog and delegate to one or more people.
+- Press **`ae`** on a selected task to open the Assign dialog and delegate to one or more people (free-text names — there is no user/account system).
 - While editing, type `@username` as smart syntax to assign inline.
 - **`ca`** — clear all assignees from the selected task(s).
-- Assignees are notified by email when assigned and whenever the task or its sub-tasks change.
-- A read-only collaborator can still edit, change status, add notes, and attach files to tasks assigned to them.
 - Search `@username` in the search bar to see everything assigned to a person.
-
-
----
-
-## Attachments *(PRO)*
-
-- Press **`at`** on a selected task to open the Attach dialog — upload from local disk or a URL.
-- **Drag-and-drop** a file onto a task to attach it.
-- While editing, type `img:` to embed an image directly into task content; after upload the image can be resized to 100%, 75%, or 50%.
-- Use arrow keys to navigate between attached files; press **Enter** to preview an attached image.
-- Each user has up to **2 GB** of attachment storage.
 
 
 ---
@@ -298,30 +263,23 @@ A Settings toggle controls whether breadcrumbs are shown while hoisted.
 ## Linking
 
 ### Internal Links
-- While editing, type `[[` to open a completion popup of all lists and tasks — select a target to insert a Markdown-style link `[text](permalink)`.
-- A link to another task shows a task icon; a link to a list shows the Checkvist logo icon.
-- **Backlinks**: when a link is created, the target task automatically shows a backlink badge with the source's list and content. Hover to preview. Backlinks reflect the current status of the source task (struck-through if done).
-- **Link preview**: hover any internal link to see the target task's content, tags, due date, and sub-tasks.
+- While editing, type `[[` to open a completion popup of tasks and lists — select a target to insert a Markdown-style link `[text](#task-<id>)`.
 - Edit a link with **Ctrl+K** (also used for external links).
-- Pre-select text before typing `[[` to wrap the selection as the link label automatically.
-- Filter: `has:link` finds tasks that contain links; `has:backlink` finds tasks linked from elsewhere.
+- Filter: `has:hyperlink` finds tasks with any external `https://` link in their content.
 - Shortcut `tc` / `lc` copies the task's permalink to the clipboard.
 
 ### External Links
 - Press **Ctrl+K** while editing to add or edit a hyperlink (`[text](URL)`).
 - Plain URLs typed in content (e.g. `https://example.com`) are auto-converted to hyperlinks.
-- Paste a YouTube URL → the app offers to embed the video inline or keep it as a link.
-- Issue tracker links: `[jira: ISSUE-ID|URL]` and `[youtrack: ISSUE-ID|URL]`.
 
 
 ---
 
 ## Search & Filter
 
-- Press **`/`** or **`ff`** to focus the search field. The list filters as you type.
+- Press **`/`** or **`ff`** to focus the search field. The list (and, separately, the Due page) filters as you type.
 - Press **Enter twice** to search across all lists globally.
-- **`cf`** or **Esc Esc** — clear the filter.
-- **`rf`** — refresh the filter (re-apply after changes).
+- **Esc Esc** — clear the filter.
 - Press **`?`** in the search field to see the full syntax reference.
 
 ### Search Syntax
@@ -346,19 +304,14 @@ A Settings toggle controls whether breadcrumbs are shown while hoisted.
 | `in:open` | Open tasks only (default when due filter is active) |
 | `in:closed` | Closed tasks only |
 | `in:all` | All tasks regardless of status |
-| `in:todo` | Items with a checkbox prefix |
 | `color:N` / `priority:N` | Tasks with color/priority N (1–9) |
 | `color:any` | Tasks with any color |
 | `color:none` | Tasks without color |
-| `has:attachment` | Tasks with attached files |
+| `has:attachment` | Tasks with attached files (schema field exists but nothing currently writes to it, so this will not match anything) |
 | `has:note` | Tasks with notes |
 | `has:hyperlink` | Tasks with external hyperlinks |
-| `has:backlink` | Tasks linked from other tasks |
 | `created:today` | Tasks created today |
 | `changed:3h` / `updated:2d` | Tasks updated in the last 3 hours / 2 days |
-| `updated:Jan 8, 2026` | Tasks changed on a specific date |
-| `changed:current week` | Tasks changed this week |
-| `updated:current month` | Tasks changed this month |
 
 
 ---
@@ -380,10 +333,9 @@ Press **`ss`** to open the Sort menu. Sort the whole list or only the branch und
 
 ## Progress Tracking
 
-- Press **`pc`** on a branch to show a **progress counter** for that branch — displays open task count; hover for details.
+- Press **`pc`** on a branch to show a **progress counter** — a toast showing "X/Y done" for that branch.
 - Enable a progress counter for the **whole list** via the Options (`oo`) menu.
-- **Time estimation tags**: add `#15m`, `#3h`, or `#8d` to a task. Checkvist sums time across children and displays remaining time beside the parent. `#60m` = `#1h`; `#8h` = `#1d`. The counter grays out completed tasks.
-- Progress counter also appears on the Lists home page (showing open task count if progress counter is on, otherwise total item count).
+- Progress counter also appears on the Lists home page.
 
 
 ---
@@ -396,36 +348,22 @@ All toggleable via the Options menu (`oo`) or dedicated shortcuts:
 |---|---|
 | `hc` | Hide / show completed and invalidated tasks |
 | `hf` | Hide tasks due after tomorrow (show only overdue, ASAP, today, tomorrow) |
-| `sd` | Show / hide item details (creation/update timestamp; the timestamp is the item's permalink) |
-| `sc` | Show / hide parent context as breadcrumbs on Due and Search results pages |
+| `sd` | Show / hide item details (creation/update timestamps) |
 | `pc` | Show / hide progress counter |
 | `df` | Toggle relative vs. exact due date display |
 | `sn` | Show / hide all notes |
 | `om` | Zen / distraction-free mode (hides navigation, search bar, toolbar; all shortcuts still work) |
 
-**Dark / Darcula UI**: toggle in Settings (`oo` → Settings) or on the Profile → Settings page.
+**Dark UI**: toggle in Settings (`oo`).
 
 **List style**: set per list — None, Numbered, Boxes, Bullets. Individual items can override with `[]`, `[*]`, `[1]` prefixes.
 
 
 ---
 
-## Bookmarks *(PRO)*
-
-- **`ab`** — bookmark the selected task or list item; optionally assign a name and a digit shortcut.
-- **`cb`** — remove the bookmark from the selected task.
-- **`bb`** — open the Bookmarks palette; type to filter, arrow keys to navigate, Enter to jump.
-- **`b` + digit (0–9)** — jump directly to a shortcut-assigned bookmark.
-- A **filter/search bookmark** can be created by clicking the bookmark icon in the search bar after typing a filter; it saves that filter (including global search, focus, and Due page filters).
-- **`mb`** — move selected task(s) to a bookmarked destination; `mb0`–`mb9` moves directly using digit shortcuts.
-- Bookmarks persist across sessions and remember their context (filtered list, focused node, Due page filter).
-
-
----
-
 ## Formatting — Smart Syntax
 
-Smart syntax works while editing a task; use autocompletion to select values.
+Smart syntax works while editing a task; use autocompletion to select tag/assignee/wiki-link values.
 
 | Syntax | Effect |
 |---|---|
@@ -433,14 +371,11 @@ Smart syntax works while editing a task; use autocompletion to select values.
 | `^due-date` | Set a due date (see Due Date Smart Syntax table) |
 | `!1`–`!9` | Set color/priority |
 | `@username` | Assign to a person |
-| `img:` | Upload and embed an image |
-| `[[` | Create an internal link to another task or list |
+| `[[` | Create an internal link to another task |
 | `[text](URL)` | External hyperlink (Markdown) |
-| `----` | List separator (4+ hyphens on their own line) |
 | `[]` | Prefix to show a checkbox for this item and sub-items |
 | `[*]` | Prefix to show bullets for this item and sub-items |
 | `[1]` | Prefix to enable numbering for sub-items |
-| `todo` or `do` | Toggle a `[ ]` / `[x]` checkbox prefix |
 
 Attributes (`#`, `^`, `!`, `@`) should be placed at the end of the task content.
 
@@ -449,7 +384,7 @@ Attributes (`#`, `^`, `!`, `@`) should be placed at the end of the task content.
 
 ## Formatting — Markdown
 
-The app supports **GitHub Flavored Markdown** for rich text in task content and notes.
+The app supports **GitHub Flavored Markdown** for rich text in task content and notes (always on — there is no per-list Markdown toggle).
 
 ### Text Formatting
 
@@ -465,20 +400,10 @@ The app supports **GitHub Flavored Markdown** for rich text in task content and 
 | `1. item` | Ordered list item |
 | `[text](URL)` | Hyperlink |
 | `\| col \| col \|` | Table (GitHub table syntax) |
-| `\#` | Escape a special character |
-
-### Headings
-
-Press **`mh`** to add/remove Markdown heading markup. Based on the item's depth in the hierarchy, the heading level is H2–H6. To force H2 deep in the hierarchy, hoist that item first then apply `mh`.
-
-| `#` | H1 (reserved for list title in exports) |
-|---|---|
-| `##` | H2 |
-| `######` | H6 (smallest) |
 
 ### Dates & Time Insertion
 
-- **Ctrl+;** — insert the current date (like Google Sheets).
+- **Ctrl+;** — insert the current date.
 - **Ctrl+:** — insert the current time.
 
 
@@ -495,12 +420,12 @@ Press **`ex`** or use the Actions menu. Export scope depends on current selectio
 
 | Format | Notes |
 |---|---|
-| **Rich Text** | Preserves bold, italic, headers; paste into email or Google Docs/Word/Pages |
-| **Markdown** | Hierarchy exported as headings (depth-controlled with "Generate headers from" option); notes exported as plain text with author attribution; embedded images and attached file links included |
-| **OPML** | OPML 2.0 with Checkvist extensions; preserves all task attributes including repeating due dates; compatible with OmniOutliner and other outline tools |
-| **Plain Text** | No formatting; sub-tasks indented with tabs; status and last-update shown in parentheses; notes share the same indentation |
+| **JSON** | Raw list + tasks payload |
+| **Markdown** | Hierarchy exported as headings; notes exported as plain text |
+| **OPML** | Preserves task attributes including repeating due dates; compatible with other outline tools |
+| **Plain Text** | No formatting; sub-tasks indented |
 
-Each format has its own options (e.g. include/exclude notes, tags, due dates, attachments).
+Each format has its own options (e.g. include/exclude notes, tags, due dates).
 
 
 ---
@@ -515,8 +440,9 @@ Pasting multi-line text with **Ctrl+V** into the list prompts the import dialog 
 
 | Format | Notes |
 |---|---|
-| **Plain text (indented)** | Relative indentation determines hierarchy; dashes and spaces as indent markers; option to treat blank lines as item separators (for multi-line items) |
-| **OPML** | Full round-trip with all Checkvist task attributes; compatible with exports from OmniOutliner and other OPML-compatible tools |
+| **JSON** | Round-trips the app's own export payload |
+| **Indented text / Markdown** | Relative indentation determines hierarchy |
+| **OPML** | Full round-trip with all task attributes |
 
 
 ---
@@ -524,26 +450,15 @@ Pasting multi-line text with **Ctrl+V** into the list prompts the import dialog 
 ## Deleted Items & Undo
 
 - **Del** — delete the selected task(s) and all their sub-tasks. Works with multi-selection.
-- **Ctrl+Z** or **`uu`** — one-step undo of the last action. Also restores the last deleted item immediately after deletion.
-- **`rd`** — open the "Restore deleted" dialog showing items deleted in the last **24 hours** (free) / **10 days** (PRO). Select items and press "Restore selected" to place them at the top of the list. Bulk and sticky selection work here.
+- **Ctrl+Z** or **`uu`** — one-step undo of the last action.
+- **`rd`** — open the "Restore deleted" dialog showing items deleted in the last **24 hours**. Select items and press "Restore selected" to place them at the top of the list. Bulk and sticky selection work here.
 
 
 ---
 
 ## Word Count
 
-Press **`wc`** or open the Actions menu → Word count. Shows word count, character count (with and without spaces) for the selected branch or whole list. Uncheck "With children" to count only the selected item's text.
-
-
----
-
-## Print
-
-Open Print preview from the Actions menu. Options:
-- Hide/show tags, due dates, assignees.
-- Show/hide notes.
-- Print checkboxes (useful for paper checklists).
-- Scope to the current filter or focus before printing to print only a subset.
+Press **`wc`** or open the Actions menu → Word count. Shows word count and character count (with and without spaces) for the selected branch (including all its children) or the whole list.
 
 
 ---
@@ -559,64 +474,21 @@ Open Print preview from the Actions menu. Options:
 
 ---
 
-## Sharing & Collaboration
-
-### Public Sharing
-- Share a list publicly with an **unguessable link**. Set permissions: **read-only** or **writer** (writer needs a Checkvist account).
-- *(PRO)* Set an **expiry time** — the public link stops working after that time; the list becomes private again automatically.
-- *(PRO)* Set a **password** on the public link.
-- *(PRO)* Allow **search engine indexing** of the public list.
-- **Embed** a list in a webpage with an `<iframe>` code snippet (available in the Share dialog).
-- **Share a filtered or focused list** — check "Keep filter and focus" in the Share dialog so visitors open the list pre-filtered. The filter/focus can be updated without changing the share link.
-
-### Private Sharing
-- Invite collaborators by **email**. They receive an invitation link.
-- Set permissions per invite: **Writer** (full edit access, can re-share) or **Reader** (view only; can still edit tasks assigned to them).
-- Select existing collaborators from other shared lists ("Select existing users") for instant access without a new invitation.
-- The list owner can change permissions or un-share anyone from the Share dialog.
-- **Bulk sharing**: on the home page select multiple lists and click Share to share all with the same people at once.
-
-### Permissions Model
-| Role | Capabilities |
-|---|---|
-| **Owner** | Create, delete, configure, enable Markdown, share, transfer ownership |
-| **Writer** | Edit/delete tasks, share, send notifications; cannot delete the list |
-| **Reader** | View only; can edit tasks assigned to them, add notes and attachments to those tasks |
-
-
----
-
-## Notifications
-
-### Manual
-- Click the notification icon in the toolbar to send an email to selected collaborators summarising changes made in the current session (~30-min window). Preview changes before sending.
-
-### Automatic *(PRO)*
-- **Watch a list**: receive emails when anyone makes changes (~every 5 min, changes within the window are merged), or a **daily digest** at a configurable time.
-- **Due reminders**: daily email at a configurable time listing tasks that are overdue, due today, due tomorrow, or ASAP.
-- An automatic notification is sent when a task is **assigned** to you.
-- Pause / resume notifications per list or globally from Profile → Notifications.
-
-
----
-
 ## Settings Panel
 
 A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 
 - Show / hide completed tasks
 - Move completed tasks to bottom of branch
-- Show breadcrumbs while in zoom (hoist) mode
+- Show breadcrumbs while hoisted
 - Close parent task when last child is closed (on/off)
 - Relative vs. exact due date display
-- Automatic due date recognition from natural language
 - List style (None / Numbered / Boxes / Bullets)
 - Show / hide progress counter for the whole list
-- Enable / disable Markdown for this list
-- Dark / Darcula UI theme toggle
+- Dark UI theme toggle
 - Zen mode (`om`)
-- *(PRO)* Custom priority color palette (9 colors mapped to keys 1–9)
-- *(PRO)* Custom CSS for logo, navigation, UI colors, tag icons
+- Task list layout: density, parent emphasis, indent-guide style, branch spacing, Focus Treatment mode, content width
+- Gist / repo sync provider and credentials
 
 
 ---
@@ -651,13 +523,11 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `←/→` | Collapse / expand branch |
 | `Home` / `End` | First / last task |
 | `PgUp` / `PgDn` | Page up / down |
-| `g←` / `g→` | Navigate back / forward in history |
 | `ll` | Lists & Locations palette |
 | `gh` | Lists home page |
 | `gd` | Due page |
 | `gt` | Tags page |
-| `gg` | Open hyperlink on task |
-| `Shift+gg` | Open hyperlink in new tab |
+| `gg` / `gl` | Jump to selected task within the list |
 
 ### Move & Reorder
 
@@ -668,7 +538,6 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `Ctrl+Home/End` | Move to top / bottom of list |
 | `Alt+PgUp/PgDn` | Move to top / bottom under parent |
 | `mm` | Move to another list |
-| `mb` | Move to a bookmarked location |
 | Hold `Shift` + drag | Drag-and-drop |
 
 ### Hoist & Expand
@@ -677,13 +546,10 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 |---|---|
 | `Shift+→` | Hoist (focus) selected task |
 | `Shift+←` | Un-focus / focus parent |
-| `ec` | Expand/Collapse options |
+| `ec` | Toggle expand-all / collapse-all |
 | `ec0` | Collapse all + un-focus |
-| `ec1`–`ec9` | Collapse to depth 1–9 |
 | `Ctrl+Shift+→` | Expand all |
 | `Ctrl+Shift+←` | Collapse all |
-| `Ctrl+Alt+.` | Expand selected branch |
-| `Ctrl+Alt+,` | Collapse selected branch |
 
 ### Task Status & Priority
 
@@ -708,7 +574,7 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `df` | Toggle relative/exact date display |
 | `cd` | Clear due date (×2 to delete repeating) |
 
-### Tags, Notes, Assignees, Attachments
+### Tags, Notes, Assignees
 
 | Shortcut | Action |
 |---|---|
@@ -720,7 +586,6 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `sn` | Show/hide all notes |
 | `ae` | Assign task |
 | `ca` | Clear assignees |
-| `at` | Attach file |
 
 ### View & Display
 
@@ -729,7 +594,6 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `hc` | Hide/show completed |
 | `hf` | Hide future due tasks |
 | `sd` | Show/hide item details |
-| `sc` | Show/hide context breadcrumbs |
 | `pc` | Show/hide progress counter |
 | `sn` | Show/hide all notes |
 | `om` | Zen / distraction-free mode |
@@ -745,10 +609,6 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `xx` | Extract branch as new list |
 | `ex` | Export |
 | `im` | Import |
-| `ab` | Add bookmark |
-| `cb` | Clear bookmark |
-| `bb` | Open Bookmarks palette |
-| `b` + digit | Jump to shortcut bookmark |
 
 ### Formatting
 
@@ -757,9 +617,7 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `Ctrl+B` | Bold |
 | `Ctrl+I` | Italic |
 | `Ctrl+K` | Add / edit hyperlink |
-| `mh` | Toggle Markdown heading |
 | `tc` / `lc` | Copy task permalink to clipboard |
-| `todo` / `do` | Toggle checkbox prefix |
 | `Ctrl+;` | Insert current date |
 | `Ctrl+:` | Insert current time |
 
@@ -769,8 +627,7 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 |---|---|
 | `/` or `ff` | Focus search field |
 | `Enter Enter` | Search all lists |
-| `Esc Esc` or `cf` | Clear filter |
-| `rf` | Refresh filter |
+| `Esc Esc` | Clear filter |
 | `?` | Show search syntax help |
 
 
@@ -778,7 +635,7 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 
 ## JSON Data Schema
 
-Use the following structure for each task/list-item:
+Use the following structure for each task/list-item (matches `mkTask` in `js/core/utils.js`):
 
 ```json
 {
@@ -801,10 +658,13 @@ Use the following structure for each task/list-item:
   "links": [],
   "notes": [],
   "comments_count": 0,
+  "history": [],
   "update_line": "",
   "updated_at": "",
   "created_at": "",
-  "completed_at": ""
+  "completed_at": "",
+  "_collapsed": false,
+  "overdue_ack_due": ""
 }
 ```
 
@@ -820,21 +680,24 @@ Use the following structure for each task/list-item:
 | `position` | 1-based position among siblings under the same parent |
 | `deleted` | `true` if the task has been deleted (soft-delete for restore) |
 | `tasks` | Ordered array of child task IDs |
-| `tags` | Object mapping tag name → `{ isPrivate: boolean }` |
+| `tags` | Object mapping tag name → `{ isPrivate: boolean }` (the `isPrivate` flag is always `false` — there is no UI to toggle it) |
 | `tags_as_text` | Comma-separated list of tag names (derived field) |
 | `color` | Priority color 1–9; `0` means no color |
 | `due` | ISO date string for due date; empty if none |
 | `due_asap` | `true` if marked ASAP (no specific date) |
-| `repeating_due` | Object describing repeating pattern: `{ freq, interval, days, startDate, repeatFrom, reopenDays, paused }` |
-| `assignees` | Array of assignee usernames/IDs |
-| `attachments` | Array of attachment objects: `{ id, filename, url, size, type }` |
-| `links` | Array of internal link objects: `{ targetId, text }` |
+| `repeating_due` | Object describing repeating pattern: `{ freq, interval, weekdays, startDate, repeatFrom, reopenDays, paused }` (`reopenDays` is always written as `0` — there is no UI to set it) |
+| `assignees` | Array of assignee names (free text, no user accounts) |
+| `attachments` | Array field exists but nothing in the app currently writes to it |
+| `links` | Array field exists but internal task links are actually embedded inline in `content` as `[label](#task-id)` markdown, not stored here |
 | `notes` | Array of note objects: `{ id, author, content, created_at, updated_at }` |
 | `comments_count` | Number of notes attached to this task |
-| `update_line` | Human-readable string of the last change (e.g. "updated by user") |
+| `history` | Array of change-log entries: `{ at, type, changes }`, capped at the most recent 200 |
+| `update_line` | Reserved field; not actively populated |
 | `updated_at` | ISO timestamp of last update |
 | `created_at` | ISO timestamp of creation |
 | `completed_at` | ISO timestamp when status was set to closed; retained after re-opening |
+| `_collapsed` | `true` if the task's children are hidden in the tree view |
+| `overdue_ack_due` | Tracks which due date the user has acknowledged as overdue, to avoid re-flagging the same date |
 
 
 ---
@@ -850,21 +713,9 @@ Use the following structure for each task/list-item:
 
 ---
 
-## Integrations (reference; require backend or browser extension)
+## Remote Capture (Inbox.html + Gist/Repo Sync)
 
-| Integration | Description |
-|---|---|
-| **Email-to-list** | Every list has a unique email address; emailing it creates a task (subject → content, body → note, attachments → attached files) |
-| **Web Clipper** | Chrome/Firefox extension to clip web pages, Gmail, Jira, YouTrack, Zendesk, GitHub into a list |
-| **Slack** *(PRO)* | "Save for Later" Slack messages automatically appear as tasks in a designated list |
-| **Zapier** | Connect Checkvist to hundreds of services via Zapier recipes/zaps |
-| **Google Calendar** *(PRO)* | 2-way sync of due-dated tasks as calendar events |
-| **iCalendar feed** *(PRO)* | Read-only iCal subscription for Apple Calendar, Outlook, etc. |
-| **Chrome extension** | Checkvist as a browser popup window (no dedicated tab required) |
-| **Firefox extension** | Checkvist as a browser popup or sidebar |
-| **Mobile PWA** | Progressive web app at m.checkvist.com for on-the-go access (online/offline) |
-| **Open API** | Fully documented REST API for custom integrations |
-| **Voice / Note to self** | Android "Note to self" forwarded via Gmail filter to a list's email address |
+There is no per-list email address or backend mailbox. The one real remote-capture path is `Inbox.html` — a standalone page (e.g. bookmarked on a phone) that queues a new-task request as a line in a GitHub Gist or repo file. The next time the main app syncs (auto-sync interval, manual "Sync now", or on refresh), it reads that queue, creates the corresponding task(s) locally, and marks the request processed. See the "CLI Task Capture via Gist Queue" section above for the equivalent command-line path.
 
 
 ---
