@@ -531,7 +531,9 @@ function getTaskFocusCache(state) {
 
   addDescendants(selId);
 
-  // Collect siblings of the selected task (tasks sharing the same parent)
+  // Collect siblings of the selected task (tasks sharing the same parent).
+  // A root-level task's "siblings" are the other root tasks in the current
+  // (possibly hoisted) list, since it has no parent_id to look up.
   const parentId = selectedTask?.parent_id;
   if (parentId) {
     const parent = tasks[parentId];
@@ -542,6 +544,14 @@ function getTaskFocusCache(state) {
         }
       });
     }
+  } else if (selectedTask) {
+    const list = state.data?.lists?.[state.listId];
+    const effectiveRoots = state.hoistId ? [state.hoistId] : (list?.root_tasks || []);
+    effectiveRoots.forEach((siblingId) => {
+      if (!branchIds.has(siblingId)) {
+        siblingIds.add(siblingId);
+      }
+    });
   }
 
   const cache = { selId, branchIds, siblingIds };

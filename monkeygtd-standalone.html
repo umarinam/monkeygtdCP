@@ -423,7 +423,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-03T13:28:03+05:00',commit:'c06f3e2'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-04T12:12:33+05:00',commit:'68fe0be'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -7007,7 +7007,9 @@ function getTaskFocusCache(state) {
 
   addDescendants(selId);
 
-  // Collect siblings of the selected task (tasks sharing the same parent)
+  // Collect siblings of the selected task (tasks sharing the same parent).
+  // A root-level task's "siblings" are the other root tasks in the current
+  // (possibly hoisted) list, since it has no parent_id to look up.
   const parentId = selectedTask?.parent_id;
   if (parentId) {
     const parent = tasks[parentId];
@@ -7018,6 +7020,14 @@ function getTaskFocusCache(state) {
         }
       });
     }
+  } else if (selectedTask) {
+    const list = state.data?.lists?.[state.listId];
+    const effectiveRoots = state.hoistId ? [state.hoistId] : (list?.root_tasks || []);
+    effectiveRoots.forEach((siblingId) => {
+      if (!branchIds.has(siblingId)) {
+        siblingIds.add(siblingId);
+      }
+    });
   }
 
   const cache = { selId, branchIds, siblingIds };

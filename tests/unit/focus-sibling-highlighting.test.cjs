@@ -103,6 +103,56 @@ test('getTaskFocusClassName returns focus-dim for non-related tasks', () => {
   assert.equal(getTaskFocusClassName(state, 'task-1'), ' focus-path', 'parent gets focus-path');
 });
 
+test('getTaskFocusClassName treats other root-level tasks as siblings, same as nested siblings', () => {
+  const { getTaskFocusClassName } = loadRenderController();
+
+  const state = {
+    selId: 'root-1',
+    listId: 'l1',
+    hoistId: null,
+    data: {
+      settings: { focusMode: 'path' },
+      lists: { l1: { id: 'l1', root_tasks: ['root-1', 'root-2', 'root-3'] } },
+      tasks: {
+        'root-1': { id: 'root-1', parent_id: '', tasks: ['child-1'] },
+        'root-2': { id: 'root-2', parent_id: '', tasks: [] },
+        'root-3': { id: 'root-3', parent_id: '', tasks: [] },
+        'child-1': { id: 'child-1', parent_id: 'root-1', tasks: [] }
+      }
+    }
+  };
+
+  assert.equal(getTaskFocusClassName(state, 'root-1'), ' focus-active', 'selected root task gets focus-active');
+  assert.equal(getTaskFocusClassName(state, 'child-1'), ' focus-path', 'child of selected root gets focus-path');
+  assert.equal(getTaskFocusClassName(state, 'root-2'), ' focus-sibling', 'sibling root task gets focus-sibling, not focus-dim');
+  assert.equal(getTaskFocusClassName(state, 'root-3'), ' focus-sibling', 'sibling root task gets focus-sibling, not focus-dim');
+});
+
+test('getTaskFocusClassName does not mark other list roots as siblings when hoisted onto a different root', () => {
+  const { getTaskFocusClassName } = loadRenderController();
+
+  // Hoisting restricts the visible tree to state.hoistId's own subtree, so when
+  // the hoisted root itself is selected, no other real list roots are on screen
+  // to be dimmed/highlighted as siblings.
+  const state = {
+    selId: 'root-1',
+    listId: 'l1',
+    hoistId: 'root-1',
+    data: {
+      settings: { focusMode: 'path' },
+      lists: { l1: { id: 'l1', root_tasks: ['root-1', 'root-2'] } },
+      tasks: {
+        'root-1': { id: 'root-1', parent_id: '', tasks: ['child-1'] },
+        'root-2': { id: 'root-2', parent_id: '', tasks: [] },
+        'child-1': { id: 'child-1', parent_id: 'root-1', tasks: [] }
+      }
+    }
+  };
+
+  assert.equal(getTaskFocusClassName(state, 'child-1'), ' focus-path', 'child of the hoisted root gets focus-path');
+  assert.equal(getTaskFocusClassName(state, 'root-2'), ' focus-dim', 'a root outside the hoisted branch is not treated as a sibling');
+});
+
 test('focus siblings not returned when focusMode is off', () => {
   const { getTaskFocusClassName } = loadRenderController();
 
