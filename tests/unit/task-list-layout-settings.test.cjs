@@ -176,7 +176,7 @@ test('buildTaskItemUi marks parent, depth, and focus states for configurable sty
   assert.match(selectedParentHtml, /class="ti[^"]*has-kids[^"]*depth-0[^"]*focus-active/);
   assert.equal(selectedParentHtml.includes('class="igw"'), true);
   assert.match(childHtml, /class="ti[^"]*leaf[^"]*depth-1[^"]*focus-path/);
-  assert.match(otherParentHtml, /class="ti[^"]*focus-dim/);
+  assert.match(otherParentHtml, /class="ti[^"]*focus-sibling/);
 });
 
 test('settings modal exposes configurable task list layout controls', () => {
