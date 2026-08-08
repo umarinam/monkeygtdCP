@@ -1793,6 +1793,72 @@ test('handleGlobalKey routes Tab to indentSelection for multi-select', () => {
   assert.equal(calls.indentSelection, 1);
 });
 
+test('handleTwoKeySequence toggles showCompleted with hc even when nothing is selected', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { save: 0, render: 0, syncSettings: 0, toast: [] };
+
+  const app = {
+    save: () => { calls.save += 1; },
+    render: () => { calls.render += 1; },
+    syncSettings: () => { calls.syncSettings += 1; },
+    toast: (msg) => { calls.toast.push(msg); },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: null,
+    kbuf: '',
+    kbtimer: null,
+    data: {
+      settings: { showCompleted: true },
+      tasks: {}
+    }
+  };
+
+  const press = (key) => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, preventDefault: () => {}, key
+  });
+
+  press('h'); press('c');
+
+  assert.equal(state.data.settings.showCompleted, false);
+  assert.equal(calls.toast[0], 'Completed: hidden');
+});
+
+test('handleTwoKeySequence toggles hideFuture with hf even when nothing is selected', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { save: 0, render: 0, syncSettings: 0, toast: [] };
+
+  const app = {
+    save: () => { calls.save += 1; },
+    render: () => { calls.render += 1; },
+    syncSettings: () => { calls.syncSettings += 1; },
+    toast: (msg) => { calls.toast.push(msg); },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: null,
+    kbuf: '',
+    kbtimer: null,
+    data: {
+      settings: { hideFuture: false },
+      tasks: {}
+    }
+  };
+
+  const press = (key) => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, preventDefault: () => {}, key
+  });
+
+  press('h'); press('f');
+
+  assert.equal(state.data.settings.hideFuture, true);
+  assert.equal(calls.toast[0], 'Future due: hidden');
+});
+
 test('handleGlobalKey routes Shift+Tab to unindentSelection for multi-select', () => {
   const { handleGlobalKey } = loadKeyboardController();
   const calls = { unindentSelection: 0 };
