@@ -1246,6 +1246,81 @@ test('handleTwoKeySequence routes tt to addTagSelection for multi-select', () =>
   assert.equal(calls.addTagSelection, 1);
 });
 
+test('handleTwoKeySequence toggles Focus Treatment on/off with ft shortcut', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { save: 0, render: 0, syncSettings: 0, toast: [] };
+
+  const app = {
+    save: () => { calls.save += 1; },
+    render: () => { calls.render += 1; },
+    syncSettings: () => { calls.syncSettings += 1; },
+    toast: (msg) => { calls.toast.push(msg); },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: 't1',
+    kbuf: '',
+    kbtimer: null,
+    data: {
+      settings: { focusMode: 'off' },
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '' }
+      }
+    }
+  };
+
+  const press = (key) => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, preventDefault: () => {}, key
+  });
+
+  press('f'); press('t');
+  assert.equal(state.data.settings.focusMode, 'path');
+  assert.equal(calls.toast[0], 'Focus Treatment: on');
+
+  press('f'); press('t');
+  assert.equal(state.data.settings.focusMode, 'off');
+  assert.equal(calls.toast[1], 'Focus Treatment: off');
+
+  assert.equal(calls.save, 2);
+  assert.equal(calls.render, 2);
+  assert.equal(calls.syncSettings, 2);
+});
+
+test('handleTwoKeySequence toggles Focus Treatment with ft even when nothing is selected', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { save: 0, render: 0, syncSettings: 0, toast: [] };
+
+  const app = {
+    save: () => { calls.save += 1; },
+    render: () => { calls.render += 1; },
+    syncSettings: () => { calls.syncSettings += 1; },
+    toast: (msg) => { calls.toast.push(msg); },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: null,
+    kbuf: '',
+    kbtimer: null,
+    data: {
+      settings: { focusMode: 'off' },
+      tasks: {}
+    }
+  };
+
+  const press = (key) => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, preventDefault: () => {}, key
+  });
+
+  press('f'); press('t');
+
+  assert.equal(state.data.settings.focusMode, 'path');
+  assert.equal(calls.toast[0], 'Focus Treatment: on');
+});
+
 test('handleTwoKeySequence routes gl to jumpTo for selected task', () => {
   const { handleTwoKeySequence } = loadKeyboardController();
   const calls = { jumpTo: [] };

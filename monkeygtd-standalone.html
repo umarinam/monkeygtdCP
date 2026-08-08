@@ -423,7 +423,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-05T18:44:57+05:00',commit:'5043c7f'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-05T18:45:48+05:00',commit:'e3ae3e7'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -6032,7 +6032,7 @@ function handleGlobalKey(app, state, e) {
 
 function handleTwoKeySequence(app, state, e) {
   if (e.ctrlKey || e.altKey || e.metaKey) return;
-  if (!state.selId && !state.kbuf && !['g', 'l', 'o', 'h', 's'].includes(e.key)) return;
+  if (!state.selId && !state.kbuf && !['g', 'l', 'o', 'h', 's', 'f'].includes(e.key)) return;
   if (e.key === 'Shift') {
     if (state.kbuf === 'Shift') {
       state.kbuf = '';
@@ -6116,6 +6116,7 @@ function handleTwoKeySequence(app, state, e) {
     'ca': () => app.clearAssigneesSelection(),
     'hc': () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); app.syncSettings(); app.toast(`Completed: ${state.data.settings.showCompleted ? 'visible' : 'hidden'}`); },
     'hf': () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); app.toast(`Future due: ${state.data.settings.hideFuture ? 'hidden' : 'visible'}`); },
+    'ft': () => { state.data.settings.focusMode = state.data.settings.focusMode === 'path' ? 'off' : 'path'; app.save(); app.render(); app.syncSettings(); app.toast(`Focus Treatment: ${state.data.settings.focusMode === 'path' ? 'on' : 'off'}`); },
     'sd': () => app.toggleDetails(),
     'pc': () => { if (state.selId) app.showProgress(state.selId); },
     'om': () => { app.setZen(!document.body.classList.contains('zen')); },
@@ -6168,7 +6169,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj', 'ft'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;
@@ -7323,6 +7324,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
     { l: 'Hide/show completed', s: 'hc', fn: () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); } },
     { l: 'Hide/show future due', s: 'hf', fn: () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); } },
+    { l: 'Toggle Focus Treatment', s: 'ft', fn: () => { state.data.settings.focusMode = state.data.settings.focusMode === 'path' ? 'off' : 'path'; app.save(); app.render(); app.syncSettings(); } },
     { l: 'Toggle details', s: 'sd', fn: () => app.toggleDetails() },
     { l: 'Show branch progress', s: 'pc', fn: () => { if (state.selId) app.showProgress(state.selId); } },
     { l: 'Expand/collapse all', s: 'ec', fn: () => app.toggleEC() },
@@ -8106,6 +8108,7 @@ function showShortcutsUi(app) {
       ['gr', 'Reporting page'],
       ['gt', 'Tags page'],
       ['hc', 'Hide/show completed'],
+      ['ft', 'Toggle Focus Treatment'],
       ['df', 'Toggle relative dates'],
       ['sd', 'Toggle details'],
       ['pc', 'Show branch progress'],

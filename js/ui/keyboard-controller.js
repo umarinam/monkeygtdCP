@@ -369,7 +369,7 @@ function handleGlobalKey(app, state, e) {
 
 function handleTwoKeySequence(app, state, e) {
   if (e.ctrlKey || e.altKey || e.metaKey) return;
-  if (!state.selId && !state.kbuf && !['g', 'l', 'o', 'h', 's'].includes(e.key)) return;
+  if (!state.selId && !state.kbuf && !['g', 'l', 'o', 'h', 's', 'f'].includes(e.key)) return;
   if (e.key === 'Shift') {
     if (state.kbuf === 'Shift') {
       state.kbuf = '';
@@ -453,6 +453,7 @@ function handleTwoKeySequence(app, state, e) {
     'ca': () => app.clearAssigneesSelection(),
     'hc': () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); app.syncSettings(); app.toast(`Completed: ${state.data.settings.showCompleted ? 'visible' : 'hidden'}`); },
     'hf': () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); app.toast(`Future due: ${state.data.settings.hideFuture ? 'hidden' : 'visible'}`); },
+    'ft': () => { state.data.settings.focusMode = state.data.settings.focusMode === 'path' ? 'off' : 'path'; app.save(); app.render(); app.syncSettings(); app.toast(`Focus Treatment: ${state.data.settings.focusMode === 'path' ? 'on' : 'off'}`); },
     'sd': () => app.toggleDetails(),
     'pc': () => { if (state.selId) app.showProgress(state.selId); },
     'om': () => { app.setZen(!document.body.classList.contains('zen')); },
@@ -505,7 +506,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj', 'ft'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;

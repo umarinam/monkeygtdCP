@@ -350,6 +350,7 @@ function showShortcutsUi(app) {
       ['gr', 'Reporting page'],
       ['gt', 'Tags page'],
       ['hc', 'Hide/show completed'],
+      ['ft', 'Toggle Focus Treatment'],
       ['df', 'Toggle relative dates'],
       ['sd', 'Toggle details'],
       ['pc', 'Show branch progress'],

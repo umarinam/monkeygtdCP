@@ -54,6 +54,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
     { l: 'Hide/show completed', s: 'hc', fn: () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); } },
     { l: 'Hide/show future due', s: 'hf', fn: () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); } },
+    { l: 'Toggle Focus Treatment', s: 'ft', fn: () => { state.data.settings.focusMode = state.data.settings.focusMode === 'path' ? 'off' : 'path'; app.save(); app.render(); app.syncSettings(); } },
     { l: 'Toggle details', s: 'sd', fn: () => app.toggleDetails() },
     { l: 'Show branch progress', s: 'pc', fn: () => { if (state.selId) app.showProgress(state.selId); } },
     { l: 'Expand/collapse all', s: 'ec', fn: () => app.toggleEC() },
