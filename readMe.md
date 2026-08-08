@@ -165,7 +165,7 @@ Once marked done a task retains its `completed_at` timestamp. Closed/invalidated
 
 A Settings toggle controls whether breadcrumbs are shown while hoisted.
 
-Separately, a **Focus Treatment** display setting ("Selected Path", `focusMode`) dims tasks outside the selected task's ancestor/descendant path and immediate siblings while you have something selected — this is a visual emphasis setting, independent of hoisting.
+Separately, a **Focus Treatment** display setting ("Selected Path", `focusMode`) dims tasks outside the selected task's ancestor/descendant path and immediate siblings while you have something selected — this is a visual emphasis setting, independent of hoisting. Toggle it directly with **`ft`**.
 
 
 ---
@@ -593,6 +593,7 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 |---|---|
 | `hc` | Hide/show completed |
 | `hf` | Hide future due tasks |
+| `ft` | Toggle Focus Treatment |
 | `sd` | Show/hide item details |
 | `pc` | Show/hide progress counter |
 | `sn` | Show/hide all notes |
