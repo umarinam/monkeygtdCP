@@ -423,7 +423,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-08T18:46:58+05:00',commit:'1aecb83'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-08T18:47:52+05:00',commit:'cc55b57'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -6038,8 +6038,19 @@ function handleTwoKeySequence(app, state, e) {
       state.kbuf = '';
       app.clearKH();
       app.openCP();
-      return;
+    } else {
+      // Track the Shift+Shift gesture in isolation. "Shift" must never fall
+      // through to the generic buffer below: its own last two characters
+      // ("ft") can otherwise collide with a real two-letter shortcut.
+      state.kbuf = 'Shift';
+      clearTimeout(state.kbtimer);
+      app.showKH(state.kbuf);
+      state.kbtimer = setTimeout(() => {
+        state.kbuf = '';
+        app.clearKH();
+      }, 1500);
     }
+    return;
   }
 
   state.kbuf += e.key;

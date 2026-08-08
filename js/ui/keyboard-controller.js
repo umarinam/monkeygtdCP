@@ -375,8 +375,19 @@ function handleTwoKeySequence(app, state, e) {
       state.kbuf = '';
       app.clearKH();
       app.openCP();
-      return;
+    } else {
+      // Track the Shift+Shift gesture in isolation. "Shift" must never fall
+      // through to the generic buffer below: its own last two characters
+      // ("ft") can otherwise collide with a real two-letter shortcut.
+      state.kbuf = 'Shift';
+      clearTimeout(state.kbtimer);
+      app.showKH(state.kbuf);
+      state.kbtimer = setTimeout(() => {
+        state.kbuf = '';
+        app.clearKH();
+      }, 1500);
     }
+    return;
   }
 
   state.kbuf += e.key;

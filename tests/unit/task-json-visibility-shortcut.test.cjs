@@ -1288,6 +1288,72 @@ test('handleTwoKeySequence toggles Focus Treatment on/off with ft shortcut', () 
   assert.equal(calls.syncSettings, 2);
 });
 
+test('a single Shift press does not accidentally toggle Focus Treatment (Shift ends in "ft")', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { save: 0, render: 0, syncSettings: 0, toast: [] };
+
+  const app = {
+    save: () => { calls.save += 1; },
+    render: () => { calls.render += 1; },
+    syncSettings: () => { calls.syncSettings += 1; },
+    toast: (msg) => { calls.toast.push(msg); },
+    openCP: () => {},
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: 't1',
+    kbuf: '',
+    kbtimer: null,
+    data: {
+      settings: { focusMode: 'off' },
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: '' }
+      }
+    }
+  };
+
+  handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, shiftKey: true, preventDefault: () => {}, key: 'Shift'
+  });
+
+  assert.equal(state.data.settings.focusMode, 'off');
+  assert.equal(calls.save, 0);
+  assert.equal(calls.render, 0);
+  assert.equal(calls.syncSettings, 0);
+  assert.equal(calls.toast.length, 0);
+  assert.equal(state.kbuf, 'Shift');
+});
+
+test('pressing Shift twice still opens the command palette', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { openCP: 0 };
+
+  const app = {
+    openCP: () => { calls.openCP += 1; },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: 't1',
+    kbuf: '',
+    kbtimer: null,
+    data: { settings: {}, tasks: { t1: { due: '', due_asap: false, repeating_due: null, content: '' } } }
+  };
+
+  const pressShift = () => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, shiftKey: true, preventDefault: () => {}, key: 'Shift'
+  });
+
+  pressShift();
+  pressShift();
+
+  assert.equal(calls.openCP, 1);
+  assert.equal(state.kbuf, '');
+});
+
 test('handleTwoKeySequence toggles Focus Treatment with ft even when nothing is selected', () => {
   const { handleTwoKeySequence } = loadKeyboardController();
   const calls = { save: 0, render: 0, syncSettings: 0, toast: [] };
