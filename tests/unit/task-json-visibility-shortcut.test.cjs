@@ -1541,6 +1541,65 @@ test('handleTwoKeySequence routes gg to jumpTo for selected task', () => {
   assert.deepEqual(calls.jumpTo, ['t1']);
 });
 
+test('handleTwoKeySequence routes zz to hoistTask for selected task', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { hoistTask: [] };
+
+  const app = {
+    hoistTask: (id) => { calls.hoistTask.push(id); },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: 't1',
+    kbuf: '',
+    kbtimer: null,
+    data: {
+      settings: {},
+      tasks: {
+        t1: { due: '', due_asap: false, repeating_due: null, content: 'Task' }
+      }
+    }
+  };
+
+  const press = (key) => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, preventDefault: () => {}, key
+  });
+
+  press('z');
+  press('z');
+
+  assert.deepEqual(calls.hoistTask, ['t1']);
+});
+
+test('handleTwoKeySequence does nothing for zz when nothing is selected', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { hoistTask: [] };
+
+  const app = {
+    hoistTask: (id) => { calls.hoistTask.push(id); },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: null,
+    kbuf: '',
+    kbtimer: null,
+    data: { settings: {}, tasks: {} }
+  };
+
+  const press = (key) => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, preventDefault: () => {}, key
+  });
+
+  press('z');
+  press('z');
+
+  assert.deepEqual(calls.hoistTask, []);
+});
+
 test('handleGlobalKey routes Ctrl+ArrowUp to moveUpSelection for multi-select', () => {
   const { handleGlobalKey } = loadKeyboardController();
   const calls = { moveUpSelection: 0 };

@@ -292,7 +292,8 @@ function showShortcutsUi(app) {
       ['→', 'Expand / go to first child'],
       ['Home / End', 'First / last task'],
       ['PageUp / PageDown', 'Jump 10 tasks'],
-      ['Shift+→ / Shift+←', 'Hoist (focus) / un-focus'],
+      ['Shift+→ / zz', 'Hoist (focus) selected task'],
+      ['Shift+←', 'Un-focus / focus parent'],
       ['Ctrl+Shift+→ / ←', 'Expand all / collapse all'],
     ]},
     { heading: 'Editing', items: [

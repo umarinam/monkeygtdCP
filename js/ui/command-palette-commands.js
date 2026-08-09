@@ -33,7 +33,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Un-indent', s: 'Shift+Tab', fn: () => app.unindentSelection() },
     { l: 'Move task up', s: 'Ctrl+Up', fn: () => app.moveUpSelection() },
     { l: 'Move task down', s: 'Ctrl+Down', fn: () => app.moveDownSelection() },
-    { l: 'Hoist / Focus', s: 'Shift+Right', fn: () => { if (state.selId) app.hoistTask(state.selId); } },
+    { l: 'Hoist / Focus', s: 'Shift+Right / zz', fn: () => { if (state.selId) app.hoistTask(state.selId); } },
     { l: 'Un-focus', s: 'Shift+Left', fn: () => app.unHoist() },
     { l: 'Expand all', s: 'Ctrl+Shift+Right', fn: () => app.expandAll() },
     { l: 'Collapse all', s: 'Ctrl+Shift+Left', fn: () => app.collapseAll() },

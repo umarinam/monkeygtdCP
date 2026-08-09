@@ -488,6 +488,7 @@ function handleTwoKeySequence(app, state, e) {
     'gd': () => app.showPage('due'),
     'gl': () => { if (state.selId) app.jumpTo(state.selId); },
     'gg': () => { if (state.selId) app.jumpTo(state.selId); },
+    'zz': () => { if (state.selId) app.hoistTask(state.selId); },
     'mm': () => app.openMoveDlg(),
     'rd': () => app.showRestoreDeleted(),
     'wc': () => app.showWC(),

@@ -423,7 +423,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-08T19:09:10+05:00',commit:'7d83f9f'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-09T10:00:31+05:00',commit:'54fcaa6'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -6158,6 +6158,7 @@ function handleTwoKeySequence(app, state, e) {
     'gd': () => app.showPage('due'),
     'gl': () => { if (state.selId) app.jumpTo(state.selId); },
     'gg': () => { if (state.selId) app.jumpTo(state.selId); },
+    'zz': () => { if (state.selId) app.hoistTask(state.selId); },
     'mm': () => app.openMoveDlg(),
     'rd': () => app.showRestoreDeleted(),
     'wc': () => app.showWC(),
@@ -7333,7 +7334,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Un-indent', s: 'Shift+Tab', fn: () => app.unindentSelection() },
     { l: 'Move task up', s: 'Ctrl+Up', fn: () => app.moveUpSelection() },
     { l: 'Move task down', s: 'Ctrl+Down', fn: () => app.moveDownSelection() },
-    { l: 'Hoist / Focus', s: 'Shift+Right', fn: () => { if (state.selId) app.hoistTask(state.selId); } },
+    { l: 'Hoist / Focus', s: 'Shift+Right / zz', fn: () => { if (state.selId) app.hoistTask(state.selId); } },
     { l: 'Un-focus', s: 'Shift+Left', fn: () => app.unHoist() },
     { l: 'Expand all', s: 'Ctrl+Shift+Right', fn: () => app.expandAll() },
     { l: 'Collapse all', s: 'Ctrl+Shift+Left', fn: () => app.collapseAll() },
@@ -8087,7 +8088,8 @@ function showShortcutsUi(app) {
       ['→', 'Expand / go to first child'],
       ['Home / End', 'First / last task'],
       ['PageUp / PageDown', 'Jump 10 tasks'],
-      ['Shift+→ / Shift+←', 'Hoist (focus) / un-focus'],
+      ['Shift+→ / zz', 'Hoist (focus) selected task'],
+      ['Shift+←', 'Un-focus / focus parent'],
       ['Ctrl+Shift+→ / ←', 'Expand all / collapse all'],
     ]},
     { heading: 'Editing', items: [

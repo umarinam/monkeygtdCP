@@ -158,7 +158,7 @@ Once marked done a task retains its `completed_at` timestamp. Closed/invalidated
 
 ## Hoist / Focus
 
-- Press **Shift+→** on a selected task to **hoist** (focus) — all other tasks hide, only this branch is visible.
+- Press **Shift+→** or **`zz`** on a selected task to **hoist** (focus) — all other tasks hide, only this branch is visible.
 - **Shift+←** un-focuses and moves focus to the parent.
 - While hoisted, parent tasks appear as **breadcrumbs** above the list.
 - `ec0` collapses the list and removes the current focus.
@@ -545,7 +545,7 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 
 | Shortcut | Action |
 |---|---|
-| `Shift+→` | Hoist (focus) selected task |
+| `Shift+→` / `zz` | Hoist (focus) selected task |
 | `Shift+←` | Un-focus / focus parent |
 | `ec` | Toggle expand-all / collapse-all |
 | `ec0` | Collapse all + un-focus |
