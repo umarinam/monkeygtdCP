@@ -488,6 +488,13 @@
           </select></div></div>
       </div>
       <div style="margin-bottom:18px">
+        <div class="sst">Keyboard</div>
+        <div class="ssi"><div><div class="ssl">CapsLock Double-Tap Action</div><div class="ssd">Press CapsLock twice quickly to run this action from anywhere</div></div>
+          <div class="fg" style="min-width:160px"><select id="s-capslock-action" onchange="App.setSetting('capsLockAction',this.value)">
+            <option value="">Off</option>
+          </select></div></div>
+      </div>
+      <div style="margin-bottom:18px">
         <div class="sst">List Style</div>
         <div class="fg">
           <select id="s-style" onchange="App.setListStyle(this.value)">

@@ -44,6 +44,13 @@ function syncSettingsUi(app, S) {
   const styleEl = document.getElementById('s-style');
   if (styleEl) styleEl.value = s.listStyle || 'none';
 
+  const capsSelect = document.getElementById('s-capslock-action');
+  if (capsSelect && typeof buildCommandPaletteItems === 'function' && app && typeof app.select === 'function') {
+    const items = buildCommandPaletteItems(app, S).filter(c => c.l && !c.l.startsWith('Go to:'));
+    capsSelect.innerHTML = '<option value="">Off</option>' + items.map(c => `<option value="${esc(c.l)}">${esc(c.l)}</option>`).join('');
+    capsSelect.value = s.capsLockAction || '';
+  }
+
   const tokenEl = document.getElementById('gist-token');
   const gistIdEl = document.getElementById('gist-id');
   const gistFileEl = document.getElementById('gist-file');

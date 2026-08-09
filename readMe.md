@@ -488,6 +488,7 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 - Dark UI theme toggle
 - Zen mode (`om`)
 - Task list layout: density, parent emphasis, indent-guide style, branch spacing, Focus Treatment mode, content width
+- CapsLock double-tap action: pick any command-palette action (e.g. "Toggle Focus Treatment") to run when CapsLock is pressed twice quickly, from anywhere in the app, regardless of selection. Off by default.
 - Gist / repo sync provider and credentials
 
 

@@ -367,19 +367,29 @@ function handleGlobalKey(app, state, e) {
   app.twoKey(e);
 }
 
+function runCapsLockAction(app, state) {
+  const label = state.data?.settings?.capsLockAction;
+  if (!label || typeof buildCommandPaletteItems !== 'function') return;
+  const item = buildCommandPaletteItems(app, state).find(c => c.l === label);
+  if (item) item.fn();
+}
+
 function handleTwoKeySequence(app, state, e) {
   if (e.ctrlKey || e.altKey || e.metaKey) return;
-  if (!state.selId && !state.kbuf && !['g', 'l', 'o', 'h', 's', 'f'].includes(e.key)) return;
-  if (e.key === 'Shift') {
-    if (state.kbuf === 'Shift') {
+
+  // Shift+Shift (open command palette) and CapsLock+CapsLock (run the
+  // configured action) are global gestures, independent of any task
+  // selection, so they're handled before the selection guard below and
+  // never fall through to the generic letter buffer. Falling through is
+  // what let "Shift" (which ends in "ft") misfire the ft shortcut.
+  if (e.key === 'Shift' || e.key === 'CapsLock') {
+    if (state.kbuf === e.key) {
       state.kbuf = '';
       app.clearKH();
-      app.openCP();
+      if (e.key === 'Shift') app.openCP();
+      else runCapsLockAction(app, state);
     } else {
-      // Track the Shift+Shift gesture in isolation. "Shift" must never fall
-      // through to the generic buffer below: its own last two characters
-      // ("ft") can otherwise collide with a real two-letter shortcut.
-      state.kbuf = 'Shift';
+      state.kbuf = e.key;
       clearTimeout(state.kbtimer);
       app.showKH(state.kbuf);
       state.kbtimer = setTimeout(() => {
@@ -389,6 +399,8 @@ function handleTwoKeySequence(app, state, e) {
     }
     return;
   }
+
+  if (!state.selId && !state.kbuf && !['g', 'l', 'o', 'h', 's', 'f'].includes(e.key)) return;
 
   state.kbuf += e.key;
   clearTimeout(state.kbtimer);

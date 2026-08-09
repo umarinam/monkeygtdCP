@@ -26,7 +26,7 @@ function loadRenderController() {
   return sandbox.__renderExports;
 }
 
-function loadKeyboardController() {
+function loadKeyboardController(extraGlobals = {}) {
   const sourcePath = path.join(process.cwd(), 'js/ui/keyboard-controller.js');
   const source = fs.readFileSync(sourcePath, 'utf8');
 
@@ -36,11 +36,12 @@ function loadKeyboardController() {
       getElementById: () => ({ classList: { contains: () => true } })
     },
     setTimeout,
-    clearTimeout
+    clearTimeout,
+    ...extraGlobals
   };
 
   vm.createContext(sandbox);
-  vm.runInContext(`${source}\n;globalThis.__keyboardExports = { handleTwoKeySequence, handleGlobalKey };`, sandbox, { filename: 'keyboard-controller.js' });
+  vm.runInContext(`${source}\n;globalThis.__keyboardExports = { handleTwoKeySequence, handleGlobalKey, runCapsLockAction };`, sandbox, { filename: 'keyboard-controller.js' });
   return sandbox.__keyboardExports;
 }
 
@@ -1351,6 +1352,83 @@ test('pressing Shift twice still opens the command palette', () => {
   pressShift();
 
   assert.equal(calls.openCP, 1);
+  assert.equal(state.kbuf, '');
+});
+
+test('Shift+Shift opens the command palette even when nothing is selected', () => {
+  const { handleTwoKeySequence } = loadKeyboardController();
+  const calls = { openCP: 0 };
+
+  const app = {
+    openCP: () => { calls.openCP += 1; },
+    showKH: () => {},
+    clearKH: () => {}
+  };
+
+  const state = {
+    selId: null,
+    kbuf: '',
+    kbtimer: null,
+    data: { settings: {}, tasks: {} }
+  };
+
+  const pressShift = () => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, shiftKey: true, preventDefault: () => {}, key: 'Shift'
+  });
+
+  pressShift();
+  pressShift();
+
+  assert.equal(calls.openCP, 1);
+});
+
+test('CapsLock double-tap runs the configured settings.capsLockAction, even with nothing selected', () => {
+  const fakeBuildCommandPaletteItems = (app, state) => [
+    { l: 'Toggle Focus Treatment', s: 'ft', fn: () => { state.data.settings.focusMode = state.data.settings.focusMode === 'path' ? 'off' : 'path'; } },
+    { l: 'Some other action', s: '', fn: () => { throw new Error('should not run'); } }
+  ];
+  const { handleTwoKeySequence } = loadKeyboardController({ buildCommandPaletteItems: fakeBuildCommandPaletteItems });
+
+  const app = { showKH: () => {}, clearKH: () => {} };
+  const state = {
+    selId: null,
+    kbuf: '',
+    kbtimer: null,
+    data: { settings: { capsLockAction: 'Toggle Focus Treatment', focusMode: 'off' }, tasks: {} }
+  };
+
+  const pressCaps = () => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, preventDefault: () => {}, key: 'CapsLock'
+  });
+
+  pressCaps();
+  assert.equal(state.kbuf, 'CapsLock');
+  assert.equal(state.data.settings.focusMode, 'off');
+
+  pressCaps();
+  assert.equal(state.kbuf, '');
+  assert.equal(state.data.settings.focusMode, 'path');
+});
+
+test('CapsLock double-tap does nothing when no action is configured', () => {
+  const fakeBuildCommandPaletteItems = () => [{ l: 'Should not run', fn: () => { throw new Error('unexpected'); } }];
+  const { handleTwoKeySequence } = loadKeyboardController({ buildCommandPaletteItems: fakeBuildCommandPaletteItems });
+
+  const app = { showKH: () => {}, clearKH: () => {} };
+  const state = {
+    selId: null,
+    kbuf: '',
+    kbtimer: null,
+    data: { settings: {}, tasks: {} }
+  };
+
+  const pressCaps = () => handleTwoKeySequence(app, state, {
+    ctrlKey: false, altKey: false, metaKey: false, preventDefault: () => {}, key: 'CapsLock'
+  });
+
+  pressCaps();
+  pressCaps();
+
   assert.equal(state.kbuf, '');
 });
 
