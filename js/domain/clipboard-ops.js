@@ -81,6 +81,7 @@ function copyDomain(app, state) {
   };
 
   state.clipboard = ids.map(id => copyOne(id, true)).filter(Boolean);
+  state.clipboardIndex = copiedTasks;
 
   navigator.clipboard?.writeText(
     state.clipboard.map(t => taskTextFromSnapshotDomain(state, t, copiedTasks, 0)).join('\n')
@@ -96,11 +97,37 @@ function cutDomain(app, state) {
   app.render();
 }
 
+function materializePastedChildrenDomain(state, index, snapshot, parentTask) {
+  const childIds = [];
+  for (const childId of (snapshot.tasks || [])) {
+    const childSnapshot = index[childId];
+    if (!childSnapshot) continue;
+    const childNt = {
+      ...childSnapshot,
+      id: uid(),
+      created_at: now(),
+      updated_at: now(),
+      parent_id: parentTask.id,
+      checklist_id: parentTask.checklist_id
+    };
+    childNt.tasks = materializePastedChildrenDomain(state, index, childSnapshot, childNt);
+    state.data.tasks[childNt.id] = childNt;
+    childIds.push(childNt.id);
+    logTaskHistory(childNt, 'creation', {
+      source: 'paste',
+      listId: childNt.checklist_id,
+      parentId: childNt.parent_id || ''
+    });
+  }
+  return childIds;
+}
+
 function pasteDomain(app, state) {
   if (!state.clipboard || !state.clipboard.length) return;
 
   app.pushUndo(app.snap());
   const list = state.data.lists[state.listId];
+  const index = state.clipboardIndex || {};
 
   for (const src of state.clipboard) {
     const nt = { ...src, id: uid(), created_at: now(), updated_at: now() };
@@ -117,6 +144,7 @@ function pasteDomain(app, state) {
       nt.parent_id = '';
       nt.checklist_id = state.listId;
     }
+    nt.tasks = materializePastedChildrenDomain(state, index, src, nt);
     state.data.tasks[nt.id] = nt;
     logTaskHistory(nt, 'creation', {
       source: 'paste',
@@ -127,6 +155,32 @@ function pasteDomain(app, state) {
 
   app.save();
   app.render();
+}
+
+function duplicateChildrenDomain(app, state, srcParentId, newParentTask) {
+  const srcParent = state.data.tasks[srcParentId];
+  const childIds = [];
+  for (const childId of (srcParent?.tasks || [])) {
+    const childSrc = state.data.tasks[childId];
+    if (!childSrc) continue;
+    const childNt = {
+      ...JSON.parse(JSON.stringify(childSrc)),
+      id: uid(),
+      created_at: now(),
+      updated_at: now(),
+      parent_id: newParentTask.id,
+      checklist_id: newParentTask.checklist_id
+    };
+    childNt.tasks = duplicateChildrenDomain(app, state, childId, childNt);
+    state.data.tasks[childNt.id] = childNt;
+    childIds.push(childNt.id);
+    logTaskHistory(childNt, 'creation', {
+      source: 'duplicate',
+      listId: childNt.checklist_id,
+      parentId: childNt.parent_id || ''
+    });
+  }
+  return childIds;
 }
 
 function dupDomain(app, state, id) {
@@ -143,6 +197,7 @@ function dupDomain(app, state, id) {
   };
   const sibs = app.sibList(id);
   if (sibs) sibs.splice(sibs.indexOf(id) + 1, 0, nt.id);
+  nt.tasks = duplicateChildrenDomain(app, state, id, nt);
   state.data.tasks[nt.id] = nt;
   logTaskHistory(nt, 'creation', {
     source: 'duplicate',
