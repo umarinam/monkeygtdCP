@@ -23,6 +23,13 @@ const App={
 
   // â”€ Boot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   init(){
+    initSingleInstanceUi(this);
+  },
+
+  retrySingleInstance(){ retrySingleInstanceUi(this); },
+  forceUnlockAndContinue(){ forceUnlockAndContinueUi(this); },
+
+  boot(){
     let d=DB.get(); if(!d){d=seedData();DB.save(d);}
     S.data=d; S.listId=d.currentListId||Object.keys(d.lists)[0];
     S.reportEnd=todayS();

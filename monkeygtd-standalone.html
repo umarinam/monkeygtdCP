@@ -423,7 +423,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-09T10:00:31+05:00',commit:'54fcaa6'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-09T13:57:42+05:00',commit:'7cdc5ce'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1042,6 +1042,23 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
     <div class="mf">
       <button class="btn" onclick="App.closeModal('ov-list')">Cancel</button>
       <button class="btn btn-p" id="list-ok" onclick="App.confirmList()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Single-instance lock: shown when another tab already has the app open.
+     Deliberately has no backdrop-click or Escape dismissal - only the
+     buttons below can get past it. -->
+<div id="instance-blocked" class="ov hidden">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><span class="mt">Already Open</span></div>
+    <div class="mb">
+      <p>MonkeyGTD is already open in another tab or window.</p>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px">To avoid losing changes, only one tab edits at a time. Close the other tab and retry, or force this tab to continue if you're sure the other one is no longer active.</p>
+    </div>
+    <div class="mf">
+      <button class="btn btn-d" onclick="App.forceUnlockAndContinue()">Force Unlock &amp; Continue Here</button>
+      <button class="btn btn-p" onclick="App.retrySingleInstance()">Retry</button>
     </div>
   </div>
 </div>
@@ -8261,6 +8278,75 @@ function clearAllDataUi(app, S) {
 
 'use strict';
 
+const SINGLE_INSTANCE_LOCK_NAME = 'mgtd3-single-instance';
+
+function singleInstanceLocksAvailable() {
+  return typeof navigator !== 'undefined' && !!navigator.locks && typeof navigator.locks.request === 'function';
+}
+
+// Requests the lock without waiting in line (ifAvailable). If granted, the
+// held promise never resolves, so the lock stays with this tab for its
+// entire lifetime; the browser releases it automatically on crash, force
+// close, or normal tab close - no manual release/heartbeat needed.
+function acquireSingleInstanceLockUi() {
+  return new Promise(resolve => {
+    if (!singleInstanceLocksAvailable()) {
+      resolve(true);
+      return;
+    }
+    navigator.locks.request(SINGLE_INSTANCE_LOCK_NAME, { ifAvailable: true }, lock => {
+      if (!lock) {
+        resolve(false);
+        return Promise.resolve();
+      }
+      resolve(true);
+      return new Promise(() => {});
+    }).catch(() => resolve(true));
+  });
+}
+
+// Best-effort claim used after a manual force-unlock: try to also become the
+// lock holder (protects against a third tab), but never block this tab on it.
+function claimSingleInstanceLockBestEffort() {
+  if (!singleInstanceLocksAvailable()) return;
+  navigator.locks.request(SINGLE_INSTANCE_LOCK_NAME, { ifAvailable: true }, lock => {
+    if (!lock) return Promise.resolve();
+    return new Promise(() => {});
+  }).catch(() => {});
+}
+
+function showInstanceBlockedUi() {
+  document.getElementById('instance-blocked')?.classList.remove('hidden');
+}
+
+function hideInstanceBlockedUi() {
+  document.getElementById('instance-blocked')?.classList.add('hidden');
+}
+
+function initSingleInstanceUi(app) {
+  acquireSingleInstanceLockUi().then(granted => {
+    if (granted) app.boot();
+    else showInstanceBlockedUi();
+  });
+}
+
+function retrySingleInstanceUi(app) {
+  acquireSingleInstanceLockUi().then(granted => {
+    if (!granted) return;
+    hideInstanceBlockedUi();
+    app.boot();
+  });
+}
+
+function forceUnlockAndContinueUi(app) {
+  hideInstanceBlockedUi();
+  claimSingleInstanceLockBestEffort();
+  app.boot();
+}
+
+
+'use strict';
+
 // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const S={
   data:null, page:'list', listId:null, selId:null, editId:null, hoistId:null,
@@ -8284,6 +8370,13 @@ const App={
 
   // â”€ Boot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   init(){
+    initSingleInstanceUi(this);
+  },
+
+  retrySingleInstance(){ retrySingleInstanceUi(this); },
+  forceUnlockAndContinue(){ forceUnlockAndContinueUi(this); },
+
+  boot(){
     let d=DB.get(); if(!d){d=seedData();DB.save(d);}
     S.data=d; S.listId=d.currentListId||Object.keys(d.lists)[0];
     S.reportEnd=todayS();
@@ -9100,6 +9193,7 @@ App.init();
 
 
 </script>
+
 
 
 

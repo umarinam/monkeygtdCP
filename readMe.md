@@ -53,6 +53,8 @@ The app manages one or more named **lists**. Each list contains a hierarchy of *
 
 On first run with no data, populate a default list with sample tasks demonstrating the hierarchy and features.
 
+**Single instance per browser**: since all data lives in one shared `localStorage` key, opening the app in a second tab is blocked with an "Already Open" screen (using the Web Locks API, where available — the app boots normally in browsers without it). The lock is tied to the tab's lifetime, so closing, crashing, or force-quitting the original tab releases it automatically; the blocked screen also offers "Retry" and a "Force Unlock & Continue Here" override for edge cases where the lock doesn't release promptly.
+
 
 ---
 
