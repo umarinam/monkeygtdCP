@@ -122,6 +122,8 @@ function bootInbox(localSeed = {}, options = {}) {
   };
 
   const backupPayload = options.backupPayload || null;
+  const backupFilename = options.backupFilename || 'monkeygtd-backup.json';
+  const extraGistFiles = options.extraGistFiles || null;
 
   const document = {
     getElementById(id) {
@@ -167,12 +169,13 @@ function bootInbox(localSeed = {}, options = {}) {
                   content: inboxContent
                 },
                 ...(backupPayload ? {
-                  'monkeygtd-backup.json': {
-                    filename: 'monkeygtd-backup.json',
+                  [backupFilename]: {
+                    filename: backupFilename,
                     truncated: false,
                     content: JSON.stringify(backupPayload)
                   }
-                } : {})
+                } : {}),
+                ...(extraGistFiles || {})
               }
             })
           };
@@ -413,6 +416,46 @@ test('Inbox loads remote lists into the List dropdown, excluding archived lists'
   const labels = elements.taskListId.children.map((o) => o.textContent);
   assert.deepEqual(values, ['', 'l2', 'l1']);
   assert.deepEqual(labels, ['Default (let sync decide)', 'Personal', 'Work Projects']);
+});
+
+test('Inbox finds the backup under a differently-named .json file when gistFilename does not match (mirrors gistPickFile fallback)', async () => {
+  const seed = {
+    mgtd3: JSON.stringify({ settings: { gistToken: 'tok_123', gistId: 'gid_123', gistFilename: 'monkeygtd-backup.json' } })
+  };
+  // The real file in the gist is named differently than the configured
+  // gistFilename (e.g. renamed once, or never matched). The app's own
+  // pull/sync path (gistPickFile) tolerates this by falling back to any
+  // .json file - the Inbox picker must do the same instead of reporting
+  // "not found"/"empty".
+  const { elements } = bootInbox(seed, { backupPayload: backupSeed(), backupFilename: 'my-renamed-backup.json' });
+
+  await elements.refreshListsBtn.listeners.click();
+
+  const values = elements.taskListId.children.map((o) => o.value);
+  assert.deepEqual(values, ['', 'l2', 'l1']);
+  assert.equal(elements.listsStatus.textContent.includes('Could not load'), false);
+});
+
+test('Inbox reports an empty backup file (not a silent fallback) when the exact gistFilename match exists but is empty', async () => {
+  const seed = {
+    mgtd3: JSON.stringify({ settings: { gistToken: 'tok_123', gistId: 'gid_123', gistFilename: 'monkeygtd-backup.json' } })
+  };
+  // Matches gistPickFile's precedence: an exact filename match wins even if
+  // a different .json file also exists, so a genuinely-empty file at the
+  // expected name is NOT silently bypassed in favor of the other file.
+  const { elements } = bootInbox(seed, {
+    backupPayload: backupSeed(),
+    backupFilename: 'some-other-backup.json',
+    extraGistFiles: {
+      'monkeygtd-backup.json': { filename: 'monkeygtd-backup.json', truncated: false, content: '' }
+    }
+  });
+
+  await elements.refreshListsBtn.listeners.click();
+
+  assert.equal(elements.taskListId.children.length, 0);
+  assert.equal(elements.listsStatus.textContent.includes('monkeygtd-backup.json'), true);
+  assert.equal(elements.listsStatus.textContent.includes('some-other-backup.json'), true);
 });
 
 test('Inbox populates the Parent task dropdown from the selected list\'s root tasks only', async () => {

@@ -688,6 +688,18 @@
             return { lists: (data && data.lists) || {}, tasks: (data && data.tasks) || {} };
         }
 
+        function pickGistBackupFile(meta, filename) {
+            // Mirrors gistPickFile() in js/infra/gist-sync.js: the app's own pull/sync
+            // path doesn't require an exact filename match, it falls back to any .json
+            // file (then any file) in the gist. Matching that here keeps the picker
+            // consistent with what a real sync would actually pull in, and avoids
+            // matching a differently-named backup file's stale/empty placeholder.
+            if (!meta?.files) return null;
+            if (meta.files[filename]) return meta.files[filename];
+            const firstJson = Object.values(meta.files).find((f) => (f.filename || '').toLowerCase().endsWith('.json'));
+            return firstJson || Object.values(meta.files)[0] || null;
+        }
+
         async function fetchGistBackupPayload(creds) {
             const gistUrl = `https://api.github.com/gists/${encodeURIComponent(creds.id)}`;
             const headers = {
@@ -696,8 +708,8 @@
             };
 
             const meta = await fetchJson(gistUrl, { method: 'GET', headers });
-            const file = meta?.files?.[creds.filename] || null;
-            if (!file) throw new Error(`backup file "${creds.filename}" not found in gist`);
+            const file = pickGistBackupFile(meta, creds.filename);
+            if (!file) throw new Error('no files found in gist');
 
             let raw = '';
             if (!file.truncated) {
@@ -705,10 +717,16 @@
             } else if (file.raw_url) {
                 raw = await fetchText(file.raw_url);
             } else {
-                throw new Error('backup file content unavailable');
+                throw new Error(`"${file.filename}" content unavailable (truncated, no raw_url)`);
             }
 
-            return parseBackupPayload(raw);
+            try {
+                return parseBackupPayload(raw);
+            } catch (err) {
+                const otherFiles = Object.keys(meta.files || {}).filter((n) => n !== file.filename);
+                const hint = otherFiles.length ? ` (gist also has: ${otherFiles.join(', ')})` : '';
+                throw new Error(`"${file.filename}"${hint}: ${err.message}`);
+            }
         }
 
         async function fetchRepoBackupPayload(creds) {
@@ -723,9 +741,14 @@
             };
 
             const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
-            if (!res.ok) throw new Error(`backup file read failed (${res.status})`);
+            if (!res.ok) throw new Error(`"${creds.backupPath}" read failed (${res.status})`);
             const json = await res.json();
-            return parseBackupPayload(decodeBase64(json.content || ''));
+
+            try {
+                return parseBackupPayload(decodeBase64(json.content || ''));
+            } catch (err) {
+                throw new Error(`"${creds.backupPath}": ${err.message}`);
+            }
         }
 
         function readBackupCache() {
