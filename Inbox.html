@@ -734,18 +734,59 @@
                 .split('/')
                 .map((part) => encodeURIComponent(part))
                 .join('/');
-            const url = `https://api.github.com/repos/${encodeURIComponent(creds.owner)}/${encodeURIComponent(creds.repo)}/contents/${encodePath(creds.backupPath)}?ref=${encodeURIComponent(creds.branch)}`;
-            const headers = {
-                Accept: 'application/vnd.github+json',
-                Authorization: `token ${creds.token}`
-            };
+            const contentsUrl = `https://api.github.com/repos/${encodeURIComponent(creds.owner)}/${encodeURIComponent(creds.repo)}/contents/${encodePath(creds.backupPath)}?ref=${encodeURIComponent(creds.branch)}`;
 
-            const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
+            const res = await fetch(contentsUrl, {
+                method: 'GET',
+                cache: 'no-store',
+                headers: {
+                    Accept: 'application/vnd.github+json',
+                    Authorization: `token ${creds.token}`
+                }
+            });
             if (!res.ok) throw new Error(`"${creds.backupPath}" read failed (${res.status})`);
             const json = await res.json();
 
+            // The Contents API only inlines base64 `content` for files <= 1MB.
+            // Larger files omit it entirely, so this mirrors repoFetchFile()'s
+            // fallback chain in js/infra/repo-sync.js: git blob API, then the
+            // raw media type, then the public download_url.
+            let raw = decodeBase64(json.content || '');
+
+            if (!raw && json.git_url) {
+                const blobRes = await fetch(String(json.git_url), {
+                    method: 'GET',
+                    cache: 'no-store',
+                    headers: {
+                        Accept: 'application/vnd.github+json',
+                        Authorization: `token ${creds.token}`
+                    }
+                });
+                if (blobRes.ok) {
+                    const blobJson = await blobRes.json();
+                    raw = decodeBase64(blobJson?.content || '');
+                }
+            }
+
+            if (!raw) {
+                const rawRes = await fetch(contentsUrl, {
+                    method: 'GET',
+                    cache: 'no-store',
+                    headers: {
+                        Accept: 'application/vnd.github.raw',
+                        Authorization: `token ${creds.token}`
+                    }
+                });
+                if (rawRes.ok) raw = await rawRes.text();
+            }
+
+            if (!raw && json.download_url) {
+                const downloadRes = await fetch(String(json.download_url), { method: 'GET', cache: 'no-store' });
+                if (downloadRes.ok) raw = await downloadRes.text();
+            }
+
             try {
-                return parseBackupPayload(decodeBase64(json.content || ''));
+                return parseBackupPayload(raw);
             } catch (err) {
                 throw new Error(`"${creds.backupPath}": ${err.message}`);
             }

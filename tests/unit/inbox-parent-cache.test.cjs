@@ -124,6 +124,14 @@ function bootInbox(localSeed = {}, options = {}) {
   const backupPayload = options.backupPayload || null;
   const backupFilename = options.backupFilename || 'monkeygtd-backup.json';
   const extraGistFiles = options.extraGistFiles || null;
+  const repoBackupPath = options.repoBackupPath || 'monkeygtd-backup.json';
+  // Simulates GitHub Contents API's >1MB behavior: content comes back empty,
+  // and only the download_url fallback is wired up to actually succeed here
+  // (git_url and the raw Accept header both fall through to the inert
+  // catch-all below), so this proves the full fallback chain is exercised
+  // end-to-end rather than accidentally short-circuiting on the first step.
+  const repoBackupOversized = !!options.repoBackupOversized;
+  const repoBackupDownloadUrl = `https://raw.githubusercontent.com/octocat/private-backups/main/${repoBackupPath}`;
 
   const document = {
     getElementById(id) {
@@ -208,8 +216,26 @@ function bootInbox(localSeed = {}, options = {}) {
         }
       }
 
-      if (String(url).includes('/contents/monkeygtd-backup.json') && method === 'GET') {
+      if (String(url).includes(`/contents/${repoBackupPath}`) && method === 'GET') {
         if (!backupPayload) return { ok: false, status: 404, json: async () => ({}) };
+        if (repoBackupOversized) {
+          const acceptsRaw = options?.headers?.Accept === 'application/vnd.github.raw';
+          if (acceptsRaw) {
+            // Simulate this fallback also not yielding content, so the test
+            // actually exercises the last-resort download_url step below.
+            return { ok: true, text: async () => '' };
+          }
+          return {
+            ok: true,
+            json: async () => ({
+              sha: 'backup-sha-1',
+              content: '',
+              encoding: 'none',
+              git_url: 'https://api.github.com/repos/octocat/private-backups/git/blobs/fake-blob-sha',
+              download_url: repoBackupDownloadUrl
+            })
+          };
+        }
         return {
           ok: true,
           json: async () => ({
@@ -217,6 +243,10 @@ function bootInbox(localSeed = {}, options = {}) {
             content: Buffer.from(JSON.stringify(backupPayload), 'utf8').toString('base64')
           })
         };
+      }
+
+      if (String(url) === repoBackupDownloadUrl && method === 'GET') {
+        return { ok: true, text: async () => JSON.stringify(backupPayload) };
       }
 
       return { ok: true, text: async () => inboxContent, json: async () => ({}) };
@@ -538,6 +568,38 @@ test('Inbox loads lists via the Repo Contents API when repo provider is configur
 
   const values = elements.taskListId.children.map((o) => o.value);
   assert.deepEqual(values, ['', 'l2', 'l1']);
+});
+
+test('Inbox falls back to download_url when a repo backup file exceeds the Contents API 1MB inline limit', async () => {
+  // Reproduces the reported bug: "<file>.json is empty" even though the app
+  // itself syncs fine. GitHub's Contents API omits `content` for files over
+  // 1MB; the app's own repoFetchFile() falls back to git_url, then the raw
+  // Accept header, then download_url. The Inbox picker must do the same
+  // instead of treating an empty inline `content` as a genuinely empty file.
+  const seed = {
+    mgtd3: JSON.stringify({
+      settings: {
+        syncProvider: 'repo',
+        repoToken: 'repo_tok_123',
+        repoOwner: 'octocat',
+        repoName: 'private-backups',
+        repoBranch: 'main',
+        repoPath: 'ToDoH2-2026.json'
+      }
+    })
+  };
+
+  const { elements } = bootInbox(seed, {
+    backupPayload: backupSeed(),
+    repoBackupPath: 'ToDoH2-2026.json',
+    repoBackupOversized: true
+  });
+
+  await elements.refreshListsBtn.listeners.click();
+
+  const values = elements.taskListId.children.map((o) => o.value);
+  assert.deepEqual(values, ['', 'l2', 'l1']);
+  assert.equal(elements.listsStatus.textContent.includes('Could not load'), false);
 });
 
 test('Inbox falls back to manual Parent ID entry when the remote backup cannot be loaded', async () => {
