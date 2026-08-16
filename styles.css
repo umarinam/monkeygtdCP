@@ -18,10 +18,10 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);font-size:14px;color:var(--text);background:var(--bg);
-     line-height:1.5;overflow:hidden;height:100vh;user-select:none}
+     line-height:1.5;overflow:hidden;height:100vh;height:100dvh;user-select:none}
 
 /* â”€â”€ Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-#app{display:flex;flex-direction:column;height:100vh}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
 #topbar{height:var(--top);background:var(--bg-alt);border-bottom:1px solid var(--border);
         display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0;z-index:100}
 #main{flex:1;overflow:hidden;position:relative}
