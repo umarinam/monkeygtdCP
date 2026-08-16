@@ -223,6 +223,78 @@
         .recent-parent-remove:hover {
             background: #ffe7ec;
         }
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+            color: #333;
+            transition: border-color 0.3s;
+        }
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        select:disabled {
+            background: #f7f7f7;
+            color: #999;
+        }
+        .field-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .field-head label {
+            margin-bottom: 0;
+        }
+        .refresh-lists-btn {
+            border: none;
+            background: none;
+            color: #667eea;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 2px 4px;
+        }
+        .refresh-lists-btn:hover {
+            text-decoration: underline;
+        }
+        .refresh-lists-btn:disabled {
+            color: #aaa;
+            cursor: default;
+            text-decoration: none;
+        }
+        .lists-status {
+            margin-top: 6px;
+            color: #6b7280;
+            font-size: 12px;
+        }
+        .lists-status.error {
+            color: #c0392b;
+        }
+        .advanced-parent {
+            margin-bottom: 24px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .advanced-parent[open] {
+            padding-bottom: 4px;
+        }
+        .advanced-parent summary {
+            cursor: pointer;
+            color: #667eea;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .advanced-parent .form-group {
+            margin-top: 14px;
+            margin-bottom: 14px;
+        }
     </style>
 </head>
 <body>
@@ -286,17 +358,37 @@
             </div>
 
             <div class="form-group">
-                <label for="taskParentId">Parent ID (optional)</label>
-                <input type="text" id="taskParentId" name="taskParentId" list="parentSuggestions" placeholder="Paste parent task ID...">
-                <datalist id="parentSuggestions"></datalist>
-                <div class="recent-parents" id="recentParents" style="display: none;"></div>
+                <div class="field-head">
+                    <label for="taskListId">List (optional)</label>
+                    <button type="button" class="refresh-lists-btn" id="refreshListsBtn">↻ Refresh</button>
+                </div>
+                <select id="taskListId">
+                    <option value="">Default (let sync decide)</option>
+                </select>
+                <p class="lists-status" id="listsStatus"></p>
             </div>
 
             <div class="form-group">
-                <label for="taskParentTitle">Parent Title (optional)</label>
-                <input type="text" id="taskParentTitle" name="taskParentTitle" placeholder="Used only to label saved parent IDs...">
-                <p class="hint">Saved with Parent ID so you can pick it quickly next time.</p>
+                <label for="taskParentTaskId">Parent task (optional — top-level tasks only)</label>
+                <select id="taskParentTaskId" disabled>
+                    <option value="">No parent — add to list root</option>
+                </select>
+                <div class="recent-parents" id="recentParents" style="display: none;"></div>
             </div>
+
+            <details class="advanced-parent">
+                <summary>Paste a Parent ID manually instead</summary>
+                <div class="form-group">
+                    <label for="taskParentId">Parent ID</label>
+                    <input type="text" id="taskParentId" name="taskParentId" list="parentSuggestions" placeholder="Paste any task ID, including nested subtasks...">
+                    <datalist id="parentSuggestions"></datalist>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="taskParentTitle">Parent Title (optional)</label>
+                    <input type="text" id="taskParentTitle" name="taskParentTitle" placeholder="Used only to label saved parent IDs...">
+                    <p class="hint">Saved with Parent ID so you can pick it quickly next time. Choosing a List/Parent task above overwrites this.</p>
+                </div>
+            </details>
 
             <div class="form-group">
                 <label for="taskDueDate">Due Date (optional)</label>
@@ -338,9 +430,14 @@
         const dueDateInput = document.getElementById('taskDueDate');
         const parentSuggestions = document.getElementById('parentSuggestions');
         const recentParents = document.getElementById('recentParents');
+        const listSelect = document.getElementById('taskListId');
+        const parentTaskSelect = document.getElementById('taskParentTaskId');
+        const refreshListsBtn = document.getElementById('refreshListsBtn');
+        const listsStatus = document.getElementById('listsStatus');
 
         const PARENT_CACHE_KEY = 'mgtd3_inbox_parent_cache';
         const MAX_PARENT_CACHE = 20;
+        const BACKUP_CACHE_KEY = 'mgtd3_inbox_backup_cache';
 
         const DEFAULT_PARENTS = [
             { id: '8bkrfy3mr57q25y', title: 'Email' },
@@ -349,10 +446,13 @@
             { id: 'uzvatpsmqrtawlj', title: 'Architecture' }
         ];
 
+        let backupData = null; // { lists, tasks, fetchedAt }
+
         // Check authentication on page load
         window.addEventListener('load', () => {
             checkAuthentication();
             renderParentSuggestions();
+            loadBackupData(false);
         });
 
         function readParentCache() {
@@ -580,6 +680,211 @@
             return btoa(unescape(encodeURIComponent(String(text || ''))));
         }
 
+        function parseBackupPayload(raw) {
+            const text = String(raw || '').trim();
+            if (!text) throw new Error('backup file is empty');
+            const parsed = JSON.parse(text);
+            const data = (parsed && parsed.data && parsed.version) ? parsed.data : parsed;
+            return { lists: (data && data.lists) || {}, tasks: (data && data.tasks) || {} };
+        }
+
+        async function fetchGistBackupPayload(creds) {
+            const gistUrl = `https://api.github.com/gists/${encodeURIComponent(creds.id)}`;
+            const headers = {
+                Accept: 'application/vnd.github+json',
+                Authorization: `token ${creds.token}`
+            };
+
+            const meta = await fetchJson(gistUrl, { method: 'GET', headers });
+            const file = meta?.files?.[creds.filename] || null;
+            if (!file) throw new Error(`backup file "${creds.filename}" not found in gist`);
+
+            let raw = '';
+            if (!file.truncated) {
+                raw = String(file.content || '');
+            } else if (file.raw_url) {
+                raw = await fetchText(file.raw_url);
+            } else {
+                throw new Error('backup file content unavailable');
+            }
+
+            return parseBackupPayload(raw);
+        }
+
+        async function fetchRepoBackupPayload(creds) {
+            const encodePath = (path) => String(path || '')
+                .split('/')
+                .map((part) => encodeURIComponent(part))
+                .join('/');
+            const url = `https://api.github.com/repos/${encodeURIComponent(creds.owner)}/${encodeURIComponent(creds.repo)}/contents/${encodePath(creds.backupPath)}?ref=${encodeURIComponent(creds.branch)}`;
+            const headers = {
+                Accept: 'application/vnd.github+json',
+                Authorization: `token ${creds.token}`
+            };
+
+            const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
+            if (!res.ok) throw new Error(`backup file read failed (${res.status})`);
+            const json = await res.json();
+            return parseBackupPayload(decodeBase64(json.content || ''));
+        }
+
+        function readBackupCache() {
+            try {
+                const raw = localStorage.getItem(BACKUP_CACHE_KEY);
+                const parsed = raw ? JSON.parse(raw) : null;
+                if (parsed && typeof parsed === 'object' && parsed.lists && parsed.tasks) return parsed;
+            } catch {
+                // ignore
+            }
+            return null;
+        }
+
+        function writeBackupCache(payload) {
+            try {
+                localStorage.setItem(BACKUP_CACHE_KEY, JSON.stringify({
+                    lists: payload.lists,
+                    tasks: payload.tasks,
+                    fetchedAt: new Date().toISOString()
+                }));
+            } catch {
+                // ignore quota errors
+            }
+        }
+
+        function updateListsStatus(message, isError) {
+            if (!listsStatus) return;
+            listsStatus.textContent = message;
+            listsStatus.classList.toggle('error', !!isError);
+        }
+
+        function truncateLabel(text, max) {
+            const s = String(text || '').split('\n')[0].trim();
+            if (s.length <= max) return s || '(untitled task)';
+            return `${s.slice(0, max - 1)}…`;
+        }
+
+        function populateParentDropdown() {
+            const listId = listSelect.value;
+            parentTaskSelect.innerHTML = '';
+
+            const noneOpt = document.createElement('option');
+            noneOpt.value = '';
+            noneOpt.textContent = 'No parent — add to list root';
+            parentTaskSelect.appendChild(noneOpt);
+
+            const list = listId && backupData ? backupData.lists[listId] : null;
+            if (!list) {
+                parentTaskSelect.disabled = true;
+                return;
+            }
+
+            const tasks = backupData.tasks || {};
+            const rootTasks = (list.root_tasks || [])
+                .map((id) => tasks[id])
+                .filter((t) => t && !t.deleted);
+
+            if (!rootTasks.length) {
+                parentTaskSelect.disabled = true;
+                return;
+            }
+
+            parentTaskSelect.disabled = false;
+            rootTasks.forEach((t) => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = truncateLabel(t.content, 60);
+                parentTaskSelect.appendChild(opt);
+            });
+        }
+
+        function populateListDropdown() {
+            const previous = listSelect.value;
+            listSelect.innerHTML = '';
+
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = 'Default (let sync decide)';
+            listSelect.appendChild(defaultOpt);
+
+            if (backupData && backupData.lists) {
+                Object.values(backupData.lists)
+                    .filter((l) => l && !l.archived)
+                    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+                    .forEach((list) => {
+                        const opt = document.createElement('option');
+                        opt.value = list.id;
+                        opt.textContent = list.name || '(untitled list)';
+                        listSelect.appendChild(opt);
+                    });
+            }
+
+            if (previous && [...listSelect.options].some((o) => o.value === previous)) {
+                listSelect.value = previous;
+            }
+            populateParentDropdown();
+        }
+
+        async function loadBackupData(forceRefresh) {
+            const cached = !backupData ? readBackupCache() : null;
+            if (cached) {
+                backupData = cached;
+                populateListDropdown();
+                updateListsStatus(`Showing lists from ${new Date(cached.fetchedAt).toLocaleString()}. Refreshing…`, false);
+            }
+
+            const provider = getProvider();
+            const creds = provider === 'repo' ? getRepoCredentials() : getGistCredentials();
+            const hasCreds = provider === 'repo'
+                ? (creds.token && creds.owner && creds.repo)
+                : (creds.token && creds.id);
+
+            if (!hasCreds) {
+                updateListsStatus(
+                    backupData ? 'Add credentials above to refresh lists.' : 'Add credentials above to load your lists, or paste a Parent ID manually below.',
+                    !backupData
+                );
+                return;
+            }
+
+            if (!forceRefresh && backupData && !cached) return;
+
+            if (!backupData) updateListsStatus('Loading your lists…', false);
+
+            try {
+                const payload = provider === 'repo' ? await fetchRepoBackupPayload(creds) : await fetchGistBackupPayload(creds);
+                backupData = payload;
+                writeBackupCache(payload);
+                populateListDropdown();
+                updateListsStatus(`Lists loaded just now (${Object.keys(payload.lists).length} lists).`, false);
+            } catch (error) {
+                if (backupData) {
+                    updateListsStatus(`Could not refresh lists (${error.message}). Showing previously loaded lists.`, true);
+                } else {
+                    updateListsStatus(`Could not load lists (${error.message}). Paste a Parent ID manually below instead.`, true);
+                }
+            }
+        }
+
+        listSelect.addEventListener('change', () => {
+            parentIdInput.value = '';
+            parentTitleInput.value = '';
+            populateParentDropdown();
+        });
+
+        parentTaskSelect.addEventListener('change', () => {
+            const value = parentTaskSelect.value;
+            if (!value) {
+                parentIdInput.value = '';
+                parentTitleInput.value = '';
+                return;
+            }
+            const match = [...parentTaskSelect.options].find((o) => o.value === value);
+            parentIdInput.value = value;
+            parentTitleInput.value = match ? match.textContent : '';
+        });
+
+        refreshListsBtn.addEventListener('click', () => loadBackupData(true));
+
         parentIdInput.addEventListener('input', () => {
             const id = parentIdInput.value.trim();
             if (!id) {
@@ -621,7 +926,8 @@
             const token = settings.gistToken || localStorage.getItem('mgtd3_gist_token') || localStorage.getItem('gtd_token') || '';
             const id = settings.gistId || localStorage.getItem('gtd_id') || '';
             const inboxFilename = settings.gistInboxFilename || 'monkeygtd-inbox.ndjson';
-            return { token, id, inboxFilename };
+            const filename = String(settings.gistFilename || '').trim() || 'monkeygtd-backup.json';
+            return { token, id, inboxFilename, filename };
         }
 
         function getRepoCredentials() {
@@ -632,7 +938,7 @@
             const branch = String(settings.repoBranch || 'main').trim() || 'main';
             const backupPath = String(settings.repoPath || 'monkeygtd-backup.json').trim() || 'monkeygtd-backup.json';
             const inboxPath = String(settings.repoInboxPath || '').trim() || repoDefaultInboxPath(backupPath);
-            return { token, owner, repo, branch, inboxPath };
+            return { token, owner, repo, branch, backupPath, inboxPath };
         }
 
         function saveGistCredentials(token, id) {
@@ -735,6 +1041,7 @@
                 saveGistCredentials(token, id);
                 checkAuthentication();
                 showStatus('✓ Credentials saved. You can now send tasks.', 'success');
+                loadBackupData(true);
             } catch (error) {
                 showStatus(`Error saving credentials: ${error.message}`, 'error');
             }
@@ -755,6 +1062,7 @@
                 saveRepoCredentials(token, owner, repo, branch);
                 checkAuthentication();
                 showStatus('✓ Credentials saved. You can now send tasks.', 'success');
+                loadBackupData(true);
             } catch (error) {
                 showStatus(`Error saving credentials: ${error.message}`, 'error');
             }
@@ -778,6 +1086,7 @@
             const taskDescription = document.getElementById('taskDescription').value.trim();
             const taskParentId = parentIdInput.value.trim();
             const taskParentTitle = parentTitleInput.value.trim();
+            const taskListId = listSelect.value;
             const taskDueDate = dueDateInput.value;
 
             if (!taskTitle) {
@@ -806,6 +1115,7 @@
                 };
 
                 if (taskParentId) request.parentTaskId = taskParentId;
+                else if (taskListId) request.listId = taskListId;
                 if (taskDueDate) request.due = taskDueDate;
 
                 if (provider === 'repo') {
@@ -818,6 +1128,7 @@
 
                 cacheParentReference(taskParentId, taskParentTitle);
                 form.reset();
+                populateParentDropdown();
                 setTimeout(() => {
                     statusMessage.style.display = 'none';
                 }, 5000);

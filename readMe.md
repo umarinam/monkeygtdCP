@@ -721,6 +721,8 @@ Use the following structure for each task/list-item (matches `mkTask` in `js/cor
 
 There is no per-list email address or backend mailbox. The one real remote-capture path is `Inbox.html` — a standalone page (e.g. bookmarked on a phone) that queues a new-task request as a line in a GitHub Gist or repo file. The next time the main app syncs (auto-sync interval, manual "Sync now", or on refresh), it reads that queue, creates the corresponding task(s) locally, and marks the request processed. See the "CLI Task Capture via Gist Queue" section above for the equivalent command-line path.
 
+Once Gist/Repo credentials are entered, `Inbox.html` fetches the current backup file (read-only, same file the app syncs) to populate a **List** dropdown and a **Parent task** dropdown of that list's top-level tasks — so a captured task can be filed directly under the right list/parent without memorizing or pasting IDs. This works from any device, not just ones that have opened the main app before, since it reads the remote backup rather than local storage. Fetched lists are cached locally with a "↻ Refresh" button to pull the latest; if the fetch fails (offline, bad credentials, or the backup file is empty), the picker falls back to a "Paste a Parent ID manually" field for pasting any task ID, including nested subtasks, which the dropdowns don't reach.
+
 
 ---
 

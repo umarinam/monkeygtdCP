@@ -21,6 +21,15 @@ function createElement(id) {
     textContent: '',
     children: [],
     listeners: {},
+    classList: {
+      _set: new Set(),
+      add(cls) { this._set.add(cls); },
+      remove(cls) { this._set.delete(cls); },
+      toggle(cls, on) {
+        if (on) this._set.add(cls); else this._set.delete(cls);
+      },
+      contains(cls) { return this._set.has(cls); }
+    },
     addEventListener(type, cb) {
       this.listeners[type] = cb;
     },
@@ -42,6 +51,13 @@ function createElement(id) {
     }
   });
 
+  // <select>-like elements expose their <option> children as .options
+  Object.defineProperty(el, 'options', {
+    get() {
+      return el.children;
+    }
+  });
+
   return el;
 }
 
@@ -60,7 +76,7 @@ function createStorage(seed = {}) {
   };
 }
 
-function bootInbox(localSeed = {}) {
+function bootInbox(localSeed = {}, options = {}) {
   const elements = {
     taskForm: createElement('taskForm'),
     statusMessage: createElement('statusMessage'),
@@ -83,7 +99,11 @@ function bootInbox(localSeed = {}) {
     taskDueDate: createElement('taskDueDate'),
     parentSuggestions: createElement('parentSuggestions'),
     recentParents: createElement('recentParents'),
-    taskDescription: createElement('taskDescription')
+    taskDescription: createElement('taskDescription'),
+    taskListId: createElement('taskListId'),
+    taskParentTaskId: createElement('taskParentTaskId'),
+    refreshListsBtn: createElement('refreshListsBtn'),
+    listsStatus: createElement('listsStatus')
   };
 
   const inputs = [
@@ -91,13 +111,17 @@ function bootInbox(localSeed = {}) {
     elements.taskParentId,
     elements.taskParentTitle,
     elements.taskDueDate,
-    elements.taskDescription
+    elements.taskDescription,
+    elements.taskListId,
+    elements.taskParentTaskId
   ];
   elements.taskForm.reset = () => {
     inputs.forEach((el) => {
       el.value = '';
     });
   };
+
+  const backupPayload = options.backupPayload || null;
 
   const document = {
     getElementById(id) {
@@ -141,7 +165,14 @@ function bootInbox(localSeed = {}) {
                   filename: 'monkeygtd-inbox.ndjson',
                   truncated: false,
                   content: inboxContent
-                }
+                },
+                ...(backupPayload ? {
+                  'monkeygtd-backup.json': {
+                    filename: 'monkeygtd-backup.json',
+                    truncated: false,
+                    content: JSON.stringify(backupPayload)
+                  }
+                } : {})
               }
             })
           };
@@ -172,6 +203,17 @@ function bootInbox(localSeed = {}) {
           repoInboxSha = 'repo-inbox-sha-2';
           return { ok: true, json: async () => ({ content: { sha: repoInboxSha } }) };
         }
+      }
+
+      if (String(url).includes('/contents/monkeygtd-backup.json') && method === 'GET') {
+        if (!backupPayload) return { ok: false, status: 404, json: async () => ({}) };
+        return {
+          ok: true,
+          json: async () => ({
+            sha: 'backup-sha-1',
+            content: Buffer.from(JSON.stringify(backupPayload), 'utf8').toString('base64')
+          })
+        };
       }
 
       return { ok: true, text: async () => inboxContent, json: async () => ({}) };
@@ -345,4 +387,125 @@ test('Inbox parent suggestions load from cache and auto-fill parent title for kn
   assert.equal(elements.recentParents.style.display, 'flex');
   assert.equal(elements.taskParentId.value, '');
   assert.equal(elements.taskParentTitle.value, '');
+});
+
+function backupSeed() {
+  return {
+    lists: {
+      l1: { id: 'l1', name: 'Work Projects', archived: false, root_tasks: ['t1', 't2'] },
+      l2: { id: 'l2', name: 'Personal', archived: false, root_tasks: ['t3'] },
+      l3: { id: 'l3', name: 'Archived Stuff', archived: true, root_tasks: [] }
+    },
+    tasks: {
+      t1: { id: 't1', content: 'Website Redesign', deleted: false, checklist_id: 'l1', tasks: [] },
+      t2: { id: 't2', content: 'Q3 Planning\nsome notes', deleted: false, checklist_id: 'l1', tasks: [] },
+      t3: { id: 't3', content: 'Home Renovation', deleted: false, checklist_id: 'l2', tasks: [] }
+    }
+  };
+}
+
+test('Inbox loads remote lists into the List dropdown, excluding archived lists', async () => {
+  const { elements } = bootInbox(credsSeed(), { backupPayload: backupSeed() });
+
+  await elements.refreshListsBtn.listeners.click();
+
+  const values = elements.taskListId.children.map((o) => o.value);
+  const labels = elements.taskListId.children.map((o) => o.textContent);
+  assert.deepEqual(values, ['', 'l2', 'l1']);
+  assert.deepEqual(labels, ['Default (let sync decide)', 'Personal', 'Work Projects']);
+});
+
+test('Inbox populates the Parent task dropdown from the selected list\'s root tasks only', async () => {
+  const { elements } = bootInbox(credsSeed(), { backupPayload: backupSeed() });
+
+  await elements.refreshListsBtn.listeners.click();
+
+  elements.taskListId.value = 'l1';
+  elements.taskListId.listeners.change();
+
+  assert.equal(elements.taskParentTaskId.disabled, false);
+  const options = elements.taskParentTaskId.children.map((o) => ({ v: o.value, t: o.textContent }));
+  assert.deepEqual(options, [
+    { v: '', t: 'No parent — add to list root' },
+    { v: 't1', t: 'Website Redesign' },
+    { v: 't2', t: 'Q3 Planning' }
+  ]);
+});
+
+test('Inbox selecting a Parent task fills in the manual Parent ID/Title fields used at submit time', async () => {
+  const { elements, getInboxContent } = bootInbox(credsSeed(), { backupPayload: backupSeed() });
+
+  await elements.refreshListsBtn.listeners.click();
+  elements.taskListId.value = 'l1';
+  elements.taskListId.listeners.change();
+
+  elements.taskParentTaskId.value = 't2';
+  elements.taskParentTaskId.listeners.change();
+  assert.equal(elements.taskParentId.value, 't2');
+  assert.equal(elements.taskParentTitle.value, 'Q3 Planning');
+
+  elements.taskTitle.value = 'Draft the outline';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+
+  const queued = JSON.parse(getInboxContent().trim());
+  assert.equal(queued.action, 'addChild');
+  assert.equal(queued.parentTaskId, 't2');
+  assert.equal(queued.listId, undefined);
+});
+
+test('Inbox submitting with a list chosen but no parent adds the task to that list\'s root', async () => {
+  const { elements, getInboxContent } = bootInbox(credsSeed(), { backupPayload: backupSeed() });
+
+  await elements.refreshListsBtn.listeners.click();
+  elements.taskListId.value = 'l2';
+  elements.taskListId.listeners.change();
+
+  elements.taskTitle.value = 'Buy paint';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+
+  const queued = JSON.parse(getInboxContent().trim());
+  assert.equal(queued.action, 'addInbox');
+  assert.equal(queued.listId, 'l2');
+  assert.equal(queued.parentTaskId, undefined);
+});
+
+test('Inbox switching lists clears a previously selected parent and refreshes its options', async () => {
+  const { elements } = bootInbox(credsSeed(), { backupPayload: backupSeed() });
+
+  await elements.refreshListsBtn.listeners.click();
+  elements.taskListId.value = 'l1';
+  elements.taskListId.listeners.change();
+  elements.taskParentTaskId.value = 't1';
+  elements.taskParentTaskId.listeners.change();
+  assert.equal(elements.taskParentId.value, 't1');
+
+  elements.taskListId.value = 'l2';
+  elements.taskListId.listeners.change();
+
+  assert.equal(elements.taskParentId.value, '');
+  assert.equal(elements.taskParentTitle.value, '');
+  const options = elements.taskParentTaskId.children.map((o) => o.value);
+  assert.deepEqual(options, ['', 't3']);
+});
+
+test('Inbox loads lists via the Repo Contents API when repo provider is configured', async () => {
+  const { elements } = bootInbox(repoCredsSeed(), { backupPayload: backupSeed() });
+
+  await elements.refreshListsBtn.listeners.click();
+
+  const values = elements.taskListId.children.map((o) => o.value);
+  assert.deepEqual(values, ['', 'l2', 'l1']);
+});
+
+test('Inbox falls back to manual Parent ID entry when the remote backup cannot be loaded', async () => {
+  const { elements } = bootInbox(credsSeed()); // no backupPayload seeded -> 404s
+
+  await elements.refreshListsBtn.listeners.click();
+
+  // populateListDropdown() is never called on a failed fetch with no cache, so
+  // the JS leaves the dropdown's static "Default" option (defined in the real
+  // HTML, outside the scope of this inline-script-only test harness) alone.
+  assert.equal(elements.taskListId.children.length, 0);
+  assert.equal(elements.listsStatus.textContent.includes('Could not load lists'), true);
+  assert.equal(elements.listsStatus.classList.contains('error'), true);
 });
