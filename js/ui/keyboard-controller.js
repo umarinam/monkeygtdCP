@@ -35,6 +35,15 @@ function bindGlobalEvents(app, state) {
 
   document.getElementById('tag-in').addEventListener('input', () => app.updateTagAC());
   document.getElementById('tag-in').addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      const ac = document.getElementById('tag-ac');
+      const highlighted = ac.classList.contains('on') ? ac.querySelector('.tgsugg.on') : null;
+      if (highlighted) {
+        e.preventDefault();
+        app.pickTag(highlighted.dataset.tag);
+        return;
+      }
+    }
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       app.addTagFromInput();

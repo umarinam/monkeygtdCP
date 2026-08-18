@@ -344,7 +344,7 @@ function updateTagAutocompleteUi(state) {
     ac.classList.remove('on');
     return;
   }
-  ac.innerHTML = m.slice(0, 8).map((tg, i) => `<div class="tgsugg${i === 0 ? ' on' : ''}" onclick="App.pickTag('${tg}')">#${tg}</div>`).join('');
+  ac.innerHTML = m.slice(0, 8).map((tg, i) => `<div class="tgsugg${i === 0 ? ' on' : ''}" data-tag="${esc(tg)}" onclick="App.pickTag('${tg}')">#${esc(tg)}</div>`).join('');
   ac.classList.add('on');
 }
 

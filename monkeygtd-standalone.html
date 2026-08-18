@@ -423,7 +423,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-10T17:54:09+05:00',commit:'ada2c88'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-16T14:16:57+05:00',commit:'bfe8330'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -4857,7 +4857,7 @@ function updateTagAutocompleteUi(state) {
     ac.classList.remove('on');
     return;
   }
-  ac.innerHTML = m.slice(0, 8).map((tg, i) => `<div class="tgsugg${i === 0 ? ' on' : ''}" onclick="App.pickTag('${tg}')">#${tg}</div>`).join('');
+  ac.innerHTML = m.slice(0, 8).map((tg, i) => `<div class="tgsugg${i === 0 ? ' on' : ''}" data-tag="${esc(tg)}" onclick="App.pickTag('${tg}')">#${esc(tg)}</div>`).join('');
   ac.classList.add('on');
 }
 
@@ -5777,6 +5777,15 @@ function bindGlobalEvents(app, state) {
 
   document.getElementById('tag-in').addEventListener('input', () => app.updateTagAC());
   document.getElementById('tag-in').addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      const ac = document.getElementById('tag-ac');
+      const highlighted = ac.classList.contains('on') ? ac.querySelector('.tgsugg.on') : null;
+      if (highlighted) {
+        e.preventDefault();
+        app.pickTag(highlighted.dataset.tag);
+        return;
+      }
+    }
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       app.addTagFromInput();
