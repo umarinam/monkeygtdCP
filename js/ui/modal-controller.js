@@ -1109,6 +1109,100 @@ function saveAllListsJsonUi(app, state) {
   }
 }
 
+function buildSyncSettingsExportPayload(state) {
+  const s = state.data?.settings || {};
+  return {
+    version: 1,
+    exportedAt: now(),
+    syncProvider: s.syncProvider || 'gist',
+    gistToken: s.gistToken || '',
+    gistId: s.gistId || '',
+    gistFilename: s.gistFilename || 'monkeygtd-backup.json',
+    gistInboxFilename: s.gistInboxFilename || 'monkeygtd-inbox.ndjson',
+    gistAutoSyncEnabled: !!s.gistAutoSyncEnabled,
+    gistAutoSyncIntervalMin: s.gistAutoSyncIntervalMin || 5,
+    repoToken: s.repoToken || '',
+    repoOwner: s.repoOwner || '',
+    repoName: s.repoName || '',
+    repoBranch: s.repoBranch || 'main',
+    repoPath: s.repoPath || 'monkeygtd-backup.json',
+    repoInboxPath: s.repoInboxPath || ''
+  };
+}
+
+function parseSyncSettingsImportInput(raw) {
+  const text = String(raw || '').trim();
+  if (!text) throw new Error('Paste exported sync settings JSON first');
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('Invalid JSON');
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Sync settings JSON must be an object');
+  }
+
+  return parsed;
+}
+
+function applySyncSettingsImportUi(app, payload) {
+  // Applied field-by-field through the existing setters (not written to
+  // state.data.settings directly) so import gets the exact same side effects
+  // as manual entry: token mirrored into its parallel localStorage key,
+  // auto-sync timer restarted on provider/interval changes, and the
+  // settings panel's own fields refreshed after each change.
+  if (payload.syncProvider !== undefined) app.setSyncProvider(String(payload.syncProvider || ''));
+  if (payload.gistToken !== undefined) app.setGistToken(String(payload.gistToken || ''));
+  if (payload.gistId !== undefined) app.setGistId(String(payload.gistId || ''));
+  if (payload.gistFilename !== undefined) app.setGistFilename(String(payload.gistFilename || ''));
+  if (payload.gistInboxFilename !== undefined) app.setGistInboxFilename(String(payload.gistInboxFilename || ''));
+  if (payload.gistAutoSyncEnabled !== undefined) app.setGistAutoSyncEnabled(!!payload.gistAutoSyncEnabled);
+  if (payload.gistAutoSyncIntervalMin !== undefined) app.setGistAutoSyncInterval(payload.gistAutoSyncIntervalMin);
+  if (payload.repoToken !== undefined) app.setRepoToken(String(payload.repoToken || ''));
+  if (payload.repoOwner !== undefined) app.setRepoOwner(String(payload.repoOwner || ''));
+  if (payload.repoName !== undefined) app.setRepoName(String(payload.repoName || ''));
+  if (payload.repoBranch !== undefined) app.setRepoBranch(String(payload.repoBranch || ''));
+  if (payload.repoPath !== undefined) app.setRepoPath(String(payload.repoPath || ''));
+  if (payload.repoInboxPath !== undefined) app.setRepoInboxPath(String(payload.repoInboxPath || ''));
+}
+
+function setSyncSettingsJsonError(message) {
+  const el = document.getElementById('sync-settings-json-error');
+  if (!el) return;
+  el.textContent = message || '';
+}
+
+function openSyncSettingsJsonModalUi(app, state) {
+  app.closeModal('ov-settings');
+  setSyncSettingsJsonError('');
+  const payload = buildSyncSettingsExportPayload(state);
+  document.getElementById('sync-settings-json-input').value = JSON.stringify(payload, null, 2);
+  app.openModal('ov-sync-settings-json');
+  setTimeout(() => document.getElementById('sync-settings-json-input').focus(), 50);
+}
+
+function copySyncSettingsJsonUi() {
+  navigator.clipboard?.writeText(document.getElementById('sync-settings-json-input').value).catch(() => { });
+}
+
+function saveSyncSettingsJsonUi(app, state) {
+  const raw = document.getElementById('sync-settings-json-input').value;
+
+  try {
+    const parsed = parseSyncSettingsImportInput(raw);
+    applySyncSettingsImportUi(app, parsed);
+    setSyncSettingsJsonError('');
+    app.closeModal('ov-sync-settings-json');
+    app.openSettings();
+    app.toast('Sync settings imported');
+  } catch (err) {
+    setSyncSettingsJsonError(err?.message || 'Invalid JSON');
+  }
+}
+
 function formatHistoryTypeLabel(type) {
   const labels = {
     title: 'Title',

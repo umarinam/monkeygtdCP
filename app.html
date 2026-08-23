@@ -586,8 +586,29 @@
         <div id="sync-inbox-path" style="padding:4px 8px;font-size:11px;color:var(--fg2);margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="App.syncNow()">Sync now</button>
+          <button class="btn btn-sm" onclick="App.openSyncSettingsJson()">Export/Import Sync Settings</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sync Settings JSON (export/import, e.g. to move to a new machine) -->
+<div id="ov-sync-settings-json" class="ov hidden">
+  <div class="modal" style="max-width:640px">
+    <div class="mh"><span class="mt">Sync Settings JSON</span><span class="mx" onclick="App.closeModal('ov-sync-settings-json')">✕</span></div>
+    <div class="mb">
+      <div class="fg">
+        <label>Copy this to move Gist/Repo sync settings to another machine, or paste settings copied from another machine here and click Import</label>
+        <textarea id="sync-settings-json-input" rows="14" style="font-family:var(--mono);font-size:12px"></textarea>
+      </div>
+      <div id="sync-settings-json-error" class="task-json-error"></div>
+      <div class="ssd">Includes your Personal Access Token in plain text — treat it like a password, don't paste it anywhere untrusted.</div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-sync-settings-json')">Cancel</button>
+      <button class="btn btn-sm" onclick="App.copySyncSettingsJson()">Copy</button>
+      <button class="btn btn-p" onclick="App.saveSyncSettingsJson()">Import</button>
     </div>
   </div>
 </div>

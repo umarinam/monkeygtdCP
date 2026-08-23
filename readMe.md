@@ -492,6 +492,7 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 - Task list layout: density, parent emphasis, indent-guide style, branch spacing, Focus Treatment mode, content width
 - CapsLock double-tap action: pick any command-palette action (e.g. "Toggle Focus Treatment") to run when CapsLock is pressed twice quickly, from anywhere in the app, regardless of selection. Off by default.
 - Gist / repo sync provider and credentials
+- **Export/Import Sync Settings**: from the GitHub Gist Sync section, exports the sync provider, both Gist and Repo credentials/paths, and auto-sync settings as JSON (pre-filled into a textarea, with a Copy button) — paste that JSON on another machine and click Import to carry sync configuration over without re-entering each field by hand. The export includes the Personal Access Token in plain text; the modal warns to treat it like a password. A partial/hand-edited payload only updates the fields it contains, leaving the rest as-is.
 
 
 ---
