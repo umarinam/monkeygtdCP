@@ -166,6 +166,87 @@ test('applySyncSettingsImportUi only touches fields present in a partial/hand-ed
   ]);
 });
 
+test('exports and re-applies a Gist-only configuration end-to-end', () => {
+  const { buildSyncSettingsExportPayload, applySyncSettingsImportUi } = loadModalController();
+  const app = makeFakeApp();
+
+  const state = {
+    data: {
+      settings: {
+        syncProvider: 'gist',
+        gistToken: 'ghp_gistonly_secret',
+        gistId: 'gist-only-id-456',
+        gistFilename: 'my-gist-backup.json',
+        gistInboxFilename: 'my-gist-inbox.ndjson',
+        gistAutoSyncEnabled: true,
+        gistAutoSyncIntervalMin: 10
+        // no repo* fields configured on this machine
+      }
+    }
+  };
+
+  const payload = buildSyncSettingsExportPayload(state);
+  assert.equal(payload.syncProvider, 'gist');
+  assert.equal(payload.gistToken, 'ghp_gistonly_secret');
+  assert.equal(payload.gistId, 'gist-only-id-456');
+  // repo fields still present in the export (as defaults), so a machine that
+  // later switches provider has something sane to fall back to
+  assert.equal(payload.repoBranch, 'main');
+  assert.equal(payload.repoToken, '');
+
+  applySyncSettingsImportUi(app, JSON.parse(JSON.stringify(payload)));
+
+  assert.deepEqual(app.calls.find(c => c[0] === 'setSyncProvider'), ['setSyncProvider', 'gist']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setGistToken'), ['setGistToken', 'ghp_gistonly_secret']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setGistId'), ['setGistId', 'gist-only-id-456']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setGistFilename'), ['setGistFilename', 'my-gist-backup.json']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setGistInboxFilename'), ['setGistInboxFilename', 'my-gist-inbox.ndjson']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setGistAutoSyncEnabled'), ['setGistAutoSyncEnabled', true]);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setGistAutoSyncInterval'), ['setGistAutoSyncInterval', 10]);
+});
+
+test('exports and re-applies a Repo (GitHub repo)-only configuration end-to-end', () => {
+  const { buildSyncSettingsExportPayload, applySyncSettingsImportUi } = loadModalController();
+  const app = makeFakeApp();
+
+  const state = {
+    data: {
+      settings: {
+        syncProvider: 'repo',
+        repoToken: 'github_pat_repoonly_secret',
+        repoOwner: 'acme-corp',
+        repoName: 'gtd-backups',
+        repoBranch: 'sync',
+        repoPath: 'data/monkeygtd.json',
+        repoInboxPath: 'data/inbox.ndjson'
+        // no gist* credentials configured on this machine
+      }
+    }
+  };
+
+  const payload = buildSyncSettingsExportPayload(state);
+  assert.equal(payload.syncProvider, 'repo');
+  assert.equal(payload.repoToken, 'github_pat_repoonly_secret');
+  assert.equal(payload.repoOwner, 'acme-corp');
+  assert.equal(payload.repoName, 'gtd-backups');
+  assert.equal(payload.repoBranch, 'sync');
+  assert.equal(payload.repoPath, 'data/monkeygtd.json');
+  assert.equal(payload.repoInboxPath, 'data/inbox.ndjson');
+  // gist fields still present in the export (as defaults)
+  assert.equal(payload.gistToken, '');
+  assert.equal(payload.gistFilename, 'monkeygtd-backup.json');
+
+  applySyncSettingsImportUi(app, JSON.parse(JSON.stringify(payload)));
+
+  assert.deepEqual(app.calls.find(c => c[0] === 'setSyncProvider'), ['setSyncProvider', 'repo']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setRepoToken'), ['setRepoToken', 'github_pat_repoonly_secret']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setRepoOwner'), ['setRepoOwner', 'acme-corp']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setRepoName'), ['setRepoName', 'gtd-backups']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setRepoBranch'), ['setRepoBranch', 'sync']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setRepoPath'), ['setRepoPath', 'data/monkeygtd.json']);
+  assert.deepEqual(app.calls.find(c => c[0] === 'setRepoInboxPath'), ['setRepoInboxPath', 'data/inbox.ndjson']);
+});
+
 test('applySyncSettingsImportUi coerces non-string/missing values safely instead of throwing', () => {
   const { applySyncSettingsImportUi } = loadModalController();
   const app = makeFakeApp();
