@@ -35,6 +35,24 @@ function resetCompletedDomainUi(app, S) {
   resetCompletedDomain(app, S, walkTasks);
 }
 
+async function optimizeRepoUi(app, S) {
+  if (app.syncProvider() !== 'repo') {
+    app.toast('Optimize repo needs the GitHub Repo sync provider');
+    return false;
+  }
+  const ok = confirm([
+    'Optimize repo? This will:',
+    '1. Sync, then tag the current repo state as a pre-optimize-<date> snapshot',
+    '2. Delete all untitled tasks (their subtasks move up a level)',
+    '3. Delete all completed tasks with their subtasks, in every list',
+    '4. Permanently remove deleted tasks and empty Restore Deleted',
+    `5. Keep only the last ${OPTIMIZE_HISTORY_LIMIT} history entries per task`,
+    '6. Push the result to the repo'
+  ].join('\n'));
+  if (!ok) return false;
+  return optimizeRepoRemote(app, S, { silent: false });
+}
+
 function extractBranchUi(app, S) {
   if (!S.selId) return;
   const t0 = S.data.tasks[S.selId];

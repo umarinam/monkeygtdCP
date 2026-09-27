@@ -55,6 +55,10 @@ function repoContentsUrl(config, path, withRef) {
   return `${base}?ref=${encodeURIComponent(config.branch)}`;
 }
 
+function repoApiUrl(config, suffix) {
+  return `https://api.github.com/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}${suffix}`;
+}
+
 function repoDecodeBase64(content) {
   const b64 = String(content || '').replace(/\n/g, '');
   if (!b64) return '';
@@ -701,6 +705,116 @@ async function syncRepoBidirectionalRemote(app, state, options) {
     return true;
   } catch (err) {
     const msg = err?.message || 'Repo sync failed';
+    repoSetStatus(msg, true);
+    if (!opts.silent) app.toast(msg);
+    return false;
+  }
+}
+
+function repoPad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function repoSnapshotTagName(date, withTime) {
+  const d = date || new Date();
+  const day = `${d.getFullYear()}-${repoPad2(d.getMonth() + 1)}-${repoPad2(d.getDate())}`;
+  if (!withTime) return `pre-optimize-${day}`;
+  return `pre-optimize-${day}-${repoPad2(d.getHours())}${repoPad2(d.getMinutes())}${repoPad2(d.getSeconds())}`;
+}
+
+async function repoGetBranchHeadSha(config) {
+  const res = await fetch(repoApiUrl(config, `/git/ref/heads/${repoEncodePath(config.branch)}`), {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `token ${config.token}`
+    }
+  });
+  if (!res.ok) throw new Error(`Could not read branch ${config.branch} (${res.status})`);
+
+  const json = await res.json();
+  const sha = String(json?.object?.sha || '').trim();
+  if (!sha) throw new Error(`Branch ${config.branch} has no commit to tag`);
+  return sha;
+}
+
+async function repoCreateTagRef(config, name, sha) {
+  const res = await fetch(repoApiUrl(config, '/git/refs'), {
+    method: 'POST',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      Authorization: `token ${config.token}`
+    },
+    body: JSON.stringify({ ref: `refs/tags/${name}`, sha })
+  });
+
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const body = await res.json();
+      detail = String(body?.message || '').trim();
+    } catch {}
+
+    const suffix = detail ? `: ${detail}` : '';
+    const err = new Error(`Tag create failed (${res.status})${suffix}`);
+    err.status = res.status;
+    throw err;
+  }
+  return name;
+}
+
+async function repoCreateSnapshotTag(config, date) {
+  const sha = await repoGetBranchHeadSha(config);
+  try {
+    return await repoCreateTagRef(config, repoSnapshotTagName(date, false), sha);
+  } catch (err) {
+    // Already optimized today (tag exists): fall back to a timestamped name.
+    if (err?.status !== 422) throw err;
+    return repoCreateTagRef(config, repoSnapshotTagName(date, true), sha);
+  }
+}
+
+async function optimizeRepoRemote(app, state, options) {
+  const opts = options || {};
+  const config = repoGetConfig(state);
+  if (!config.token || !config.owner || !config.repo || !config.path) {
+    if (!opts.silent) {
+      app.toast('Set repo token/owner/name/path first');
+      repoSetStatus('Missing repo configuration', true);
+    }
+    return false;
+  }
+
+  try {
+    // Level local and remote first so the snapshot tag holds the latest pre-cleanse data.
+    repoSetStatus('Optimize: syncing before snapshot...', false);
+    const synced = await syncRepoBidirectionalRemote(app, state, { silent: true });
+    if (!synced) throw new Error('Optimize aborted: sync before snapshot failed. Run Sync now and retry.');
+
+    repoSetStatus('Optimize: tagging snapshot...', false);
+    const tag = await repoCreateSnapshotTag(config, new Date());
+
+    app.pushUndo(app.snap());
+    const stats = optimizeDataDomain(state, { historyLimit: opts.historyLimit });
+    app.save();
+    app.render();
+
+    const pushed = await syncToRepoRemote(app, state, { silent: true });
+    if (!pushed) throw new Error(`Optimized locally but push failed (snapshot tag ${tag}). Run Sync now.`);
+
+    const summary = `Optimized: removed ${stats.removed} task(s) (${stats.untitled} untitled, ${stats.completed} completed, ${stats.deleted} deleted), trimmed history on ${stats.historyTrimmedTasks}. Snapshot tag ${tag}`;
+    repoRememberSyncSummary(state, `Optimized (snapshot ${tag})`);
+    app.save({ touchLocalSaveAt: false });
+    app.syncSettings();
+    if (app.syncSB) app.syncSB();
+
+    repoSetStatus(summary, false);
+    if (!opts.silent) app.toast(summary);
+    return { tag, stats };
+  } catch (err) {
+    const msg = err?.message || 'Repo optimize failed';
     repoSetStatus(msg, true);
     if (!opts.silent) app.toast(msg);
     return false;
