@@ -295,6 +295,58 @@
             margin-top: 14px;
             margin-bottom: 14px;
         }
+        .entry-options {
+            margin: -12px 0 24px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafbff;
+        }
+        .entry-options > summary {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .entry-options > summary::-webkit-details-marker {
+            display: none;
+        }
+        .entry-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            flex: 1;
+            min-width: 0;
+        }
+        .entry-chip {
+            max-width: 100%;
+            padding: 3px 10px;
+            background: #eef1ff;
+            color: #4a4f7a;
+            border-radius: 12px;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .entry-options-toggle {
+            color: #667eea;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .entry-options[open] .when-closed,
+        .entry-options:not([open]) .when-open {
+            display: none;
+        }
+        .entry-options-body {
+            padding: 16px 12px 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .entry-options-body > .hint {
+            margin-top: 0;
+        }
     </style>
 </head>
 <body>
@@ -354,46 +406,56 @@
         <form id="taskForm">
             <div class="form-group">
                 <label for="taskTitle">Task Title *</label>
-                <input type="text" id="taskTitle" name="taskTitle" placeholder="Enter task title..." required>
+                <input type="text" id="taskTitle" name="taskTitle" placeholder="Enter task title, then press Enter to send..." required autofocus>
             </div>
 
-            <div class="form-group">
-                <div class="field-head">
-                    <label for="taskListId">List (optional)</label>
-                    <button type="button" class="refresh-lists-btn" id="refreshListsBtn">↻ Refresh</button>
-                </div>
-                <select id="taskListId">
-                    <option value="">Default (let sync decide)</option>
-                </select>
-                <p class="lists-status" id="listsStatus"></p>
-            </div>
+            <details class="entry-options" id="entryOptions">
+                <summary>
+                    <span class="entry-summary" id="entrySummary"></span>
+                    <span class="entry-options-toggle"><span class="when-closed">Change</span><span class="when-open">Done</span></span>
+                </summary>
+                <div class="entry-options-body">
+                    <div class="form-group">
+                        <div class="field-head">
+                            <label for="taskListId">List (optional)</label>
+                            <button type="button" class="refresh-lists-btn" id="refreshListsBtn">↻ Refresh</button>
+                        </div>
+                        <select id="taskListId">
+                            <option value="">Default (let sync decide)</option>
+                        </select>
+                        <p class="lists-status" id="listsStatus"></p>
+                    </div>
 
-            <div class="form-group">
-                <label for="taskParentTaskId">Parent task (optional — top-level tasks only)</label>
-                <select id="taskParentTaskId" disabled>
-                    <option value="">No parent — add to list root</option>
-                </select>
-                <div class="recent-parents" id="recentParents" style="display: none;"></div>
-            </div>
+                    <div class="form-group">
+                        <label for="taskParentTaskId">Parent task (optional — top-level tasks only)</label>
+                        <select id="taskParentTaskId" disabled>
+                            <option value="">No parent — add to list root</option>
+                        </select>
+                        <div class="recent-parents" id="recentParents" style="display: none;"></div>
+                    </div>
 
-            <details class="advanced-parent">
-                <summary>Paste a Parent ID manually instead</summary>
-                <div class="form-group">
-                    <label for="taskParentId">Parent ID</label>
-                    <input type="text" id="taskParentId" name="taskParentId" list="parentSuggestions" placeholder="Paste any task ID, including nested subtasks...">
-                    <datalist id="parentSuggestions"></datalist>
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label for="taskParentTitle">Parent Title (optional)</label>
-                    <input type="text" id="taskParentTitle" name="taskParentTitle" placeholder="Used only to label saved parent IDs...">
-                    <p class="hint">Saved with Parent ID so you can pick it quickly next time. Choosing a List/Parent task above overwrites this.</p>
+                    <details class="advanced-parent" id="advancedParent">
+                        <summary>Paste a Parent ID manually instead</summary>
+                        <div class="form-group">
+                            <label for="taskParentId">Parent ID</label>
+                            <input type="text" id="taskParentId" name="taskParentId" list="parentSuggestions" placeholder="Paste any task ID, including nested subtasks...">
+                            <datalist id="parentSuggestions"></datalist>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="taskParentTitle">Parent Title (optional)</label>
+                            <input type="text" id="taskParentTitle" name="taskParentTitle" placeholder="Used only to label saved parent IDs...">
+                            <p class="hint">Saved with Parent ID so you can pick it quickly next time. Choosing a List/Parent task above overwrites this.</p>
+                        </div>
+                    </details>
+
+                    <div class="form-group">
+                        <label for="taskDueDate">Due Date (optional)</label>
+                        <input type="date" id="taskDueDate" name="taskDueDate">
+                    </div>
+
+                    <p class="hint">List, parent and due date are remembered for your next task.</p>
                 </div>
             </details>
-
-            <div class="form-group">
-                <label for="taskDueDate">Due Date (optional)</label>
-                <input type="date" id="taskDueDate" name="taskDueDate">
-            </div>
 
             <div class="form-group">
                 <label for="taskDescription">Description</label>
@@ -434,10 +496,15 @@
         const parentTaskSelect = document.getElementById('taskParentTaskId');
         const refreshListsBtn = document.getElementById('refreshListsBtn');
         const listsStatus = document.getElementById('listsStatus');
+        const titleInput = document.getElementById('taskTitle');
+        const descriptionInput = document.getElementById('taskDescription');
+        const entrySummary = document.getElementById('entrySummary');
+        const advancedParent = document.getElementById('advancedParent');
 
         const PARENT_CACHE_KEY = 'mgtd3_inbox_parent_cache';
         const MAX_PARENT_CACHE = 20;
         const BACKUP_CACHE_KEY = 'mgtd3_inbox_backup_cache';
+        const PREFS_KEY = 'mgtd3_inbox_prefs';
 
         const DEFAULT_PARENTS = [
             { id: '8bkrfy3mr57q25y', title: 'Email' },
@@ -447,13 +514,174 @@
         ];
 
         let backupData = null; // { lists, tasks, fetchedAt }
+        let inboxPrefs = defaultInboxPrefs();
+        let autoDue = ''; // the "due today" value we filled in, so it can roll forward if left untouched
+        let isSubmitting = false;
+        let statusTimer = null;
 
         // Check authentication on page load
         window.addEventListener('load', () => {
             checkAuthentication();
             renderParentSuggestions();
+            restoreEntryOptions();
             loadBackupData(false);
         });
+
+        // A tab left open past midnight should still file "due today" tasks under the new day.
+        window.addEventListener('focus', rollDueForward);
+
+        function defaultInboxPrefs() {
+            // Quick entry: default list, no parent, due today.
+            return { listId: '', listName: '', parentId: '', parentTitle: '', due: 'today' };
+        }
+
+        // 'today' rolls forward daily, 'none' means no due date, otherwise a fixed YYYY-MM-DD.
+        function normalizeDuePref(value) {
+            const v = String(value || '').trim();
+            if (v === 'today' || v === 'none' || /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+            return 'today';
+        }
+
+        function readInboxPrefs() {
+            try {
+                const raw = localStorage.getItem(PREFS_KEY);
+                const parsed = raw ? JSON.parse(raw) : null;
+                if (parsed && typeof parsed === 'object') {
+                    return {
+                        listId: String(parsed.listId || '').trim(),
+                        listName: String(parsed.listName || '').trim(),
+                        parentId: String(parsed.parentId || '').trim(),
+                        parentTitle: String(parsed.parentTitle || '').trim(),
+                        due: normalizeDuePref(parsed.due)
+                    };
+                }
+            } catch {
+                // fall through to defaults
+            }
+            return defaultInboxPrefs();
+        }
+
+        function updateInboxPrefs(patch) {
+            inboxPrefs = { ...inboxPrefs, ...patch };
+            try {
+                localStorage.setItem(PREFS_KEY, JSON.stringify(inboxPrefs));
+            } catch {
+                // ignore quota errors; the choice still applies for this session
+            }
+            renderEntrySummary();
+        }
+
+        function rememberParent() {
+            updateInboxPrefs({ parentId: parentIdInput.value.trim(), parentTitle: parentTitleInput.value.trim() });
+        }
+
+        function rememberDue() {
+            updateInboxPrefs({ due: duePrefFromValue(dueDateInput.value) });
+            autoDue = inboxPrefs.due === 'today' ? dueDateInput.value : '';
+        }
+
+        function localDateStr(d) {
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        }
+
+        function todayStr() {
+            return localDateStr(new Date());
+        }
+
+        function tomorrowStr() {
+            const d = new Date();
+            d.setDate(d.getDate() + 1);
+            return localDateStr(d);
+        }
+
+        function duePrefFromValue(value) {
+            const v = String(value || '').trim();
+            if (!v) return 'none';
+            if (v === todayStr()) return 'today';
+            return normalizeDuePref(v);
+        }
+
+        function resolveDuePref(pref) {
+            if (pref === 'none') return '';
+            const today = todayStr();
+            // A remembered date that has since passed falls back to the quick-entry default.
+            if (pref === 'today' || pref < today) return today;
+            return pref;
+        }
+
+        function applyDuePref() {
+            dueDateInput.value = resolveDuePref(inboxPrefs.due);
+            autoDue = inboxPrefs.due === 'today' ? dueDateInput.value : '';
+        }
+
+        function rollDueForward() {
+            if (autoDue && dueDateInput.value === autoDue && autoDue !== todayStr()) applyDuePref();
+            renderEntrySummary();
+        }
+
+        function describeDue(value) {
+            if (!value) return 'No due date';
+            if (value === todayStr()) return 'Due today';
+            if (value === tomorrowStr()) return 'Due tomorrow';
+            const d = new Date(`${value}T00:00:00`);
+            if (Number.isNaN(d.getTime())) return `Due ${value}`;
+            return `Due ${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
+        }
+
+        function selectedOption(select) {
+            return [...select.options].find((o) => o.value === select.value) || null;
+        }
+
+        function renderEntrySummary() {
+            if (!entrySummary) return;
+            const parentId = parentIdInput.value.trim();
+            const listOpt = listSelect.value ? selectedOption(listSelect) : null;
+            // A pasted parent ID can live in any list, so only show the list when the task will land there.
+            const parentFromList = !!parentId && parentTaskSelect.value === parentId;
+
+            const chips = [];
+            if (!parentId || parentFromList) chips.push(`📋 ${listOpt ? listOpt.textContent : 'Default list'}`);
+            if (parentId) chips.push(`↳ ${parentTitleInput.value.trim() || parentId}`);
+            chips.push(`📅 ${describeDue(dueDateInput.value)}`);
+
+            entrySummary.innerHTML = '';
+            chips.forEach((text) => {
+                const chip = document.createElement('span');
+                chip.className = 'entry-chip';
+                chip.textContent = text;
+                entrySummary.appendChild(chip);
+            });
+        }
+
+        function restoreEntryOptions() {
+            inboxPrefs = readInboxPrefs();
+            parentIdInput.value = inboxPrefs.parentId;
+            parentTitleInput.value = inboxPrefs.parentTitle;
+            applyDuePref();
+            ensureRememberedListOption();
+            renderEntrySummary();
+        }
+
+        // Keeps the remembered list selected before (or without) a lists fetch, so a quick
+        // entry never silently falls back to the default list. populateListDropdown() replaces it.
+        function ensureRememberedListOption() {
+            const listId = inboxPrefs.listId;
+            if (!listId) return;
+            if (![...listSelect.options].some((o) => o.value === listId)) {
+                const opt = document.createElement('option');
+                opt.value = listId;
+                opt.textContent = inboxPrefs.listName || listId;
+                listSelect.appendChild(opt);
+            }
+            listSelect.value = listId;
+        }
+
+        function clearEntryText() {
+            titleInput.value = '';
+            descriptionInput.value = '';
+            titleInput.focus();
+        }
 
         function readParentCache() {
             try {
@@ -491,6 +719,7 @@
             if (parentIdInput.value.trim() === id) {
                 parentIdInput.value = '';
                 parentTitleInput.value = '';
+                rememberParent();
             }
         }
 
@@ -521,6 +750,7 @@
                 button.addEventListener('click', () => {
                     parentIdInput.value = item.id;
                     if (item.title) parentTitleInput.value = item.title;
+                    rememberParent();
                     parentIdInput.focus();
                 });
 
@@ -828,6 +1058,27 @@
         }
 
         function populateParentDropdown() {
+            fillParentOptions();
+
+            const parentId = parentIdInput.value.trim();
+            const inList = !!parentId && [...parentTaskSelect.options].some((o) => o.value === parentId);
+            parentTaskSelect.value = inList ? parentId : '';
+            // Surface a remembered pasted ID, since the dropdown can't show it.
+            if (advancedParent && parentId && !inList) advancedParent.open = true;
+            renderEntrySummary();
+        }
+
+        // The app rejects addChild for a deleted parent, leaving the request stuck in the queue.
+        function dropDeletedParent() {
+            const parentId = parentIdInput.value.trim();
+            const task = parentId && backupData && backupData.tasks ? backupData.tasks[parentId] : null;
+            if (!task || !task.deleted) return;
+            parentIdInput.value = '';
+            parentTitleInput.value = '';
+            rememberParent();
+        }
+
+        function fillParentOptions() {
             const listId = listSelect.value;
             parentTaskSelect.innerHTML = '';
 
@@ -862,7 +1113,7 @@
         }
 
         function populateListDropdown() {
-            const previous = listSelect.value;
+            const previous = inboxPrefs.listId;
             listSelect.innerHTML = '';
 
             const defaultOpt = document.createElement('option');
@@ -882,9 +1133,10 @@
                     });
             }
 
-            if (previous && [...listSelect.options].some((o) => o.value === previous)) {
-                listSelect.value = previous;
-            }
+            // An archived/removed list falls back to Default without forgetting the preference.
+            const stillExists = !!previous && [...listSelect.options].some((o) => o.value === previous);
+            listSelect.value = stillExists ? previous : '';
+            dropDeletedParent();
             populateParentDropdown();
         }
 
@@ -933,6 +1185,13 @@
             parentIdInput.value = '';
             parentTitleInput.value = '';
             populateParentDropdown();
+            const opt = listSelect.value ? selectedOption(listSelect) : null;
+            updateInboxPrefs({
+                listId: listSelect.value || '',
+                listName: opt ? String(opt.textContent || '') : '',
+                parentId: '',
+                parentTitle: ''
+            });
         });
 
         parentTaskSelect.addEventListener('change', () => {
@@ -940,11 +1199,12 @@
             if (!value) {
                 parentIdInput.value = '';
                 parentTitleInput.value = '';
-                return;
+            } else {
+                const match = selectedOption(parentTaskSelect);
+                parentIdInput.value = value;
+                parentTitleInput.value = match ? match.textContent : '';
             }
-            const match = [...parentTaskSelect.options].find((o) => o.value === value);
-            parentIdInput.value = value;
-            parentTitleInput.value = match ? match.textContent : '';
+            rememberParent();
         });
 
         refreshListsBtn.addEventListener('click', () => loadBackupData(true));
@@ -953,13 +1213,31 @@
             const id = parentIdInput.value.trim();
             if (!id) {
                 parentTitleInput.value = '';
-                return;
+            } else {
+                const hit = readParentCache().find((item) => item.id === id);
+                if (hit && hit.title && !parentTitleInput.value.trim()) {
+                    parentTitleInput.value = hit.title;
+                }
             }
+            rememberParent();
+        });
 
-            const hit = readParentCache().find((item) => item.id === id);
-            if (hit && hit.title && !parentTitleInput.value.trim()) {
-                parentTitleInput.value = hit.title;
-            }
+        parentTitleInput.addEventListener('input', rememberParent);
+        dueDateInput.addEventListener('input', rememberDue);
+        dueDateInput.addEventListener('change', rememberDue);
+
+        // The form has several text fields and no submit button, so the browser won't
+        // submit on Enter by itself; quick entry wants Enter in the title to send.
+        titleInput.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' || e.isComposing) return;
+            e.preventDefault();
+            submitTask();
+        });
+
+        // Clear only what was typed; the remembered list/parent/due stay for the next task.
+        form.addEventListener('reset', (e) => {
+            e.preventDefault();
+            clearEntryText();
         });
 
         function getAppSettings() {
@@ -1133,6 +1411,7 @@
         });
 
         async function submitTask() {
+            if (isSubmitting) return;
             const provider = getProvider();
             const creds = provider === 'repo' ? getRepoCredentials() : getGistCredentials();
 
@@ -1146,8 +1425,9 @@
                 return;
             }
 
-            const taskTitle = document.getElementById('taskTitle').value.trim();
-            const taskDescription = document.getElementById('taskDescription').value.trim();
+            rollDueForward();
+            const taskTitle = titleInput.value.trim();
+            const taskDescription = descriptionInput.value.trim();
             const taskParentId = parentIdInput.value.trim();
             const taskParentTitle = parentTitleInput.value.trim();
             const taskListId = listSelect.value;
@@ -1158,6 +1438,7 @@
                 return;
             }
 
+            isSubmitting = true;
             submitBtn.disabled = true;
             showStatus('Sending task...', 'info');
 
@@ -1191,9 +1472,8 @@
                 }
 
                 cacheParentReference(taskParentId, taskParentTitle);
-                form.reset();
-                populateParentDropdown();
-                setTimeout(() => {
+                clearEntryText();
+                statusTimer = setTimeout(() => {
                     statusMessage.style.display = 'none';
                 }, 5000);
             } catch (error) {
@@ -1203,6 +1483,7 @@
                     showStatus(`Error: ${error.message}`, 'error');
                 }
             } finally {
+                isSubmitting = false;
                 submitBtn.disabled = false;
             }
         }
@@ -1219,6 +1500,9 @@
         });
 
         function showStatus(message, type) {
+            // An earlier success's auto-hide sets an inline display:none that would override the class.
+            clearTimeout(statusTimer);
+            statusMessage.style.display = '';
             statusMessage.textContent = message;
             statusMessage.className = `status ${type}`;
         }
