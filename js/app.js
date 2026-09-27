@@ -14,6 +14,7 @@ const S={
   showNotes:false, clipboard:null,
   lastClickId:'', lastClickAt:0,
   lastCdAt:0,
+  repoVersions:null,
   collapsedDueSections:new Set(),
   iac:{open:false,taskId:null,type:'',query:'',start:0,end:0,items:[],index:0}
 };
@@ -805,6 +806,10 @@ const App={
   async syncToRepo(){ return (typeof syncToRepoRemote === 'function') ? syncToRepoRemote(this, S, { silent:false }) : false; },
   async syncRepoNow(){ return (typeof syncRepoBidirectionalRemote === 'function') ? syncRepoBidirectionalRemote(this, S, { silent:false }) : false; },
   async optimizeRepo(){ return optimizeRepoUi(this, S); },
+  openRepoVersions(){ return openRepoVersionsUi(this, S); },
+  loadMoreRepoVersions(){ return loadMoreRepoVersionsUi(this, S); },
+  setRepoVersionsUntil(v){ return setRepoVersionsUntilUi(this, S, v); },
+  async restoreRepoVersion(sha){ return restoreRepoVersionUi(this, S, sha); },
   syncProvider(){ return String(S.data?.settings?.syncProvider || 'gist').trim() === 'repo' ? 'repo' : 'gist'; },
   async syncNow(){ return this.syncProvider() === 'repo' ? this.syncRepoNow() : this.syncGistNow(); },
   async checkSyncOnRefresh(){ return this.syncProvider() === 'repo' ? this.checkRepoOnRefresh() : this.checkGistOnRefresh(); },

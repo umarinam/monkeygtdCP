@@ -125,5 +125,7 @@ test('quickAddKeyUi submits on Enter and closes the modal on Escape', () => {
 
 test('quick-add modal is registered as a tracked overlay so global shortcuts are suppressed while it is open', () => {
   const src = fs.readFileSync(path.join(process.cwd(), 'js/ui/keyboard-controller.js'), 'utf8');
-  assert.equal(/'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json sync-settings-json shortcuts quickadd'/.test(src), true);
+  const tracked = src.match(/const anyModal = \[\.\.\.'([^']+)'\.split/);
+  assert.ok(tracked, 'Expected the tracked-overlay list in handleGlobalKey');
+  assert.equal(tracked[1].split(' ').includes('quickadd'), true);
 });

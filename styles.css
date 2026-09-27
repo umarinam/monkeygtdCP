@@ -408,6 +408,13 @@ label{display:block;margin-bottom:4px;font-size:12px;font-weight:500;color:var(-
 .del-row{display:flex;align-items:center;gap:8px;padding:6px 0;
          border-bottom:1px solid var(--border)}
 .del-row:last-child{border:none}
+.repo-ver-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.repo-ver-row:last-child{border:none}
+.repo-ver-main{flex:1;min-width:0}
+.repo-ver-when{font-size:13px}
+.repo-ver-meta{font-size:11px;color:var(--muted);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.repo-ver-badge{display:inline-block;margin-left:6px;padding:0 6px;border-radius:8px;font-size:10px;background:var(--accent);color:#fff;vertical-align:middle}
+.repo-ver-status{min-height:18px;margin-top:6px;font-size:12px;color:var(--muted)}
 mark{background:rgba(251,191,36,.4);border-radius:2px}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}

@@ -415,6 +415,13 @@ label{display:block;margin-bottom:4px;font-size:12px;font-weight:500;color:var(-
 .del-row{display:flex;align-items:center;gap:8px;padding:6px 0;
          border-bottom:1px solid var(--border)}
 .del-row:last-child{border:none}
+.repo-ver-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.repo-ver-row:last-child{border:none}
+.repo-ver-main{flex:1;min-width:0}
+.repo-ver-when{font-size:13px}
+.repo-ver-meta{font-size:11px;color:var(--muted);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.repo-ver-badge{display:inline-block;margin-left:6px;padding:0 6px;border-radius:8px;font-size:10px;background:var(--accent);color:#fff;vertical-align:middle}
+.repo-ver-status{min-height:18px;margin-top:6px;font-size:12px;color:var(--muted)}
 mark{background:rgba(251,191,36,.4);border-radius:2px}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -423,7 +430,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-23T21:19:57+05:00',commit:'4d6cf0c'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-09-27T11:52:06+05:00',commit:'167cfd6'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -997,6 +1004,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
             <button class="btn btn-sm" onclick="App.syncFromRepo()">Pull from Repo</button>
             <button class="btn btn-sm" onclick="App.syncToRepo()">Push to Repo</button>
+            <button class="btn btn-sm" onclick="App.openRepoVersions()">Restore Older Version…</button>
             <button class="btn btn-sm btn-d" onclick="App.optimizeRepo()" title="Tag a snapshot, then remove untitled/completed/deleted tasks, trim history and push">Optimize Repo</button>
           </div>
         </div>
@@ -1027,6 +1035,26 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
       <button class="btn" onclick="App.closeModal('ov-sync-settings-json')">Cancel</button>
       <button class="btn btn-sm" onclick="App.copySyncSettingsJson()">Copy</button>
       <button class="btn btn-p" onclick="App.saveSyncSettingsJson()">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Restore an older version of the repo backup file (from its commit history) -->
+<div id="ov-repo-versions" class="ov hidden">
+  <div class="modal" style="max-width:520px">
+    <div class="mh"><span class="mt">Restore Older Version</span><span class="mx" onclick="App.closeModal('ov-repo-versions')">✕</span></div>
+    <div class="mb">
+      <div class="ssd" style="margin-bottom:10px">Every push to the repo is saved as a version. Restoring one replaces your current data and pushes it back as the latest version (older versions stay in the repo's history).</div>
+      <div class="fg">
+        <label for="repo-versions-until">Show versions up to (optional)</label>
+        <input id="repo-versions-until" type="date" onchange="App.setRepoVersionsUntil(this.value)">
+      </div>
+      <div id="repo-versions-list" style="max-height:320px;overflow-y:auto"></div>
+      <div id="repo-versions-status" class="repo-ver-status"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-repo-versions')">Close</button>
+      <button id="repo-versions-more" class="btn btn-sm" style="display:none" onclick="App.loadMoreRepoVersions()">Load older versions</button>
     </div>
   </div>
 </div>
@@ -4054,22 +4082,56 @@ function repoRememberSyncSummary(state, summary, at) {
   state.data.settings.repoLastSyncAt = stamp;
 }
 
+const REPO_SYNC_SETTING_KEYS = [
+  'gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary',
+  'gistLastLocalSaveAt', 'gistAutoSyncEnabled', 'gistAutoSyncIntervalMin',
+  'syncProvider', 'repoToken', 'repoOwner', 'repoName', 'repoBranch', 'repoPath', 'repoInboxPath',
+  'repoLastSyncAt', 'repoLastSyncSummary', 'syncLastAt', 'syncLastSummary', 'repoProcessedInboxIds'
+];
+
 function repoPreserveSyncSettings(state, previousSettings) {
   const current = state.data.settings || {};
-  const preservedKeys = [
-    'gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary',
-    'gistLastLocalSaveAt', 'gistAutoSyncEnabled', 'gistAutoSyncIntervalMin',
-    'syncProvider', 'repoToken', 'repoOwner', 'repoName', 'repoBranch', 'repoPath', 'repoInboxPath',
-    'repoLastSyncAt', 'repoLastSyncSummary', 'syncLastAt', 'syncLastSummary', 'repoProcessedInboxIds'
-  ];
 
-  for (const key of preservedKeys) {
+  for (const key of REPO_SYNC_SETTING_KEYS) {
     if ((current[key] === undefined || current[key] === null || current[key] === '') && previousSettings[key] !== undefined) {
       current[key] = previousSettings[key];
     }
   }
 
   state.data.settings = current;
+}
+
+function repoKeepCurrentSyncSettings(state, previousSettings) {
+  // Unlike a pull, a restored version can be arbitrarily old, so its sync
+  // config (repo path, branch, provider, sync timestamps...) must never win
+  // over this device's current values - otherwise restoring could silently
+  // point sync at a different file or roll back the conflict-detection clock.
+  const current = state.data.settings || {};
+
+  for (const key of REPO_SYNC_SETTING_KEYS) {
+    if (previousSettings[key] === undefined) delete current[key];
+    else current[key] = previousSettings[key];
+  }
+
+  state.data.settings = current;
+}
+
+function repoReplaceLocalData(state, data) {
+  const prevHoistId = state.hoistId;
+  const prevSelId = state.selId;
+  const prevFilter = state.filter;
+  const prevMsel = new Set(state.msel);
+
+  state.data = data;
+  state.data.settings = state.data.settings || {};
+  state.data.currentListId = state.data.currentListId || Object.keys(state.data.lists || {})[0] || null;
+  state.listId = state.data.currentListId;
+  state.editId = null;
+
+  state.hoistId = (prevHoistId && state.data.tasks[prevHoistId] && !state.data.tasks[prevHoistId].deleted) ? prevHoistId : null;
+  state.selId = (prevSelId && state.data.tasks[prevSelId] && !state.data.tasks[prevSelId].deleted) ? prevSelId : null;
+  state.filter = prevFilter;
+  state.msel = new Set(Array.from(prevMsel).filter(id => state.data.tasks[id] && !state.data.tasks[id].deleted));
 }
 
 function repoResolveRemoteVsLocal(remoteMs, localMs) {
@@ -4467,22 +4529,8 @@ async function syncFromRepoRemote(app, state, options) {
     }
 
     const prevSettings = state.data.settings || {};
-    const prevHoistId = state.hoistId;
-    const prevSelId = state.selId;
-    const prevFilter = state.filter;
-    const prevMsel = new Set(state.msel);
-    
-    state.data = payload.data;
-    state.data.settings = state.data.settings || {};
+    repoReplaceLocalData(state, payload.data);
     repoPreserveSyncSettings(state, prevSettings);
-    state.data.currentListId = state.data.currentListId || Object.keys(state.data.lists || {})[0] || null;
-    state.listId = state.data.currentListId;
-    state.editId = null;
-    
-    state.hoistId = (prevHoistId && state.data.tasks[prevHoistId] && !state.data.tasks[prevHoistId].deleted) ? prevHoistId : null;
-    state.selId = (prevSelId && state.data.tasks[prevSelId] && !state.data.tasks[prevSelId].deleted) ? prevSelId : null;
-    state.filter = prevFilter;
-    state.msel = new Set(Array.from(prevMsel).filter(id => state.data.tasks[id] && !state.data.tasks[id].deleted));
 
     const at = payload.exportedAt || new Date().toISOString();
     const inbox = await repoProcessInboxRemote(state, config);
@@ -4744,6 +4792,146 @@ async function optimizeRepoRemote(app, state, options) {
     if (!opts.silent) app.toast(msg);
     return false;
   }
+}
+
+// Version history / restore
+// Every push is a commit to the backup file, so the repo's commit history for
+// that path doubles as a list of restorable versions.
+
+const REPO_VERSIONS_PAGE_SIZE = 30;
+
+function repoCommitsUrl(config, options) {
+  const opts = options || {};
+  const params = [
+    `path=${encodeURIComponent(config.path)}`,
+    `sha=${encodeURIComponent(config.branch)}`,
+    `per_page=${opts.perPage || REPO_VERSIONS_PAGE_SIZE}`,
+    `page=${Math.max(1, Number(opts.page) || 1)}`
+  ];
+  if (opts.until) params.push(`until=${encodeURIComponent(opts.until)}`);
+  return repoApiUrl(config, `/commits?${params.join('&')}`);
+}
+
+function repoParseVersionList(json) {
+  if (!Array.isArray(json)) return [];
+  return json
+    .map(entry => {
+      const commit = entry?.commit || {};
+      return {
+        sha: String(entry?.sha || '').trim(),
+        date: String(commit.committer?.date || commit.author?.date || ''),
+        message: String(commit.message || '').split('\n')[0].trim(),
+        author: String(commit.author?.name || entry?.author?.login || '').trim()
+      };
+    })
+    .filter(v => v.sha);
+}
+
+async function listRepoVersionsRemote(state, options) {
+  const opts = options || {};
+  const config = repoGetConfig(state);
+  if (!config.token || !config.owner || !config.repo || !config.path) {
+    throw new Error('Set repo token/owner/name/path first');
+  }
+
+  const perPage = REPO_VERSIONS_PAGE_SIZE;
+  const res = await fetch(repoCommitsUrl(config, { page: opts.page, until: opts.until, perPage }), {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `token ${config.token}`
+    }
+  });
+
+  // GitHub answers 409 for a repo with no commits at all - nothing to restore.
+  if (res.status === 409) return { versions: [], hasMore: false };
+  if (res.status === 404) throw new Error(`Repo or branch not found: ${config.owner}/${config.repo}@${config.branch}`);
+  if (!res.ok) throw new Error(`Repo history read failed (${res.status})`);
+
+  const json = await res.json();
+  const rawCount = Array.isArray(json) ? json.length : 0;
+  return {
+    versions: repoParseVersionList(json),
+    hasMore: rawCount >= perPage
+  };
+}
+
+async function fetchRepoVersionRemote(state, commitSha) {
+  const config = repoGetConfig(state);
+  if (!config.token || !config.owner || !config.repo || !config.path) {
+    throw new Error('Set repo token/owner/name/path first');
+  }
+
+  const sha = String(commitSha || '').trim();
+  if (!sha) throw new Error('Pick a version to restore');
+  const short = sha.slice(0, 7);
+
+  // Same backup file, read at that commit instead of at the branch head.
+  const file = await repoFetchFile({ ...config, branch: sha });
+  if (!file) throw new Error(`Backup file not found in version ${short}`);
+
+  let payload;
+  try {
+    payload = repoParsePayload(file.raw);
+  } catch {
+    throw new Error(`Version ${short} is empty or not valid JSON`);
+  }
+
+  const data = payload.data;
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  if (!isObj(data) || !isObj(data.tasks) || !isObj(data.lists)) {
+    throw new Error(`Version ${short} is not a MonkeyGTD backup`);
+  }
+
+  return { sha, exportedAt: payload.exportedAt || '', data };
+}
+
+async function restoreRepoVersionRemote(app, state, version, options) {
+  const opts = options || {};
+  if (!version || !version.data) return { restored: false, pushed: false };
+
+  const config = repoGetConfig(state);
+  const short = String(version.sha || '').slice(0, 7) || 'version';
+
+  // Tasks + lists go on the undo stack, so Ctrl+Z / uu takes the restore back.
+  if (typeof app.pushUndo === 'function' && typeof app.snap === 'function') {
+    app.pushUndo(app.snap());
+  }
+
+  const prevSettings = state.data.settings || {};
+  repoReplaceLocalData(state, JSON.parse(JSON.stringify(version.data)));
+  repoKeepCurrentSyncSettings(state, prevSettings);
+
+  // A normal save stamps local as the newest copy, so if the push below fails
+  // the next sync still pushes the restored data instead of pulling the old
+  // head back over it.
+  app.save();
+  app.render();
+  app.syncSettings();
+  if (app.syncSB) app.syncSB();
+
+  // Push immediately so the restored copy becomes the latest version in the
+  // repo and other devices pick it up; the replaced head stays in git history.
+  const pushed = await syncToRepoRemote(app, state, { silent: true });
+
+  const summary = pushed ? `Restored ${short}` : `Restored ${short} (not pushed)`;
+  state.data.settings = state.data.settings || {};
+  state.data.settings.syncLastSummary = summary;
+  state.data.settings.repoLastSyncSummary = summary;
+  app.save({ touchLocalSaveAt: false });
+  app.syncSettings();
+  if (app.syncSB) app.syncSB();
+
+  if (pushed) {
+    repoSetStatus(`Restored version ${short} and pushed it to ${config.path}`, false);
+    if (!opts.silent) app.toast(`Restored version ${short}`);
+  } else {
+    repoSetStatus(`Restored version ${short} locally; push to repo failed - run Sync now to retry`, true);
+    if (!opts.silent) app.toast('Restored locally; push to repo failed');
+  }
+
+  return { restored: true, pushed };
 }
 
 
@@ -6134,7 +6322,7 @@ function handleGlobalKey(app, state, e) {
 
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json sync-settings-json shortcuts quickadd'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json sync-settings-json repo-versions shortcuts quickadd'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');
@@ -7765,6 +7953,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Pull from Gist', s: 'sp', fn: () => app.syncFromGist() },
     { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
     { l: 'Optimize repo', fn: () => app.optimizeRepo() },
+    { l: 'Restore older version from repo', fn: () => app.openRepoVersions() },
     { l: 'Hide/show completed', s: 'hc', fn: () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); } },
     { l: 'Hide/show future due', s: 'hf', fn: () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); } },
     { l: 'Toggle Focus Treatment', s: 'ft', fn: () => { state.data.settings.focusMode = state.data.settings.focusMode === 'path' ? 'off' : 'path'; app.save(); app.render(); app.syncSettings(); } },
@@ -8691,6 +8880,178 @@ function clearAllDataUi(app, S) {
 
 'use strict';
 
+// "Restore Older Version" modal for the GitHub Repo sync provider: lists the
+// backup file's commit history and restores the picked version.
+
+function repoVersionsInitialState() {
+  return { versions: [], page: 1, hasMore: false, until: '', loading: false, restoring: false, requestId: 0, error: '' };
+}
+
+function repoVersionsSetStatus(message, isError) {
+  const el = document.getElementById('repo-versions-status');
+  if (!el) return;
+  el.textContent = message || '';
+  el.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+}
+
+function repoVersionsUntilIso(dateValue) {
+  // <input type="date"> gives YYYY-MM-DD; include that whole local day.
+  const text = String(dateValue || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return '';
+  const end = new Date(`${text}T23:59:59.999`);
+  return Number.isFinite(end.getTime()) ? end.toISOString() : '';
+}
+
+function repoVersionWhen(version) {
+  const ms = Date.parse(version?.date || '');
+  return Number.isFinite(ms) ? new Date(ms).toLocaleString() : 'Unknown date';
+}
+
+function countRepoBackupData(data) {
+  const lists = Object.keys(data?.lists || {}).length;
+  const tasks = Object.values(data?.tasks || {}).filter(t => t && !t.deleted).length;
+  return { lists, tasks };
+}
+
+function describeRepoBackupCounts(counts) {
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  return `${plural(counts.lists, 'list')}, ${plural(counts.tasks, 'task')}`;
+}
+
+function renderRepoVersionRow(version, isLatest) {
+  const short = version.sha.slice(0, 7);
+  // Pushes from this app all say "MonkeyGTD backup <timestamp>", which just
+  // repeats the date - only show messages from commits made some other way.
+  const message = /^MonkeyGTD backup\b/.test(version.message) ? '' : version.message;
+  const meta = [short, version.author, message].filter(Boolean).map(esc).join(' &middot; ');
+  const badge = isLatest ? ' <span class="repo-ver-badge">Latest</span>' : '';
+  return `<div class="repo-ver-row">`
+    + `<div class="repo-ver-main"><div class="repo-ver-when">${esc(repoVersionWhen(version))}${badge}</div>`
+    + `<div class="repo-ver-meta">${meta}</div></div>`
+    + `<button class="btn btn-sm" data-sha="${esc(version.sha)}" onclick="App.restoreRepoVersion(this.dataset.sha)">Restore</button>`
+    + `</div>`;
+}
+
+function renderRepoVersionsUi(state) {
+  const rv = state.repoVersions || repoVersionsInitialState();
+  const versions = rv.versions || [];
+  const listEl = document.getElementById('repo-versions-list');
+  if (listEl) {
+    // Only the head of the unfiltered history is the repo's current copy.
+    listEl.innerHTML = versions.length
+      ? versions.map((v, i) => renderRepoVersionRow(v, i === 0 && !rv.until)).join('')
+      : (rv.loading || rv.error ? '' : '<div style="color:var(--muted);padding:12px">No versions found for this backup file.</div>');
+  }
+  const moreEl = document.getElementById('repo-versions-more');
+  if (moreEl) moreEl.style.display = rv.hasMore && !rv.loading ? '' : 'none';
+}
+
+async function loadRepoVersionsUi(app, state, options) {
+  const opts = options || {};
+  const rv = state.repoVersions;
+  if (!rv) return false;
+  if (opts.append && (rv.loading || !rv.hasMore)) return false;
+
+  // A newer load (date filter changed, modal reopened) supersedes this one.
+  const requestId = rv.requestId + 1;
+  rv.requestId = requestId;
+  const isStale = () => state.repoVersions !== rv || rv.requestId !== requestId;
+
+  const page = opts.append ? rv.page + 1 : 1;
+  rv.loading = true;
+  renderRepoVersionsUi(state);
+  repoVersionsSetStatus('Loading versions...', false);
+
+  try {
+    const result = await listRepoVersionsRemote(state, { page, until: rv.until });
+    if (isStale()) return false;
+    rv.versions = opts.append ? rv.versions.concat(result.versions) : result.versions;
+    rv.page = page;
+    rv.hasMore = result.hasMore;
+    rv.error = '';
+    repoVersionsSetStatus('', false);
+    return true;
+  } catch (err) {
+    if (isStale()) return false;
+    rv.error = err?.message || 'Could not load versions';
+    repoVersionsSetStatus(rv.error, true);
+    return false;
+  } finally {
+    if (!isStale()) {
+      rv.loading = false;
+      renderRepoVersionsUi(state);
+    }
+  }
+}
+
+function openRepoVersionsUi(app, state) {
+  app.closeModal('ov-settings');
+  state.repoVersions = repoVersionsInitialState();
+  const untilEl = document.getElementById('repo-versions-until');
+  if (untilEl) untilEl.value = '';
+  repoVersionsSetStatus('', false);
+  renderRepoVersionsUi(state);
+  app.openModal('ov-repo-versions');
+  return loadRepoVersionsUi(app, state);
+}
+
+function loadMoreRepoVersionsUi(app, state) {
+  return loadRepoVersionsUi(app, state, { append: true });
+}
+
+function setRepoVersionsUntilUi(app, state, dateValue) {
+  const rv = state.repoVersions;
+  if (!rv) return false;
+  rv.until = repoVersionsUntilIso(dateValue);
+  rv.versions = [];
+  rv.hasMore = false;
+  rv.error = '';
+  return loadRepoVersionsUi(app, state);
+}
+
+async function restoreRepoVersionUi(app, state, commitSha) {
+  const rv = state.repoVersions || (state.repoVersions = repoVersionsInitialState());
+  if (rv.restoring) return false;
+  rv.restoring = true;
+
+  try {
+    repoVersionsSetStatus('Loading version...', false);
+    let version;
+    try {
+      version = await fetchRepoVersionRemote(state, commitSha);
+    } catch (err) {
+      repoVersionsSetStatus(err?.message || 'Could not load version', true);
+      return false;
+    }
+
+    const listed = (rv.versions || []).find(v => v.sha === version.sha);
+    const when = listed
+      ? repoVersionWhen(listed)
+      : (version.exportedAt ? new Date(version.exportedAt).toLocaleString() : version.sha.slice(0, 7));
+    const incoming = countRepoBackupData(version.data);
+    const current = countRepoBackupData(state.data);
+    const ok = confirm(
+      `Restore the version from ${when} (${describeRepoBackupCounts(incoming)})?\n\n`
+      + `This replaces your current data (${describeRepoBackupCounts(current)}) and pushes the restored copy `
+      + `to the repo as its latest version. You can undo this with Ctrl+Z.`
+    );
+    if (!ok) {
+      repoVersionsSetStatus('', false);
+      return false;
+    }
+
+    repoVersionsSetStatus('Restoring...', false);
+    const result = await restoreRepoVersionRemote(app, state, version, { silent: false });
+    if (result.restored) app.closeModal('ov-repo-versions');
+    return result.restored;
+  } finally {
+    rv.restoring = false;
+  }
+}
+
+
+'use strict';
+
 const SINGLE_INSTANCE_LOCK_NAME = 'mgtd3-single-instance';
 
 function singleInstanceLocksAvailable() {
@@ -8774,6 +9135,7 @@ const S={
   showNotes:false, clipboard:null,
   lastClickId:'', lastClickAt:0,
   lastCdAt:0,
+  repoVersions:null,
   collapsedDueSections:new Set(),
   iac:{open:false,taskId:null,type:'',query:'',start:0,end:0,items:[],index:0}
 };
@@ -9565,6 +9927,10 @@ const App={
   async syncToRepo(){ return (typeof syncToRepoRemote === 'function') ? syncToRepoRemote(this, S, { silent:false }) : false; },
   async syncRepoNow(){ return (typeof syncRepoBidirectionalRemote === 'function') ? syncRepoBidirectionalRemote(this, S, { silent:false }) : false; },
   async optimizeRepo(){ return optimizeRepoUi(this, S); },
+  openRepoVersions(){ return openRepoVersionsUi(this, S); },
+  loadMoreRepoVersions(){ return loadMoreRepoVersionsUi(this, S); },
+  setRepoVersionsUntil(v){ return setRepoVersionsUntilUi(this, S, v); },
+  async restoreRepoVersion(sha){ return restoreRepoVersionUi(this, S, sha); },
   syncProvider(){ return String(S.data?.settings?.syncProvider || 'gist').trim() === 'repo' ? 'repo' : 'gist'; },
   async syncNow(){ return this.syncProvider() === 'repo' ? this.syncRepoNow() : this.syncGistNow(); },
   async checkSyncOnRefresh(){ return this.syncProvider() === 'repo' ? this.checkRepoOnRefresh() : this.checkGistOnRefresh(); },
@@ -9610,6 +9976,7 @@ App.init();
 
 
 </script>
+
 
 
 

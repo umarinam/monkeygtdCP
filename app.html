@@ -580,6 +580,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
             <button class="btn btn-sm" onclick="App.syncFromRepo()">Pull from Repo</button>
             <button class="btn btn-sm" onclick="App.syncToRepo()">Push to Repo</button>
+            <button class="btn btn-sm" onclick="App.openRepoVersions()">Restore Older Version…</button>
             <button class="btn btn-sm btn-d" onclick="App.optimizeRepo()" title="Tag a snapshot, then remove untitled/completed/deleted tasks, trim history and push">Optimize Repo</button>
           </div>
         </div>
@@ -610,6 +611,26 @@
       <button class="btn" onclick="App.closeModal('ov-sync-settings-json')">Cancel</button>
       <button class="btn btn-sm" onclick="App.copySyncSettingsJson()">Copy</button>
       <button class="btn btn-p" onclick="App.saveSyncSettingsJson()">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Restore an older version of the repo backup file (from its commit history) -->
+<div id="ov-repo-versions" class="ov hidden">
+  <div class="modal" style="max-width:520px">
+    <div class="mh"><span class="mt">Restore Older Version</span><span class="mx" onclick="App.closeModal('ov-repo-versions')">✕</span></div>
+    <div class="mb">
+      <div class="ssd" style="margin-bottom:10px">Every push to the repo is saved as a version. Restoring one replaces your current data and pushes it back as the latest version (older versions stay in the repo's history).</div>
+      <div class="fg">
+        <label for="repo-versions-until">Show versions up to (optional)</label>
+        <input id="repo-versions-until" type="date" onchange="App.setRepoVersionsUntil(this.value)">
+      </div>
+      <div id="repo-versions-list" style="max-height:320px;overflow-y:auto"></div>
+      <div id="repo-versions-status" class="repo-ver-status"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="App.closeModal('ov-repo-versions')">Close</button>
+      <button id="repo-versions-more" class="btn btn-sm" style="display:none" onclick="App.loadMoreRepoVersions()">Load older versions</button>
     </div>
   </div>
 </div>
@@ -702,6 +723,7 @@
 <script src="js/ui/clipboard-controller.js"></script>
 <script src="js/ui/utilities-controller.js"></script>
 <script src="js/ui/storage-display.js"></script>
+<script src="js/ui/repo-versions-controller.js"></script>
 <script src="js/ui/single-instance-controller.js"></script>
 <script src="js/app.js"></script>
 </body>
