@@ -9,6 +9,7 @@ This repository includes a GitHub Actions workflow at `.github/workflows/pages.y
 ![Deploy GitHub Pages](https://github.com/umarinam/monkeygtdCP/actions/workflows/pages.yml/badge.svg)
 
 Live URL: https://umarinam.github.io/monkeygtdCP/
+Live Inbox URL: https://umarinam.github.io/monkeygtdCP/inbox.html
 
 One-time setup in GitHub repository settings:
 1. Open Settings > Pages.
