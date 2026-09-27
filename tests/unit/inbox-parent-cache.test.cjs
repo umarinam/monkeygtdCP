@@ -33,7 +33,10 @@ function createElement(id) {
     addEventListener(type, cb) {
       this.listeners[type] = cb;
     },
-    focus() {},
+    focusCount: 0,
+    focus() {
+      this.focusCount++;
+    },
     appendChild(child) {
       this.children.push(child);
       return child;
@@ -72,6 +75,31 @@ function createStorage(seed = {}) {
     },
     removeItem(key) {
       map.delete(key);
+    },
+    snapshot() {
+      return Object.fromEntries(map);
+    }
+  };
+}
+
+// Date stand-in with a settable "now", so due-today behavior is deterministic
+// and a page left open past midnight can be simulated. Use local-time ISO
+// strings (no Z) so the local calendar date is the same in every timezone.
+function createClock(localIso) {
+  let nowMs = new Date(localIso).getTime();
+  class ClockDate extends Date {
+    constructor(...args) {
+      if (args.length === 0) super(nowMs);
+      else super(...args);
+    }
+    static now() {
+      return nowMs;
+    }
+  }
+  return {
+    Date: ClockDate,
+    set(nextLocalIso) {
+      nowMs = new Date(nextLocalIso).getTime();
     }
   };
 }
@@ -103,7 +131,9 @@ function bootInbox(localSeed = {}, options = {}) {
     taskListId: createElement('taskListId'),
     taskParentTaskId: createElement('taskParentTaskId'),
     refreshListsBtn: createElement('refreshListsBtn'),
-    listsStatus: createElement('listsStatus')
+    listsStatus: createElement('listsStatus'),
+    entrySummary: createElement('entrySummary'),
+    advancedParent: createElement('advancedParent')
   };
 
   const inputs = [
@@ -153,6 +183,7 @@ function bootInbox(localSeed = {}, options = {}) {
 
   const localStorage = createStorage(localSeed);
   const fetchCalls = [];
+  const timers = [];
   let inboxContent = '';
   let repoInboxContent = '';
   let repoInboxSha = '';
@@ -251,8 +282,12 @@ function bootInbox(localSeed = {}, options = {}) {
 
       return { ok: true, text: async () => inboxContent, json: async () => ({}) };
     },
-    setTimeout: () => {},
-    Date,
+    setTimeout: (fn) => {
+      timers.push(fn);
+      return timers.length;
+    },
+    clearTimeout: () => {},
+    Date: options.clock ? options.clock.Date : Date,
     JSON,
     console,
     crypto: {
@@ -270,8 +305,10 @@ function bootInbox(localSeed = {}, options = {}) {
 
   return {
     elements,
+    window,
     localStorage,
     fetchCalls,
+    runTimers: () => timers.splice(0).forEach((fn) => fn()),
     getInboxContent: () => inboxContent,
     getRepoInboxContent: () => repoInboxContent
   };
@@ -613,4 +650,279 @@ test('Inbox falls back to manual Parent ID entry when the remote backup cannot b
   assert.equal(elements.taskListId.children.length, 0);
   assert.equal(elements.listsStatus.textContent.includes('Could not load lists'), true);
   assert.equal(elements.listsStatus.classList.contains('error'), true);
+});
+
+function backupCacheSeed(backup = backupSeed()) {
+  return {
+    mgtd3_inbox_backup_cache: JSON.stringify({ ...backup, fetchedAt: '2026-09-27T08:00:00.000Z' })
+  };
+}
+
+function prefsSeed(prefs) {
+  return { mgtd3_inbox_prefs: JSON.stringify(prefs) };
+}
+
+function chipTexts(elements) {
+  return elements.entrySummary.children.map((c) => c.textContent);
+}
+
+// Lets the fake fetch chain behind a fire-and-forget submit (Enter key) settle.
+function settle() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+function readPrefs(localStorage) {
+  return JSON.parse(localStorage.getItem('mgtd3_inbox_prefs'));
+}
+
+test('Inbox starts in quick entry mode: due today, default list, options summarized in one line', () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const { elements } = bootInbox(credsSeed(), { clock });
+
+  assert.equal(elements.taskDueDate.value, '2026-09-27');
+  assert.equal(elements.taskListId.children.length, 0, 'no remembered list, so no placeholder option');
+  assert.deepEqual(chipTexts(elements), ['📋 Default list', '📅 Due today']);
+});
+
+test('Inbox remembers the selected list, parent and due date across sessions', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const first = bootInbox({ ...credsSeed(), ...backupCacheSeed() }, { clock });
+
+  first.elements.taskListId.value = 'l1';
+  first.elements.taskListId.listeners.change();
+  first.elements.taskParentTaskId.value = 't2';
+  first.elements.taskParentTaskId.listeners.change();
+  first.elements.taskDueDate.value = '2026-10-02';
+  first.elements.taskDueDate.listeners.change();
+
+  assert.deepEqual(readPrefs(first.localStorage), {
+    listId: 'l1',
+    listName: 'Work Projects',
+    parentId: 't2',
+    parentTitle: 'Q3 Planning',
+    due: '2026-10-02'
+  });
+
+  // Reopen the page with the same browser storage.
+  const second = bootInbox(first.localStorage.snapshot(), { clock });
+  const el = second.elements;
+  const oct2 = new Date('2026-10-02T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+  assert.equal(el.taskListId.value, 'l1');
+  assert.equal(el.taskParentTaskId.value, 't2');
+  assert.equal(el.taskParentId.value, 't2');
+  assert.equal(el.taskDueDate.value, '2026-10-02');
+  assert.deepEqual(chipTexts(el), ['📋 Work Projects', '↳ Q3 Planning', `📅 Due ${oct2}`]);
+
+  el.taskTitle.value = 'Draft agenda';
+  await el.taskForm.listeners.submit({ preventDefault() {} });
+
+  const queued = JSON.parse(second.getInboxContent().trim());
+  assert.equal(queued.action, 'addChild');
+  assert.equal(queued.parentTaskId, 't2');
+  assert.equal(queued.due, '2026-10-02');
+});
+
+test('Inbox keeps a remembered list selected even before the lists have loaded', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  // No backup cache and no reachable backup: the list options never load.
+  const seed = { ...credsSeed(), ...prefsSeed({ listId: 'l2', listName: 'Personal', due: 'today' }) };
+  const { elements, getInboxContent } = bootInbox(seed, { clock });
+
+  assert.equal(elements.taskListId.value, 'l2');
+  assert.deepEqual(chipTexts(elements), ['📋 Personal', '📅 Due today']);
+
+  elements.taskTitle.value = 'Buy paint';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+
+  const queued = JSON.parse(getInboxContent().trim());
+  assert.equal(queued.action, 'addInbox');
+  assert.equal(queued.listId, 'l2');
+  assert.equal(queued.due, '2026-09-27');
+});
+
+test('Inbox sends on Enter in the title, keeps the presets, clears the text, and ignores repeat presses while sending', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const seed = { ...credsSeed(), ...prefsSeed({ listId: 'l2', listName: 'Personal', due: 'today' }) };
+  const { elements, getInboxContent } = bootInbox(seed, { clock });
+
+  elements.taskTitle.value = 'Call plumber';
+  elements.taskDescription.value = 'About the leak';
+  elements.taskTitle.listeners.keydown({ key: 'a', preventDefault() { throw new Error('should not intercept'); } });
+
+  let prevented = 0;
+  const enter = { key: 'Enter', preventDefault() { prevented++; } };
+  elements.taskTitle.listeners.keydown(enter);
+  elements.taskTitle.listeners.keydown(enter); // pressed again while the first send is in flight
+  await settle();
+
+  const lines = getInboxContent().trim().split(/\r?\n/);
+  assert.equal(lines.length, 1);
+  const queued = JSON.parse(lines[0]);
+  assert.equal(queued.title, 'Call plumber');
+  assert.equal(queued.listId, 'l2');
+  assert.equal(queued.due, '2026-09-27');
+  assert.equal(prevented, 2);
+
+  assert.equal(elements.taskTitle.value, '');
+  assert.equal(elements.taskDescription.value, '');
+  assert.equal(elements.taskTitle.focusCount > 0, true, 'title is refocused for the next entry');
+  assert.equal(elements.taskListId.value, 'l2');
+  assert.equal(elements.taskDueDate.value, '2026-09-27');
+});
+
+test('Inbox Clear empties the typed text but keeps the remembered list and due date', () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const seed = { ...credsSeed(), ...prefsSeed({ listId: 'l2', listName: 'Personal', due: '2026-10-05' }) };
+  const { elements } = bootInbox(seed, { clock });
+
+  elements.taskTitle.value = 'Half-typed';
+  elements.taskDescription.value = 'notes';
+  let prevented = false;
+  elements.taskForm.listeners.reset({ preventDefault() { prevented = true; } });
+
+  assert.equal(prevented, true, 'native reset would wipe the presets');
+  assert.equal(elements.taskTitle.value, '');
+  assert.equal(elements.taskDescription.value, '');
+  assert.equal(elements.taskListId.value, 'l2');
+  assert.equal(elements.taskDueDate.value, '2026-10-05');
+});
+
+test('Inbox restores "due today" as the current day, a lapsed date as today, and a future date as-is', () => {
+  const clock = createClock('2026-09-28T09:00:00');
+
+  const today = bootInbox({ ...credsSeed(), ...prefsSeed({ due: 'today' }) }, { clock });
+  assert.equal(today.elements.taskDueDate.value, '2026-09-28');
+
+  const lapsed = bootInbox({ ...credsSeed(), ...prefsSeed({ due: '2026-09-20' }) }, { clock });
+  assert.equal(lapsed.elements.taskDueDate.value, '2026-09-28');
+  assert.deepEqual(chipTexts(lapsed.elements), ['📋 Default list', '📅 Due today']);
+
+  const future = bootInbox({ ...credsSeed(), ...prefsSeed({ due: '2026-09-29' }) }, { clock });
+  assert.equal(future.elements.taskDueDate.value, '2026-09-29');
+  assert.deepEqual(chipTexts(future.elements), ['📋 Default list', '📅 Due tomorrow']);
+
+  const corrupt = bootInbox({ ...credsSeed(), mgtd3_inbox_prefs: '{not json' }, { clock });
+  assert.equal(corrupt.elements.taskDueDate.value, '2026-09-28');
+});
+
+test('Inbox remembers a cleared due date as "no due date"', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const first = bootInbox(credsSeed(), { clock });
+
+  first.elements.taskDueDate.value = '';
+  first.elements.taskDueDate.listeners.change();
+  assert.equal(readPrefs(first.localStorage).due, 'none');
+
+  const second = bootInbox(first.localStorage.snapshot(), { clock });
+  assert.equal(second.elements.taskDueDate.value, '');
+  assert.deepEqual(chipTexts(second.elements), ['📋 Default list', '📅 No due date']);
+
+  second.elements.taskTitle.value = 'Someday idea';
+  await second.elements.taskForm.listeners.submit({ preventDefault() {} });
+  assert.equal(JSON.parse(second.getInboxContent().trim()).due, undefined);
+});
+
+test('Inbox rolls an untouched "due today" forward when the page is left open past midnight', async () => {
+  const clock = createClock('2026-09-27T23:50:00');
+  const { elements, window, getInboxContent } = bootInbox(credsSeed(), { clock });
+  assert.equal(elements.taskDueDate.value, '2026-09-27');
+
+  clock.set('2026-09-28T00:10:00');
+  window._listeners.focus();
+  assert.equal(elements.taskDueDate.value, '2026-09-28');
+  assert.deepEqual(chipTexts(elements), ['📋 Default list', '📅 Due today']);
+
+  clock.set('2026-09-29T08:00:00'); // no focus event this time; submit must still catch it
+  elements.taskTitle.value = 'Morning task';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  assert.equal(JSON.parse(getInboxContent().trim()).due, '2026-09-29');
+});
+
+test('Inbox does not roll a specific date the user picked when the day changes', async () => {
+  const clock = createClock('2026-09-27T23:50:00');
+  const { elements, getInboxContent } = bootInbox(credsSeed(), { clock });
+
+  elements.taskDueDate.value = '2026-09-30';
+  elements.taskDueDate.listeners.change();
+  clock.set('2026-09-28T00:10:00');
+
+  elements.taskTitle.value = 'Pinned date';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  assert.equal(JSON.parse(getInboxContent().trim()).due, '2026-09-30');
+});
+
+test('Inbox drops a remembered parent once loaded lists show it was deleted, so the request cannot get stuck', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const backup = backupSeed();
+  backup.tasks.t1.deleted = true;
+  const seed = {
+    ...credsSeed(),
+    ...backupCacheSeed(backup),
+    ...prefsSeed({ listId: 'l1', listName: 'Work Projects', parentId: 't1', parentTitle: 'Website Redesign', due: 'today' })
+  };
+  const { elements, localStorage, getInboxContent } = bootInbox(seed, { clock });
+
+  assert.equal(elements.taskParentId.value, '');
+  assert.equal(elements.taskParentTitle.value, '');
+  assert.equal(readPrefs(localStorage).parentId, '');
+  assert.equal(elements.taskListId.value, 'l1');
+  assert.deepEqual(chipTexts(elements), ['📋 Work Projects', '📅 Due today']);
+
+  elements.taskTitle.value = 'Lands at list root instead';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  const queued = JSON.parse(getInboxContent().trim());
+  assert.equal(queued.action, 'addInbox');
+  assert.equal(queued.listId, 'l1');
+});
+
+test('Inbox falls back to Default when the remembered list is archived, without forgetting the choice', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const seed = { ...credsSeed(), ...backupCacheSeed(), ...prefsSeed({ listId: 'l3', listName: 'Archived Stuff', due: 'today' }) };
+  const { elements, localStorage, getInboxContent } = bootInbox(seed, { clock });
+
+  assert.equal(elements.taskListId.value, '');
+  assert.deepEqual(chipTexts(elements), ['📋 Default list', '📅 Due today']);
+  // A stale cache could be missing a list that does exist, so the preference itself is kept.
+  assert.equal(readPrefs(localStorage).listId, 'l3');
+
+  elements.taskTitle.value = 'Goes to the default list';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  assert.equal(JSON.parse(getInboxContent().trim()).listId, undefined);
+});
+
+test('Inbox restores a pasted parent ID and opens the manual section, since the dropdown cannot show it', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const seed = {
+    ...credsSeed(),
+    ...backupCacheSeed(),
+    ...prefsSeed({ listId: 'l1', listName: 'Work Projects', parentId: 'nested-9', parentTitle: 'Deep task', due: 'today' })
+  };
+  const { elements, getInboxContent } = bootInbox(seed, { clock });
+
+  assert.equal(elements.taskParentId.value, 'nested-9');
+  assert.equal(elements.taskParentTaskId.value, '');
+  assert.equal(elements.advancedParent.open, true);
+  // The list is irrelevant for a pasted parent, so the summary doesn't claim it.
+  assert.deepEqual(chipTexts(elements), ['↳ Deep task', '📅 Due today']);
+
+  elements.taskTitle.value = 'Under the nested task';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  const queued = JSON.parse(getInboxContent().trim());
+  assert.equal(queued.action, 'addChild');
+  assert.equal(queued.parentTaskId, 'nested-9');
+});
+
+test('Inbox shows the status for the next task after an earlier success message auto-hid', async () => {
+  const { elements, runTimers } = bootInbox(credsSeed());
+
+  elements.taskTitle.value = 'First';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  runTimers(); // the 5s auto-hide fires
+  assert.equal(elements.statusMessage.style.display, 'none');
+
+  elements.taskTitle.value = 'Second';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  assert.equal(elements.statusMessage.className, 'status success');
+  assert.equal(elements.statusMessage.style.display, '', 'inline display:none must not hide later messages');
 });
