@@ -423,7 +423,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-18T11:23:56+05:00',commit:'0204786'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-08-23T21:19:57+05:00',commit:'4d6cf0c'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -997,6 +997,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
             <button class="btn btn-sm" onclick="App.syncFromRepo()">Pull from Repo</button>
             <button class="btn btn-sm" onclick="App.syncToRepo()">Push to Repo</button>
+            <button class="btn btn-sm btn-d" onclick="App.optimizeRepo()" title="Tag a snapshot, then remove untitled/completed/deleted tasks, trim history and push">Optimize Repo</button>
           </div>
         </div>
         <div id="gist-sync-status" style="padding:8px;background:var(--bg2);border-radius:4px;margin-bottom:4px;font-size:12px;color:var(--fg2)">Not configured</div>
@@ -2969,6 +2970,106 @@ function resetCompletedDomain(app, state, walkTasksFn) {
   app.toast('All tasks re-opened');
 }
 
+const OPTIMIZE_HISTORY_LIMIT = 4;
+
+// Repo-wide cleanse used by "Optimize repo": drops untitled, completed and
+// deleted tasks (hard delete, across every list) and trims per-task history.
+// Operates on state.data only, no DOM, so it can run before a remote push.
+function optimizeDataDomain(state, options) {
+  const opts = options || {};
+  const historyLimit = Number.isFinite(opts.historyLimit) ? Math.max(0, opts.historyLimit) : OPTIMIZE_HISTORY_LIMIT;
+  const data = state.data;
+  data.tasks = data.tasks || {};
+  data.lists = data.lists || {};
+  const tasks = data.tasks;
+  const stats = {
+    untitled: 0,
+    completed: 0,
+    deleted: 0,
+    removed: 0,
+    historyTrimmedTasks: 0,
+    historyEntriesRemoved: 0,
+    deletedItemsCleared: (data.deletedItems || []).length
+  };
+
+  const doomed = new Set();
+  // Only follow child edges the child agrees with (parent_id match), so a stale
+  // entry in a deleted task's `tasks` array can never take a live task with it.
+  const doom = id => {
+    if (doomed.has(id)) return;
+    const task = tasks[id];
+    if (!task) return;
+    doomed.add(id);
+    for (const childId of task.tasks || []) {
+      if (tasks[childId]?.parent_id === id) doom(childId);
+    }
+  };
+
+  const siblingsOf = task => {
+    const parent = task.parent_id ? tasks[task.parent_id] : null;
+    if (parent && (parent.tasks || []).includes(task.id)) return parent.tasks;
+    const own = data.lists[task.checklist_id];
+    if (own && (own.root_tasks || []).includes(task.id)) return own.root_tasks;
+    const other = Object.values(data.lists).find(l => (l.root_tasks || []).includes(task.id));
+    return other ? other.root_tasks : null;
+  };
+
+  // Untitled tasks go, but their titled children move up into the vacated slot.
+  for (const task of Object.values(tasks)) {
+    if (task.deleted || doomed.has(task.id) || String(task.content || '').trim()) continue;
+    const children = (task.tasks || []).filter(cid => tasks[cid] && !tasks[cid].deleted && !doomed.has(cid) && tasks[cid].parent_id === task.id);
+    if (children.length) {
+      const sibs = siblingsOf(task);
+      if (sibs) sibs.splice(sibs.indexOf(task.id), 1, ...children);
+      for (const cid of children) tasks[cid].parent_id = task.parent_id || '';
+      task.tasks = (task.tasks || []).filter(cid => !children.includes(cid));
+    }
+    stats.untitled++;
+    doom(task.id);
+  }
+
+  // Completed (and invalidated) tasks go with their subtree, matching "Wipe completed".
+  for (const task of Object.values(tasks)) {
+    if (task.deleted || doomed.has(task.id) || Number(task.status || 0) === 0) continue;
+    stats.completed++;
+    doom(task.id);
+  }
+
+  for (const task of Object.values(tasks)) {
+    if (!task.deleted || doomed.has(task.id)) continue;
+    stats.deleted++;
+    doom(task.id);
+  }
+
+  for (const id of doomed) delete tasks[id];
+  stats.removed = doomed.size;
+
+  const alive = id => !!tasks[id];
+  for (const task of Object.values(tasks)) {
+    if (Array.isArray(task.tasks)) task.tasks = task.tasks.filter(alive);
+  }
+  for (const list of Object.values(data.lists)) {
+    if (Array.isArray(list.root_tasks)) list.root_tasks = list.root_tasks.filter(alive);
+  }
+  data.deletedItems = [];
+
+  for (const task of Object.values(tasks)) {
+    if (!Array.isArray(task.history) || task.history.length <= historyLimit) continue;
+    stats.historyTrimmedTasks++;
+    stats.historyEntriesRemoved += task.history.length - historyLimit;
+    task.history = historyLimit ? task.history.slice(-historyLimit) : [];
+  }
+
+  if (state.selId && !alive(state.selId)) state.selId = null;
+  if (state.editId && !alive(state.editId)) state.editId = null;
+  if (state.hoistId && !alive(state.hoistId)) state.hoistId = null;
+  if (state.msel && typeof state.msel.delete === 'function') {
+    for (const id of Array.from(state.msel)) if (!alive(id)) state.msel.delete(id);
+  }
+
+  return stats;
+}
+
 function extractBranchDomain(app, state, walkTasksFn, uidFn, mkListFn, sibListFn) {
   const task = state.data.tasks[state.selId];
   if (!task) return;
@@ -3879,6 +3980,10 @@ function repoContentsUrl(config, path, withRef) {
   return `${base}?ref=${encodeURIComponent(config.branch)}`;
 }
 
+function repoApiUrl(config, suffix) {
+  return `https://api.github.com/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}${suffix}`;
+}
+
 function repoDecodeBase64(content) {
   const b64 = String(content || '').replace(/\n/g, '');
   if (!b64) return '';
@@ -4525,6 +4630,116 @@ async function syncRepoBidirectionalRemote(app, state, options) {
     return true;
   } catch (err) {
     const msg = err?.message || 'Repo sync failed';
+    repoSetStatus(msg, true);
+    if (!opts.silent) app.toast(msg);
+    return false;
+  }
+}
+
+function repoPad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function repoSnapshotTagName(date, withTime) {
+  const d = date || new Date();
+  const day = `${d.getFullYear()}-${repoPad2(d.getMonth() + 1)}-${repoPad2(d.getDate())}`;
+  if (!withTime) return `pre-optimize-${day}`;
+  return `pre-optimize-${day}-${repoPad2(d.getHours())}${repoPad2(d.getMinutes())}${repoPad2(d.getSeconds())}`;
+}
+
+async function repoGetBranchHeadSha(config) {
+  const res = await fetch(repoApiUrl(config, `/git/ref/heads/${repoEncodePath(config.branch)}`), {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `token ${config.token}`
+    }
+  });
+  if (!res.ok) throw new Error(`Could not read branch ${config.branch} (${res.status})`);
+
+  const json = await res.json();
+  const sha = String(json?.object?.sha || '').trim();
+  if (!sha) throw new Error(`Branch ${config.branch} has no commit to tag`);
+  return sha;
+}
+
+async function repoCreateTagRef(config, name, sha) {
+  const res = await fetch(repoApiUrl(config, '/git/refs'), {
+    method: 'POST',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      Authorization: `token ${config.token}`
+    },
+    body: JSON.stringify({ ref: `refs/tags/${name}`, sha })
+  });
+
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const body = await res.json();
+      detail = String(body?.message || '').trim();
+    } catch {}
+
+    const suffix = detail ? `: ${detail}` : '';
+    const err = new Error(`Tag create failed (${res.status})${suffix}`);
+    err.status = res.status;
+    throw err;
+  }
+  return name;
+}
+
+async function repoCreateSnapshotTag(config, date) {
+  const sha = await repoGetBranchHeadSha(config);
+  try {
+    return await repoCreateTagRef(config, repoSnapshotTagName(date, false), sha);
+  } catch (err) {
+    // Already optimized today (tag exists): fall back to a timestamped name.
+    if (err?.status !== 422) throw err;
+    return repoCreateTagRef(config, repoSnapshotTagName(date, true), sha);
+  }
+}
+
+async function optimizeRepoRemote(app, state, options) {
+  const opts = options || {};
+  const config = repoGetConfig(state);
+  if (!config.token || !config.owner || !config.repo || !config.path) {
+    if (!opts.silent) {
+      app.toast('Set repo token/owner/name/path first');
+      repoSetStatus('Missing repo configuration', true);
+    }
+    return false;
+  }
+
+  try {
+    // Level local and remote first so the snapshot tag holds the latest pre-cleanse data.
+    repoSetStatus('Optimize: syncing before snapshot...', false);
+    const synced = await syncRepoBidirectionalRemote(app, state, { silent: true });
+    if (!synced) throw new Error('Optimize aborted: sync before snapshot failed. Run Sync now and retry.');
+
+    repoSetStatus('Optimize: tagging snapshot...', false);
+    const tag = await repoCreateSnapshotTag(config, new Date());
+
+    app.pushUndo(app.snap());
+    const stats = optimizeDataDomain(state, { historyLimit: opts.historyLimit });
+    app.save();
+    app.render();
+
+    const pushed = await syncToRepoRemote(app, state, { silent: true });
+    if (!pushed) throw new Error(`Optimized locally but push failed (snapshot tag ${tag}). Run Sync now.`);
+
+    const summary = `Optimized: removed ${stats.removed} task(s) (${stats.untitled} untitled, ${stats.completed} completed, ${stats.deleted} deleted), trimmed history on ${stats.historyTrimmedTasks}. Snapshot tag ${tag}`;
+    repoRememberSyncSummary(state, `Optimized (snapshot ${tag})`);
+    app.save({ touchLocalSaveAt: false });
+    app.syncSettings();
+    if (app.syncSB) app.syncSB();
+
+    repoSetStatus(summary, false);
+    if (!opts.silent) app.toast(summary);
+    return { tag, stats };
+  } catch (err) {
+    const msg = err?.message || 'Repo optimize failed';
     repoSetStatus(msg, true);
     if (!opts.silent) app.toast(msg);
     return false;
@@ -7549,6 +7764,7 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Sync now', s: 'sg', fn: () => app.syncNow() },
     { l: 'Pull from Gist', s: 'sp', fn: () => app.syncFromGist() },
     { l: 'Push to Gist', s: 'sh', fn: () => app.syncToGist() },
+    { l: 'Optimize repo', fn: () => app.optimizeRepo() },
     { l: 'Hide/show completed', s: 'hc', fn: () => { state.data.settings.showCompleted = !state.data.settings.showCompleted; app.save(); app.render(); } },
     { l: 'Hide/show future due', s: 'hf', fn: () => { state.data.settings.hideFuture = !state.data.settings.hideFuture; app.save(); app.render(); app.syncSettings(); } },
     { l: 'Toggle Focus Treatment', s: 'ft', fn: () => { state.data.settings.focusMode = state.data.settings.focusMode === 'path' ? 'off' : 'path'; app.save(); app.render(); app.syncSettings(); } },
@@ -8025,6 +8241,24 @@ function resetCompletedUi(app, S) {
 
 function resetCompletedDomainUi(app, S) {
   resetCompletedDomain(app, S, walkTasks);
+}
+
+async function optimizeRepoUi(app, S) {
+  if (app.syncProvider() !== 'repo') {
+    app.toast('Optimize repo needs the GitHub Repo sync provider');
+    return false;
+  }
+  const ok = confirm([
+    'Optimize repo? This will:',
+    '1. Sync, then tag the current repo state as a pre-optimize-<date> snapshot',
+    '2. Delete all untitled tasks (their subtasks move up a level)',
+    '3. Delete all completed tasks with their subtasks, in every list',
+    '4. Permanently remove deleted tasks and empty Restore Deleted',
+    `5. Keep only the last ${OPTIMIZE_HISTORY_LIMIT} history entries per task`,
+    '6. Push the result to the repo'
+  ].join('\n'));
+  if (!ok) return false;
+  return optimizeRepoRemote(app, S, { silent: false });
 }
 
 function extractBranchUi(app, S) {
@@ -9330,6 +9564,7 @@ const App={
   async syncFromRepo(){ return (typeof syncFromRepoRemote === 'function') ? syncFromRepoRemote(this, S, { silent:false, auto:false }) : false; },
   async syncToRepo(){ return (typeof syncToRepoRemote === 'function') ? syncToRepoRemote(this, S, { silent:false }) : false; },
   async syncRepoNow(){ return (typeof syncRepoBidirectionalRemote === 'function') ? syncRepoBidirectionalRemote(this, S, { silent:false }) : false; },
+  async optimizeRepo(){ return optimizeRepoUi(this, S); },
   syncProvider(){ return String(S.data?.settings?.syncProvider || 'gist').trim() === 'repo' ? 'repo' : 'gist'; },
   async syncNow(){ return this.syncProvider() === 'repo' ? this.syncRepoNow() : this.syncGistNow(); },
   async checkSyncOnRefresh(){ return this.syncProvider() === 'repo' ? this.checkRepoOnRefresh() : this.checkGistOnRefresh(); },
