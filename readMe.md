@@ -18,27 +18,54 @@ One-time setup in GitHub repository settings:
 
 After that, every push to `master` deploys the latest standalone app.
 
-## CLI Task Capture via Gist Queue
+## CLI Task Capture via the Sync Inbox
 
-If you already have Gist sync configured in the app, you can enqueue a child task from command line by parent task id.
+If you already have Gist or Repo sync configured in the app, you can queue a task from the command line — as a child of an existing task, or as a top-level task in a list. The scripts write to the same inbox queue file the app imports on sync.
 
-One-time environment setup (Windows cmd):
+One-time environment setup (Windows cmd), using the same values as the app's sync settings. For Gist sync:
 
 ```bat
 set MGTD_GIST_ID=your_gist_id
 set MGTD_GIST_TOKEN=your_github_token
 ```
 
-Quick command (from repo root):
+For Repo sync:
+
+```bat
+set MGTD_SYNC_PROVIDER=repo
+set MGTD_REPO_TOKEN=your_github_token
+set MGTD_REPO_OWNER=your_github_user
+set MGTD_REPO_NAME=your_backup_repo
+```
+
+Optional Repo settings: `MGTD_REPO_BRANCH` (default `main`), `MGTD_REPO_PATH` (backup file, default `monkeygtd-backup.json`), and `MGTD_REPO_INBOX_PATH` (default `monkeygtd-inbox.ndjson` next to the backup file).
+
+Quick commands (from repo root):
 
 ```bat
 scripts\send-task.cmd PARENT_TASK_ID Your new child task text
+scripts\send-task.cmd --inbox Your new task text
+scripts\send-task.cmd --list-id LIST_ID Your new task text --due 2026-10-05
 ```
 
-PowerShell equivalent:
+- `PARENT_TASK_ID` may be a task id or its permalink (`tc` copies `#task-<id>`).
+- `--inbox` adds a top-level task to the list named "Inbox" (falling back to the current list); `--list-id` picks a list (`lj` shows the current list's `id`).
+- `--due YYYY-MM-DD` sets a due date, `--asap` marks the task ASAP, `--provider gist|repo` overrides `MGTD_SYNC_PROVIDER`, and `--dry-run` prints the queued line without sending it.
+- Smart syntax in the text (`#tag`, `^today`, …) is applied when the app imports the task, so relative dates resolve at sync time — use `--due` for a fixed date.
+
+PowerShell equivalent (quote permalinks — `#` starts a comment in PowerShell):
 
 ```powershell
 ./scripts/send-task.ps1 PARENT_TASK_ID Your new child task text
+./scripts/send-task.ps1 -Inbox Your new task text -Asap
+./scripts/send-task.ps1 -ListId LIST_ID Your new task text -Due 2026-10-05 -Provider repo
+```
+
+Python (any OS, standard library only):
+
+```bash
+python scripts/send-task.py PARENT_TASK_ID Your new child task text
+python scripts/send-task.py --inbox Your new task text --due 2026-10-05
 ```
 
 Then click "Sync now" in the app (or wait for auto-sync) to apply queued tasks. See `Inbox.html` for a mobile-friendly capture form that queues into the same mechanism.
