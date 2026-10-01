@@ -77,7 +77,7 @@ The codebase is mid-way through the SOLID/CQRS layering described in [refactor-p
 
 - **`monkeygtd-standalone.html`** — single-file build (CSS + all JS inlined by `inline-html.ps1`) published to GitHub Pages via `.github/workflows/pages.yml` on push to `master`. Must be regenerated (see Commands) whenever source changes; CI enforces this via `check:standalone`.
 - **`Inbox.html`** — a separate, self-contained static page (its own inline `<style>`, no shared JS with the main app) also deployed to Pages.
-- **`scripts/send-task.py` / `send-task.cmd` / `send-task.ps1` / `send-gist-task.ps1`** — CLI helpers that enqueue a task into the Gist-based sync queue from the command line (auth via `MGTD_GIST_ID`/`MGTD_GIST_TOKEN` env vars); the app picks queued items up on its next sync.
+- **`scripts/send-task.py` / `send-task.ps1` / `send-task.cmd`** — CLI helpers that queue a task into the Gist or Repo sync inbox (the same NDJSON request lines `Inbox.html` writes; config via `MGTD_GIST_*` / `MGTD_REPO_*` / `MGTD_SYNC_PROVIDER` env vars); the app picks queued items up on its next sync. `send-task.py` and `send-task.ps1` are parallel implementations (`.cmd` wraps the `.ps1`; `send-gist-task.ps1` is a backward-compatible wrapper) — keep them in step with `gistApplyInboxRequest`/`repoApplyInboxRequest`; `tests/integration/send-task-scripts.test.cjs` checks their output against those importers.
 
 ### Design docs vs. implemented features
 
