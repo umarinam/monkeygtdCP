@@ -458,6 +458,18 @@ Press **`ex`** or use the Actions menu. Export scope depends on current selectio
 
 Each format has its own options (e.g. include/exclude notes, tags, due dates).
 
+### Weekly Report Export (for AI)
+
+On the Reporting page (**`gr`**), **Copy for AI** / **Download .md** export everything that changed in the selected date range as an indented Markdown outline, ready to paste into an LLM (Claude, ChatGPT) to draft a weekly status report. **Last N days** + **Set** fills the date range (default 7 days ending today).
+
+- **Scope**: all lists, or just the current list. **AI instructions** prepends a prompt that tells the model how to read the export and to produce an email version, a spoken (about 90 seconds) version and a list of open questions. **Upcoming due** appends open tasks that are overdue or due within 14 days of the end date, for "next week" and "risks".
+- **Hierarchy is the context**: only tasks with a change are listed, plus their ancestors as untagged lines (project → milestone → task).
+- **Tags** (a task can carry several, each with the local date): `[NEW]` created, `[DONE]` completed, `[EDIT]` title changed or notes added, `[DROPPED]` deleted or invalidated, `[REOPENED]` finished task opened again. A task created and completed in the same week is `[NEW] [DONE]`. New lists are marked `[NEW]` too. The prompt tells the model that new projects/tasks mean research or solution-design time, not delivered work.
+- Notes added in the period appear under their task as `note (mm-dd): ...`. Tags, assignees and due dates are appended to changed tasks.
+- Left out on purpose: reorders/moves, priority/tag/due-date tweaks on otherwise unchanged tasks, blank tasks, tasks created and deleted in the same week, and a typed-in first title.
+- Day boundaries use your local time. Completing a recurring task counts as `[DONE]` (only its latest completion is visible).
+- Export **before** running Optimize Repo: it removes completed tasks and trims per-task history, which erases `[DONE]` items and edit history for earlier weeks.
+
 
 ---
 

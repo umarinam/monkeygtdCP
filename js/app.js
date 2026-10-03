@@ -418,6 +418,9 @@ const App={
   },
 
   renderReport(){ renderReportUi(this, S); },
+  setReportLastDays(){ setReportLastDaysUi(this, S); },
+  copyWeeklyReport(){ copyWeeklyReportUi(this, S); },
+  downloadWeeklyReport(){ downloadWeeklyReportUi(this, S); },
   toggleReportFilter(key){
     if (!S.reportFilters || !(key in S.reportFilters)) return;
     S.reportFilters[key] = !S.reportFilters[key];

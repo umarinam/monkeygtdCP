@@ -69,6 +69,26 @@
           </div>
           <button class="btn btn-sm" onclick="App.renderReport()">Apply</button>
         </div>
+        <div class="report-controls">
+          <div class="fg" style="margin:0;width:90px">
+            <label for="report-days">Last N days</label>
+            <input id="report-days" type="number" min="1" max="366" value="7" onkeydown="if(event.key==='Enter')App.setReportLastDays()">
+          </div>
+          <button class="btn btn-sm" onclick="App.setReportLastDays()" title="Set the dates to the last N days ending today">Set</button>
+        </div>
+        <div class="report-controls" id="report-export-controls">
+          <div class="fg" style="margin:0;min-width:150px">
+            <label for="report-export-scope">Export scope</label>
+            <select id="report-export-scope">
+              <option value="all">All lists</option>
+              <option value="current">Current list</option>
+            </select>
+          </div>
+          <label class="report-check"><input id="report-incl-prompt" type="checkbox" checked> AI instructions</label>
+          <label class="report-check"><input id="report-incl-upcoming" type="checkbox" checked> Upcoming due</label>
+          <button class="btn btn-sm" onclick="App.copyWeeklyReport()" title="Copy a Markdown export of what changed in this date range, ready to paste into an LLM">Copy for AI</button>
+          <button class="btn btn-sm" onclick="App.downloadWeeklyReport()">Download .md</button>
+        </div>
         <div id="report-legend" class="report-legend"></div>
         <div id="report-c"></div>
       </div>
@@ -695,6 +715,7 @@
 <script src="js/core/cqrs.js"></script>
 <script src="js/core/traversal.js"></script>
 <script src="js/core/utils.js"></script>
+<script src="js/domain/weekly-report.js"></script>
 <script src="js/domain/queries.js"></script>
 <script src="js/domain/tree-ops.js"></script>
 <script src="js/domain/clipboard-ops.js"></script>
@@ -714,6 +735,7 @@
 <script src="js/ui/keyboard-controller.js"></script>
 <script src="js/ui/editor-controller.js"></script>
 <script src="js/ui/render-controller.js"></script>
+<script src="js/ui/report-export-controller.js"></script>
 <script src="js/ui/command-palette-commands.js"></script>
 <script src="js/ui/command-palette-controller.js"></script>
 <script src="js/ui/chrome-controller.js"></script>
