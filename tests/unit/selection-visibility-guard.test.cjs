@@ -18,7 +18,77 @@ function loadGuard() {
   return sandbox.__exports.ensureSelectionVisibleUi;
 }
 
-test('ensureSelectionVisibleUi rehomes selection to first visible when selected task is hidden', () => {
+test('ensureSelectionVisibleUi picks the next visible task, in document order, when the selected task is hidden', () => {
+  const ensureSelectionVisibleUi = loadGuard();
+
+  const state = { selId: 't2', msel: new Set() };
+  const app = {
+    visible: () => ['t1', 't3', 't4'],
+    select: name => (name === 'tasks.documentOrder' ? ['t1', 't2', 't3', 't4'] : [])
+  };
+
+  ensureSelectionVisibleUi(app, state);
+
+  assert.equal(state.selId, 't3');
+});
+
+test('ensureSelectionVisibleUi picks the previous visible task when nothing visible follows', () => {
+  const ensureSelectionVisibleUi = loadGuard();
+
+  const state = { selId: 't4', msel: new Set() };
+  const app = {
+    visible: () => ['t1', 't2', 't3'],
+    select: () => ['t1', 't2', 't3', 't4']
+  };
+
+  ensureSelectionVisibleUi(app, state);
+
+  assert.equal(state.selId, 't3');
+});
+
+test('ensureSelectionVisibleUi skips neighbours that are hidden too', () => {
+  const ensureSelectionVisibleUi = loadGuard();
+
+  const state = { selId: 't2', msel: new Set() };
+  const app = {
+    visible: () => ['t1', 't5'],
+    select: () => ['t1', 't2', 't3', 't4', 't5']
+  };
+
+  ensureSelectionVisibleUi(app, state);
+
+  assert.equal(state.selId, 't5');
+});
+
+test('ensureSelectionVisibleUi leaves a still-visible selection alone', () => {
+  const ensureSelectionVisibleUi = loadGuard();
+
+  const state = { selId: 't3', msel: new Set() };
+  const app = {
+    visible: () => ['t1', 't3'],
+    select: () => ['t1', 't2', 't3']
+  };
+
+  ensureSelectionVisibleUi(app, state);
+
+  assert.equal(state.selId, 't3');
+});
+
+test('ensureSelectionVisibleUi falls back to the first visible task when the hidden task cannot be located', () => {
+  const ensureSelectionVisibleUi = loadGuard();
+
+  const state = { selId: 'gone', msel: new Set() };
+  const app = {
+    visible: () => ['t1', 't3'],
+    select: () => ['t1', 't2', 't3']
+  };
+
+  ensureSelectionVisibleUi(app, state);
+
+  assert.equal(state.selId, 't1');
+});
+
+test('ensureSelectionVisibleUi rehomes selection to first visible when no position info is available', () => {
   const ensureSelectionVisibleUi = loadGuard();
 
   const state = {

@@ -431,7 +431,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-01T13:04:31+05:00',commit:'2f9a79c'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-03T16:11:16+05:00',commit:'1fadfda'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1819,6 +1819,19 @@ function registerAppQueries(app, deps) {
     });
 
     return visible;
+  });
+
+  // Every live task in on-screen order, ignoring hide-completed and collapse, so a
+  // task that just became hidden can still be located among its neighbours.
+  app.queryService.register('tasks.documentOrder', () => {
+    const data = getData();
+    const list = data.lists[state.listId];
+    if (!list) return [];
+
+    const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
+    const order = [];
+    walkTasks(roots, data.tasks, task => { order.push(task.id); });
+    return order;
   });
 
   app.queryService.register('tasks.filterIds', payload => {
@@ -7893,6 +7906,25 @@ function addKanbanTaskFromInputUi(app, state, inputId, parentTaskId) {
   app.toast('Task added');
 }
 
+// When the selected task disappears (completed while completed tasks are hidden,
+// invalidated, ...), move to the next visible task, else the previous one, judged by
+// where the hidden task sat in the full document order. Falls back to the first
+// visible task only if its position is unknown.
+function nearestVisibleTaskId(app, state, visible) {
+  const order = typeof app.select === 'function' ? app.select('tasks.documentOrder') : [];
+  const at = order.indexOf(state.selId);
+  if (at < 0) return visible[0];
+
+  const shown = new Set(visible);
+  for (let i = at + 1; i < order.length; i++) {
+    if (shown.has(order[i])) return order[i];
+  }
+  for (let i = at - 1; i >= 0; i--) {
+    if (shown.has(order[i])) return order[i];
+  }
+  return visible[0];
+}
+
 function ensureSelectionVisibleUi(app, state) {
   const visible = app.visible();
 
@@ -7903,7 +7935,7 @@ function ensureSelectionVisibleUi(app, state) {
   }
 
   if (state.selId && !visible.includes(state.selId)) {
-    state.selId = visible[0];
+    state.selId = nearestVisibleTaskId(app, state, visible);
   }
 
   if (state.msel && state.msel.size) {
