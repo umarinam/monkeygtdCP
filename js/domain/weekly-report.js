@@ -9,7 +9,7 @@ const WEEKLY_REPORT_PROMPT = [
   '',
   'HOW TO READ THE EXPORT',
   '- Indentation is hierarchy: top levels are projects, middle levels are milestones/workstreams, leaves are individual tasks. Untagged lines are unchanged ancestors kept only for context. Never report them as work done.',
-  '- [DONE mm-dd] = accomplished this period. Report as accomplishments, grouped by project and milestone.',
+  '- [DONE mm-dd] = accomplished this period. Report as accomplishments, grouped by project and milestone. When a parent is DONE its sub-tasks are listed DONE with it, so the whole branch counts as finished.',
   '- [NEW mm-dd] = added this period. Do NOT present these as delivered. A new project or task means research, scoping, or solution/architecture design time. Describe it as "explored / scoped / designed / planned", inferring the topic from the title and its parent. A new list is a new area of work.',
   '- A task can carry several tags, e.g. [NEW 10-01] [DONE 10-02]: created and finished within the week. Report it as an accomplishment.',
   '- [EDIT mm-dd] = refined or re-planned, or it received notes. Mention only if it adds meaning (scope change, new direction).',
@@ -74,21 +74,30 @@ function buildWeeklyReportDomain(data, options) {
 
   const lastAt = entries => (entries.length ? entries[entries.length - 1].at : '');
 
+  const histOf = (t, type, pred) => (Array.isArray(t.history) ? t.history : []).filter(
+    h => h && h.type === type && inRange(h.at) && (!pred || pred(h.changes || {}))
+  );
+
+  // When a task was marked completed (status 1) inside the period, else ''.
+  const finishedAt = t => {
+    if (Number(t.status || 0) !== 1) return '';
+    return inRange(t.completed_at) ? t.completed_at : lastAt(histOf(t, 'status', c => Number(c.to) === 1));
+  };
+
   // One independent flag per kind of change, so a task created and finished in
   // the same week is both NEW and DONE instead of collapsing into one status.
   const eventsFor = t => {
-    const history = Array.isArray(t.history) ? t.history : [];
-    const hist = (type, pred) => history.filter(
-      h => h && h.type === type && inRange(h.at) && (!pred || pred(h.changes || {}))
-    );
+    const hist = (type, pred) => histOf(t, type, pred);
     const status = Number(t.status || 0);
-    const ev = { newAt: '', doneAt: '', droppedAt: '', droppedBy: '', reopenedAt: '', editAt: '', notes: [] };
+    const ev = {
+      newAt: '', doneAt: '', inherited: false, droppedAt: '', droppedBy: '', reopenedAt: '', editAt: '', notes: []
+    };
 
     if (inRange(t.created_at)) ev.newAt = t.created_at;
     else ev.newAt = lastAt(hist('creation', c => c.source !== 'restore'));
 
     if (status === 1) {
-      ev.doneAt = inRange(t.completed_at) ? t.completed_at : lastAt(hist('status', c => Number(c.to) === 1));
+      ev.doneAt = finishedAt(t);
     } else if (status === 0 && t.repeating_due && inRange(t.completed_at)) {
       // Completing a recurring task re-opens it immediately and logs no status change.
       ev.doneAt = t.completed_at;
@@ -126,7 +135,37 @@ function buildWeeklyReportDomain(data, options) {
   for (const t of Object.values(tasks)) {
     if (!t || !listSet.has(t.checklist_id) || !clean(t.content)) continue;
     const ev = eventsFor(t);
-    if (ev && hasEvents(ev)) eventsById.set(t.id, ev);
+    if (ev) eventsById.set(t.id, ev);
+  }
+
+  // Completing a parent finishes the whole branch, but the app leaves still-open
+  // sub-tasks open (unless "close children on parent done" is on), so report them as
+  // done with the nearest ancestor completed in the period. Only live, open tasks
+  // qualify: not invalidated or deleted ones, not tasks added after the parent was
+  // closed, and not tasks the user reopened after that.
+  for (const [id, ev] of eventsById) {
+    const t = tasks[id];
+    if (ev.doneAt || t.deleted || Number(t.status || 0) !== 0) continue;
+
+    let parentDoneAt = '';
+    for (let cur = tasks[t.parent_id], guard = 0; cur && !parentDoneAt && guard < 100; guard++) {
+      parentDoneAt = finishedAt(cur);
+      cur = tasks[cur.parent_id];
+    }
+    if (!parentDoneAt) continue;
+
+    const doneMs = Date.parse(parentDoneAt);
+    const createdMs = Date.parse(String(t.created_at || ''));
+    if (Number.isFinite(createdMs) && createdMs > doneMs) continue;
+    if (ev.reopenedAt && Date.parse(ev.reopenedAt) > doneMs) continue;
+
+    ev.doneAt = parentDoneAt;
+    ev.inherited = true;
+    ev.reopenedAt = '';
+  }
+
+  for (const [id, ev] of [...eventsById]) {
+    if (!hasEvents(ev)) eventsById.delete(id);
   }
 
   // Deleting a branch logs a deletion on every descendant; report only the branch root.
@@ -246,7 +285,7 @@ function buildWeeklyReportDomain(data, options) {
       : `all lists (${listIds.length})`} · Generated: ${opts.generatedOn || ymdOf(new Date())}`,
     `Summary: ${counts.done} done · ${counts.new} new · ${counts.edited} edited · ${counts.dropped} dropped · ${counts.reopened} reopened · ${counts.newLists} new ${counts.newLists === 1 ? 'list' : 'lists'}`,
     '',
-    'Legend: [DONE] completed · [NEW] created · [EDIT] title changed or notes added · [DROPPED] deleted or invalidated · [REOPENED] finished task opened again · untagged lines = unchanged context',
+    'Legend: [DONE] completed (open sub-tasks of a task completed in the period count as done with it) · [NEW] created · [EDIT] title changed or notes added · [DROPPED] deleted or invalidated · [REOPENED] finished task opened again · untagged lines = unchanged context',
     ''
   ];
 
@@ -271,6 +310,7 @@ function buildWeeklyReportDomain(data, options) {
     const upcoming = [];
     for (const t of Object.values(tasks)) {
       if (!t || t.deleted || Number(t.status || 0) !== 0 || !listSet.has(t.checklist_id) || !clean(t.content)) continue;
+      if ((eventsById.get(t.id) || {}).inherited) continue;
       const due = String(t.due || '').slice(0, 10);
       if (t.due_asap) upcoming.push({ key: '', tag: '[ASAP]', t });
       else if (dateRe.test(due) && due <= limit) {

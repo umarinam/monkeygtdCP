@@ -532,3 +532,184 @@ test('very long notes are truncated', () => {
   assert.equal(noteLine.length < 450, true);
   assert.equal(noteLine.endsWith('…'), true);
 });
+
+// ── Open sub-tasks of a completed parent are reported as completed ──────────────
+
+const doneParent = (id, extra) => ({
+  id,
+  status: 1,
+  completed_at: iso(6, 12),
+  history: [{ at: iso(6, 12), type: 'status', changes: { from: 0, to: 1 } }],
+  ...extra
+});
+
+test('open children and grandchildren of a parent completed in the period are reported DONE with the parent date', () => {
+  const data = world([
+    doneParent('Project'),
+    { id: 'Milestone', parent_id: 'Project' },
+    { id: 'Task A', parent_id: 'Milestone' },
+    { id: 'Task B', parent_id: 'Project' }
+  ]);
+
+  const result = run(data);
+  const out = lines(result);
+
+  assert.equal(out.includes('- [DONE 06-12] Project'), true);
+  assert.equal(out.includes('  - [DONE 06-12] Milestone'), true);
+  assert.equal(out.includes('    - [DONE 06-12] Task A'), true);
+  assert.equal(out.includes('  - [DONE 06-12] Task B'), true);
+  assert.equal(result.counts.done, 4);
+});
+
+test('a child that was already completed keeps its own completion date', () => {
+  const data = world([
+    doneParent('Project'),
+    { id: 'Finished earlier', parent_id: 'Project', status: 1, completed_at: iso(6, 11) },
+    { id: 'Still open', parent_id: 'Project' }
+  ]);
+
+  const out = lines(run(data));
+
+  assert.equal(out.includes('  - [DONE 06-11] Finished earlier'), true);
+  assert.equal(out.includes('  - [DONE 06-12] Still open'), true);
+});
+
+test('the nearest completed ancestor supplies the date', () => {
+  const data = world([
+    doneParent('Project', { completed_at: iso(6, 13), history: [{ at: iso(6, 13), type: 'status', changes: { from: 0, to: 1 } }] }),
+    doneParent('Milestone', { parent_id: 'Project' }),
+    { id: 'Leaf', parent_id: 'Milestone' }
+  ]);
+
+  const out = lines(run(data));
+
+  assert.equal(out.includes('    - [DONE 06-12] Leaf'), true);
+});
+
+test('a task under a parent completed before the period is not reported', () => {
+  const data = world([
+    { id: 'Old project', status: 1, completed_at: iso(5, 1) },
+    { id: 'Open child', parent_id: 'Old project' }
+  ]);
+
+  const result = run(data);
+
+  assert.equal(result.text.includes('Open child'), false);
+  assert.equal(result.counts.done, 0);
+});
+
+test('an inherited DONE combines with NEW when the child was created this week', () => {
+  const data = world([
+    doneParent('Project'),
+    { id: 'Fresh child', parent_id: 'Project', created_at: iso(6, 11) }
+  ]);
+
+  const result = run(data);
+
+  assert.equal(lines(result).includes('  - [NEW 06-11] [DONE 06-12] Fresh child'), true);
+  assert.equal(result.counts.new, 1);
+});
+
+test('a child added after the parent was completed is not swept in as done', () => {
+  const data = world([
+    doneParent('Project'),
+    { id: 'Added later', parent_id: 'Project', created_at: iso(6, 13) }
+  ]);
+
+  const out = lines(run(data));
+
+  assert.equal(out.includes('  - [NEW 06-13] Added later'), true);
+  assert.equal(out.some(l => l.includes('Added later') && l.includes('[DONE')), false);
+});
+
+test('a child reopened after the parent was completed stays open; one reopened before is done with it', () => {
+  const data = world([
+    doneParent('Project'),
+    {
+      id: 'Reopened after',
+      parent_id: 'Project',
+      history: [{ at: iso(6, 13), type: 'status', changes: { from: 1, to: 0 } }]
+    },
+    {
+      id: 'Reopened before',
+      parent_id: 'Project',
+      history: [{ at: iso(6, 11), type: 'status', changes: { from: 1, to: 0 } }]
+    }
+  ]);
+
+  const result = run(data);
+  const out = lines(result);
+
+  assert.equal(out.includes('  - [REOPENED 06-13] Reopened after'), true);
+  assert.equal(out.includes('  - [DONE 06-12] Reopened before'), true);
+  assert.equal(result.counts.reopened, 1);
+});
+
+test('invalidated and deleted children are not turned into completed work', () => {
+  const data = world([
+    doneParent('Project'),
+    { id: 'Ruled out', parent_id: 'Project', status: 2, completed_at: iso(5, 1) },
+    { id: 'Removed', parent_id: 'Project', deleted: true, history: [{ at: iso(5, 1), type: 'deletion', changes: { action: 'soft-delete' } }] }
+  ]);
+
+  const result = run(data);
+
+  assert.equal(result.text.includes('Ruled out'), false);
+  assert.equal(result.text.includes('Removed'), false);
+  assert.equal(result.counts.done, 1);
+});
+
+test('a recurring parent that was "completed" (and reopened itself) does not finish its children', () => {
+  const data = world([
+    { id: 'Weekly routine', status: 0, repeating_due: { freq: 'weekly' }, completed_at: iso(6, 12) },
+    { id: 'Routine step', parent_id: 'Weekly routine' }
+  ]);
+
+  const result = run(data);
+
+  assert.equal(lines(result).includes('- [DONE 06-12] Weekly routine'), true);
+  assert.equal(result.text.includes('Routine step'), false);
+});
+
+test('children also inherit completion when the export is limited to the current list', () => {
+  const data = world(
+    [
+      doneParent('Project'),
+      { id: 'Child', parent_id: 'Project' }
+    ]
+  );
+
+  const current = run(data, { scope: 'current', currentListId: 'l1' });
+
+  assert.equal(lines(current).includes('  - [DONE 06-12] Child'), true);
+});
+
+test('children finished with their parent are not also listed as upcoming or overdue', () => {
+  const data = world([
+    doneParent('Project'),
+    { id: 'Overdue child', parent_id: 'Project', due: '2026-06-01' },
+    { id: 'Unrelated overdue', due: '2026-06-02' }
+  ]);
+
+  const result = run(data, { includeUpcoming: true });
+  const upcoming = result.text.slice(result.text.indexOf('# Upcoming'));
+
+  assert.equal(upcoming.includes('Overdue child'), false);
+  assert.equal(upcoming.includes('Unrelated overdue'), true);
+});
+
+test('a recurring child completed this week still appears as upcoming', () => {
+  const data = world([
+    { id: 'Standup notes', repeating_due: { freq: 'daily' }, completed_at: iso(6, 12), due: '2026-06-15' }
+  ]);
+
+  const result = run(data, { includeUpcoming: true });
+
+  assert.equal(result.text.slice(result.text.indexOf('# Upcoming')).includes('Standup notes'), true);
+});
+
+test('the legend explains that open sub-tasks count as done with a completed parent', () => {
+  const legend = lines(run(world([{ id: 'x' }]))).find(l => l.startsWith('Legend:'));
+
+  assert.equal(legend.includes('sub-tasks'), true);
+});
