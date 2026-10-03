@@ -324,6 +324,11 @@ function registerAppQueries(app, deps) {
     return rows;
   });
 
+  app.queryService.register('report.weekly', payload => buildWeeklyReportDomain(getData(), {
+    ...payload,
+    currentListId: state.listId
+  }));
+
   app.queryService.register('cp.listTargets', () => {
     const data = getData();
     return Object.values(data.lists)
