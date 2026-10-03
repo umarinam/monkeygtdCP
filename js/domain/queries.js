@@ -77,6 +77,19 @@ function registerAppQueries(app, deps) {
     return visible;
   });
 
+  // Every live task in on-screen order, ignoring hide-completed and collapse, so a
+  // task that just became hidden can still be located among its neighbours.
+  app.queryService.register('tasks.documentOrder', () => {
+    const data = getData();
+    const list = data.lists[state.listId];
+    if (!list) return [];
+
+    const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
+    const order = [];
+    walkTasks(roots, data.tasks, task => { order.push(task.id); });
+    return order;
+  });
+
   app.queryService.register('tasks.filterIds', payload => {
     const data = getData();
     const ids = payload.ids || [];

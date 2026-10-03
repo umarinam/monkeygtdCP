@@ -464,6 +464,25 @@ function addKanbanTaskFromInputUi(app, state, inputId, parentTaskId) {
   app.toast('Task added');
 }
 
+// When the selected task disappears (completed while completed tasks are hidden,
+// invalidated, ...), move to the next visible task, else the previous one, judged by
+// where the hidden task sat in the full document order. Falls back to the first
+// visible task only if its position is unknown.
+function nearestVisibleTaskId(app, state, visible) {
+  const order = typeof app.select === 'function' ? app.select('tasks.documentOrder') : [];
+  const at = order.indexOf(state.selId);
+  if (at < 0) return visible[0];
+
+  const shown = new Set(visible);
+  for (let i = at + 1; i < order.length; i++) {
+    if (shown.has(order[i])) return order[i];
+  }
+  for (let i = at - 1; i >= 0; i--) {
+    if (shown.has(order[i])) return order[i];
+  }
+  return visible[0];
+}
+
 function ensureSelectionVisibleUi(app, state) {
   const visible = app.visible();
 
@@ -474,7 +493,7 @@ function ensureSelectionVisibleUi(app, state) {
   }
 
   if (state.selId && !visible.includes(state.selId)) {
-    state.selId = visible[0];
+    state.selId = nearestVisibleTaskId(app, state, visible);
   }
 
   if (state.msel && state.msel.size) {
