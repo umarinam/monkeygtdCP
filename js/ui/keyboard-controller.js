@@ -502,6 +502,8 @@ function handleTwoKeySequence(app, state, e) {
     'rd': () => app.showRestoreDeleted(),
     'wc': () => app.showWC(),
     'xx': () => app.extractBranch(),
+    'mt': () => app.toggleTemplateSelection(),
+    'at': () => app.openTemplatePicker(),
     'uu': () => app.undo(),
     'st': () => {
       if (!state.selId) {

@@ -56,6 +56,11 @@ function bindTaskListEvents(app, state) {
       app.openTaskHistory(id);
       return;
     }
+    if (a === 'tpl') {
+      state.selId = id;
+      app.renameTemplateSelection();
+      return;
+    }
 
     const ts = Date.now();
     const isPlainClick = !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
@@ -761,6 +766,10 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
     metaH += `<span class="tdue ${c}" data-id="${id}" data-a="due">${fmtDue(t, state.data.settings.relativeDates)}</span>`;
   }
   if (t.repeating_due) metaH += `<span class="trep" data-id="${id}" data-a="repeat">🔁</span>`;
+  if (t.is_template) {
+    const tplLabel = t.template_name ? `template: ${esc(t.template_name)}` : 'template';
+    metaH += `<span class="ttpl" data-id="${id}" data-a="tpl" title="Template - press at on another task to apply it; click to rename">📋 ${tplLabel}</span>`;
+  }
   if (t.tags_as_text) {
     metaH += `<span class="ttags">${t.tags_as_text
       .split(',')

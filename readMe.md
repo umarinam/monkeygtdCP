@@ -518,6 +518,27 @@ Press **`wc`** or open the Actions menu → Word count. Shows word count and cha
 
 ---
 
+## Templates
+
+A template is a task whose sub-tasks you want to reuse: applying it adds a copy of all its sub-tasks under another task in one step.
+
+- **`mt`** — mark the selected task as a template. You're prompted for an optional name; leave it blank to name the template after the task (the name then follows the task if you later rename it). A small **📋 template** chip marks template tasks in the list. Pressing `mt` on a template turns it back into an ordinary task (undoable).
+- **`at`** — open the template picker (a filtered command palette listing every template across all lists, with its sub-task count and list name). Type to filter, then Enter applies the template to the selected task — or to every selected task when several are multi-selected.
+- **Rename template…** (command palette, or click the template chip) — change a template's name; blank reverts to the task's own name.
+
+Applying a template:
+
+- Copies the template's whole sub-task tree (not the template task itself), appended after the target's existing sub-tasks; the target is expanded so the new tasks are visible.
+- Copies every non-deleted sub-task, including completed and invalidated ones, as **open** tasks with fresh ids, an empty history and a `creation` history entry with source `template`. Content, tags, priority, assignees, notes and due/repeat settings are copied as-is.
+- Is a single undo step, even when applied to several tasks at once.
+- Sub-tasks that are themselves templates are copied as ordinary tasks.
+- Applying a template to itself or one of its own sub-tasks copies the branch once, as it was before applying.
+
+Templates live wherever you keep them (any list, including archived ones) and sync like any other task.
+
+
+---
+
 ## Settings Panel
 
 A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
@@ -659,6 +680,13 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `ex` | Export |
 | `im` | Import |
 
+### Templates
+
+| Shortcut | Action |
+|---|---|
+| `mt` | Mark / unmark selected task as a template |
+| `at` | Apply a template to the selected task(s) |
+
 ### Formatting
 
 | Shortcut | Action |
@@ -747,6 +775,8 @@ Use the following structure for each task/list-item (matches `mkTask` in `js/cor
 | `completed_at` | ISO timestamp when status was set to closed; retained after re-opening |
 | `_collapsed` | `true` if the task's children are hidden in the tree view |
 | `overdue_ack_due` | Tracks which due date the user has acknowledged as overdue, to avoid re-flagging the same date |
+| `is_template` | Optional; `true` when the task is a template (see [Templates](#templates)). Absent on ordinary tasks |
+| `template_name` | Optional; the template's custom name. Blank means the template is named after the task's `content` |
 
 
 ---

@@ -24,4 +24,7 @@ function registerAppCommands(app) {
   app.commandBus.register('task.wipeCompleted', () => app.wipeCompleted(true));
   app.commandBus.register('task.resetCompleted', () => app.resetCompleted(true));
   app.commandBus.register('task.extractBranch', () => app.extractBranch(true));
+  app.commandBus.register('task.markTemplate', ({id, name}) => app.markTemplate(id, name));
+  app.commandBus.register('task.unmarkTemplate', ({id}) => app.unmarkTemplate(id));
+  app.commandBus.register('task.applyTemplate', ({templateId, targetIds}) => app.applyTemplateTo(templateId, targetIds));
 }
