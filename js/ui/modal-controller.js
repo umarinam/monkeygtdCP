@@ -1214,7 +1214,8 @@ function formatHistoryTypeLabel(type) {
     structure: 'Structure',
     deletion: 'Deletion',
     notes: 'Notes',
-    creation: 'Creation'
+    creation: 'Creation',
+    template: 'Template'
   };
   return labels[type] || (type ? String(type) : 'Change');
 }
@@ -1262,6 +1263,11 @@ function formatHistorySummary(type, changes) {
 
   if (type === 'deletion') {
     return `Deletion event: ${c.action || 'updated'}`;
+  }
+
+  if (type === 'template') {
+    const label = name => (name ? `"${name}"` : '(not a template)');
+    return `Template: ${label(c.from)} -> ${label(c.to)}`;
   }
 
   if (type === 'structure') {

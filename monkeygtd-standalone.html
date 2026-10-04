@@ -117,6 +117,9 @@ body.zen #topbar{display:none}
       color:var(--muted);border:1px solid var(--border)}
 .trep{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
   color:var(--accent);border:1px solid var(--border);cursor:pointer}
+.ttpl{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
+  color:var(--accent);border:1px dashed var(--accent);cursor:pointer;white-space:nowrap}
+.ttpl:hover{background:var(--bg-hover)}
 .tjson{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
      color:var(--muted);border:1px solid var(--border);cursor:pointer;font-family:var(--mono)}
 .tjson:hover{color:var(--text);background:var(--bg-hover)}
@@ -431,7 +434,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-03T18:42:11+05:00',commit:'1f24743'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-03T18:55:58+05:00',commit:'d9802c9'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1784,6 +1787,136 @@ function buildWeeklyReportDomain(data, options) {
 
 'use strict';
 
+// A template is any task flagged with is_template. Applying it copies the
+// template's sub-tasks (not the template task itself) under another task.
+// template_name is optional; when blank the template is named after the task.
+
+function templateNameDomain(task) {
+  if (!task) return '';
+  return String(task.template_name || '').trim()
+    || String(task.content || '').trim()
+    || 'Untitled template';
+}
+
+function templateBranchesDomain(state, templateId) {
+  const tasks = state.data.tasks;
+  const seen = new Set();
+  const snapshot = id => {
+    const t = tasks[id];
+    if (!t || t.deleted || seen.has(id)) return null;
+    seen.add(id);
+    return { task: t, children: (t.tasks || []).map(snapshot).filter(Boolean) };
+  };
+  return (tasks[templateId]?.tasks || []).map(snapshot).filter(Boolean);
+}
+
+function countTemplateBranchTasks(branches) {
+  return branches.reduce((n, b) => n + 1 + countTemplateBranchTasks(b.children), 0);
+}
+
+function listTemplatesDomain(state) {
+  const data = state.data;
+  return Object.values(data.tasks || {})
+    .filter(t => t && t.is_template && !t.deleted && data.lists?.[t.checklist_id])
+    .map(t => ({
+      id: t.id,
+      name: templateNameDomain(t),
+      listName: data.lists[t.checklist_id].name || '',
+      count: countTemplateBranchTasks(templateBranchesDomain(state, t.id))
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+// Marks a task as a template, or renames it when it already is one.
+function markTemplateDomain(app, state, id, name) {
+  const t = state.data.tasks[id];
+  if (!t || t.deleted) return false;
+
+  app.pushUndo(app.snap());
+  const before = t.is_template ? templateNameDomain(t) : '';
+  t.is_template = true;
+  t.template_name = String(name || '').trim();
+  t.updated_at = now();
+  const after = templateNameDomain(t);
+  if (before !== after) logTaskHistory(t, 'template', { from: before, to: after });
+  app.save();
+  return true;
+}
+
+function unmarkTemplateDomain(app, state, id) {
+  const t = state.data.tasks[id];
+  if (!t || !t.is_template) return false;
+
+  app.pushUndo(app.snap());
+  const before = templateNameDomain(t);
+  delete t.is_template;
+  delete t.template_name;
+  t.updated_at = now();
+  logTaskHistory(t, 'template', { from: before, to: '' });
+  app.save();
+  return true;
+}
+
+// Copies the template's sub-tasks under every target as fresh open tasks.
+// The template branch is snapshotted once up front, so applying a template to
+// itself or to one of its own sub-tasks copies it exactly once per target.
+function applyTemplateDomain(app, state, templateId, targetIds) {
+  const result = { applied: 0, created: 0 };
+  const tpl = state.data.tasks[templateId];
+  if (!tpl || tpl.deleted || !tpl.is_template) return result;
+
+  const targets = [...new Set(targetIds || [])]
+    .map(id => state.data.tasks[id])
+    .filter(t => t && !t.deleted);
+  const branches = templateBranchesDomain(state, templateId);
+  if (!targets.length || !branches.length) return result;
+
+  app.pushUndo(app.snap());
+  const stamp = now();
+
+  const materialize = (node, parent) => {
+    const copy = JSON.parse(JSON.stringify(node.task));
+    delete copy.is_template;
+    delete copy.template_name;
+    delete copy._deleted_at;
+    delete copy.overdue_ack_due;
+    Object.assign(copy, {
+      id: uid(),
+      parent_id: parent.id,
+      checklist_id: parent.checklist_id,
+      status: 0,
+      completed_at: '',
+      deleted: false,
+      history: [],
+      created_at: stamp,
+      updated_at: stamp
+    });
+    state.data.tasks[copy.id] = copy;
+    copy.tasks = node.children.map(child => materialize(child, copy));
+    logTaskHistory(copy, 'creation', {
+      source: 'template',
+      templateId: tpl.id,
+      listId: copy.checklist_id,
+      parentId: copy.parent_id
+    });
+    result.created += 1;
+    return copy.id;
+  };
+
+  for (const target of targets) {
+    const newIds = branches.map(branch => materialize(branch, target));
+    target.tasks = [...(target.tasks || []), ...newIds];
+    target._collapsed = false;
+    result.applied += 1;
+  }
+
+  app.save();
+  return result;
+}
+
+
+'use strict';
+
 function registerAppQueries(app, deps) {
   const {
     state,
@@ -2125,6 +2258,8 @@ function registerAppQueries(app, deps) {
     ...payload,
     currentListId: state.listId
   }));
+
+  app.queryService.register('templates.all', () => listTemplatesDomain(state));
 
   app.queryService.register('cp.listTargets', () => {
     const data = getData();
@@ -3623,6 +3758,9 @@ function registerAppCommands(app) {
   app.commandBus.register('task.wipeCompleted', () => app.wipeCompleted(true));
   app.commandBus.register('task.resetCompleted', () => app.resetCompleted(true));
   app.commandBus.register('task.extractBranch', () => app.extractBranch(true));
+  app.commandBus.register('task.markTemplate', ({id, name}) => app.markTemplate(id, name));
+  app.commandBus.register('task.unmarkTemplate', ({id}) => app.unmarkTemplate(id));
+  app.commandBus.register('task.applyTemplate', ({templateId, targetIds}) => app.applyTemplateTo(templateId, targetIds));
 }
 
 
@@ -6526,7 +6664,8 @@ function formatHistoryTypeLabel(type) {
     structure: 'Structure',
     deletion: 'Deletion',
     notes: 'Notes',
-    creation: 'Creation'
+    creation: 'Creation',
+    template: 'Template'
   };
   return labels[type] || (type ? String(type) : 'Change');
 }
@@ -6574,6 +6713,11 @@ function formatHistorySummary(type, changes) {
 
   if (type === 'deletion') {
     return `Deletion event: ${c.action || 'updated'}`;
+  }
+
+  if (type === 'template') {
+    const label = name => (name ? `"${name}"` : '(not a template)');
+    return `Template: ${label(c.from)} -> ${label(c.to)}`;
   }
 
   if (type === 'structure') {
@@ -7137,6 +7281,8 @@ function handleTwoKeySequence(app, state, e) {
     'rd': () => app.showRestoreDeleted(),
     'wc': () => app.showWC(),
     'xx': () => app.extractBranch(),
+    'mt': () => app.toggleTemplateSelection(),
+    'at': () => app.openTemplatePicker(),
     'uu': () => app.undo(),
     'st': () => {
       if (!state.selId) {
@@ -7536,6 +7682,11 @@ function bindTaskListEvents(app, state) {
     }
     if (a === 'hist') {
       app.openTaskHistory(id);
+      return;
+    }
+    if (a === 'tpl') {
+      state.selId = id;
+      app.renameTemplateSelection();
       return;
     }
 
@@ -8243,6 +8394,10 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
     metaH += `<span class="tdue ${c}" data-id="${id}" data-a="due">${fmtDue(t, state.data.settings.relativeDates)}</span>`;
   }
   if (t.repeating_due) metaH += `<span class="trep" data-id="${id}" data-a="repeat">🔁</span>`;
+  if (t.is_template) {
+    const tplLabel = t.template_name ? `template: ${esc(t.template_name)}` : 'template';
+    metaH += `<span class="ttpl" data-id="${id}" data-a="tpl" title="Template - press at on another task to apply it; click to rename">📋 ${tplLabel}</span>`;
+  }
   if (t.tags_as_text) {
     metaH += `<span class="ttags">${t.tags_as_text
       .split(',')
@@ -8413,6 +8568,9 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Import', s: 'im', fn: () => app.openImport() },
     { l: 'Restore deleted', s: 'rd', fn: () => app.showRestoreDeleted() },
     { l: 'Extract branch as new list', s: 'xx', fn: () => app.extractBranch() },
+    { l: 'Mark/unmark as template', s: 'mt', fn: () => app.toggleTemplateSelection() },
+    { l: 'Apply template...', s: 'at', fn: () => app.openTemplatePicker() },
+    { l: 'Rename template...', fn: () => app.renameTemplateSelection() },
     { l: 'Undo', s: 'Ctrl+Z / uu', fn: () => app.undo() },
     { l: 'Redo', s: 'Ctrl+Y / Ctrl+Shift+Z', fn: () => app.redo() },
     { l: 'Sync now', s: 'sg', fn: () => app.syncNow() },
@@ -8449,11 +8607,22 @@ function buildCommandPaletteItems(app, state) {
   ];
 }
 
+function buildTemplatePaletteItems(app) {
+  return app.select('templates.all').map(t => ({
+    l: t.name,
+    s: `${t.count} task${t.count === 1 ? '' : 's'}${t.listName ? ` · ${t.listName}` : ''}`,
+    fn: () => app.applyTemplate(t.id)
+  }));
+}
+
 
 'use strict';
 
 function openCommandPalette(app, state, mode) {
-  document.getElementById('cpi').value = '';
+  const input = document.getElementById('cpi');
+  input.value = '';
+  if (input.dataset.defaultPlaceholder === undefined) input.dataset.defaultPlaceholder = input.placeholder;
+  input.placeholder = mode === 'templates' ? 'Pick a template to apply...' : input.dataset.defaultPlaceholder;
   app.openModal('ov-cp');
   state.cpMode = mode || '';
   state.cpIdx = 0;
@@ -8466,18 +8635,24 @@ function closeCommandPalette(app, state) {
   app.closeModal('ov-cp');
 }
 
-function updateCommandPalette(app, state) {
-  const q = document.getElementById('cpi').value.toLowerCase();
+function commandPaletteItemsForMode(app, state) {
+  if (state.cpMode === 'templates') return buildTemplatePaletteItems(app);
   const allCmds = buildCommandPaletteItems(app, state);
-  const cmds = state.cpMode === 'lists'
+  return state.cpMode === 'lists'
     ? allCmds.filter(c => c.l && c.l.startsWith('Go to:'))
     : allCmds;
+}
+
+function updateCommandPalette(app, state) {
+  const q = document.getElementById('cpi').value.toLowerCase();
+  const cmds = commandPaletteItemsForMode(app, state);
 
   const filtered = q ? cmds.filter(c => c.l.toLowerCase().includes(q) || (c.s || '').toLowerCase().includes(q)) : cmds;
   state.cpItems = filtered;
+  const emptyText = state.cpMode === 'templates' ? 'No templates found' : 'No commands found';
   document.getElementById('cpr').innerHTML = filtered.slice(0, 20)
     .map((c, i) => `<div class="cpi${i === state.cpIdx ? ' on' : ''}" onclick="App.execCP(${i})"><span style="flex:1">${esc(c.l)}</span>${c.s ? `<span class="cpsc">${esc(c.s)}</span>` : ''}</div>`)
-    .join('') || '<div style="padding:12px;color:var(--muted)">No commands found</div>';
+    .join('') || `<div style="padding:12px;color:var(--muted)">${emptyText}</div>`;
 }
 
 function renderCommandPaletteItems(state) {
@@ -8490,6 +8665,94 @@ function executeCommandPaletteItem(app, state, index) {
   if (!item) return;
   app.closeCP();
   item.fn();
+}
+
+
+'use strict';
+
+function templateNamePromptText(task) {
+  const content = String(task.content || '').trim();
+  const short = content.length > 60 ? `${content.slice(0, 57)}...` : content;
+  return `Template name (leave blank to use "${short}"):`;
+}
+
+function selectedTaskUi(state) {
+  const t = state.selId ? state.data.tasks[state.selId] : null;
+  return t && !t.deleted ? t : null;
+}
+
+function toggleTemplateSelectionUi(app, state) {
+  const t = selectedTaskUi(state);
+  if (!t) {
+    app.toast('Select a task to mark as a template');
+    return;
+  }
+
+  if (t.is_template) {
+    const name = templateNameDomain(t);
+    app.dispatch('task.unmarkTemplate', { id: t.id });
+    app.render();
+    app.toast(`"${name}" is no longer a template (Ctrl+Z to undo)`);
+    return;
+  }
+
+  const name = prompt(templateNamePromptText(t), '');
+  if (name === null) return;
+  app.dispatch('task.markTemplate', { id: t.id, name });
+  app.render();
+  const hasSubtasks = (t.tasks || []).some(id => state.data.tasks[id] && !state.data.tasks[id].deleted);
+  app.toast(hasSubtasks
+    ? `Saved template "${templateNameDomain(t)}" - apply it to a task with at`
+    : `Saved template "${templateNameDomain(t)}" - add sub-tasks to it`);
+}
+
+function renameTemplateSelectionUi(app, state) {
+  const t = selectedTaskUi(state);
+  if (!t || !t.is_template) {
+    app.toast('Select a template to rename');
+    return;
+  }
+
+  const name = prompt(templateNamePromptText(t), t.template_name || '');
+  if (name === null || name.trim() === String(t.template_name || '').trim()) return;
+  app.dispatch('task.markTemplate', { id: t.id, name });
+  app.render();
+  app.toast(`Template renamed to "${templateNameDomain(t)}"`);
+}
+
+function openTemplatePickerUi(app, state) {
+  if (!app.selectedIds().length) {
+    app.toast('Select a task to apply a template to');
+    return;
+  }
+  if (!app.select('templates.all').length) {
+    app.toast('No templates yet - select a task with sub-tasks and press mt');
+    return;
+  }
+  app.openCP('templates');
+}
+
+function applyTemplateSelectionUi(app, state, templateId) {
+  const tpl = state.data.tasks[templateId];
+  if (!tpl || tpl.deleted) return;
+  const targetIds = app.selectedIds();
+  if (!targetIds.length) {
+    app.toast('Select a task to apply a template to');
+    return;
+  }
+
+  const name = templateNameDomain(tpl);
+  const result = app.dispatch('task.applyTemplate', { templateId, targetIds });
+  if (!result || !result.created) {
+    app.toast(`Template "${name}" has no sub-tasks to add`);
+    return;
+  }
+
+  app.render();
+  const added = `${result.created} task${result.created === 1 ? '' : 's'} added`;
+  app.toast(result.applied === 1
+    ? `Applied "${name}" (${added})`
+    : `Applied "${name}" to ${result.applied} tasks (${added})`);
 }
 
 
@@ -9254,6 +9517,10 @@ function showShortcutsUi(app) {
       ['xx', 'Extract branch as new list'],
       ['wipe', 'Wipe completed'],
       ['reset', 'Reset completed'],
+    ]},
+    { heading: 'Templates', items: [
+      ['mt', 'Mark / unmark task as template'],
+      ['at', 'Apply template to selected task(s)'],
     ]},
     { heading: 'Gist Sync', items: [
       ['sg', 'Sync now (bidirectional)'],
@@ -10144,6 +10411,15 @@ const App={
   copyWithUrl(){ copyWithUrlUi(this, S); },
   copyPermalink(){ copyPermalinkUi(this, S); },
 
+  // ─ Templates ─────────────────────────────────────────────────────
+  markTemplate(id,name){ return markTemplateDomain(this, S, id, name); },
+  unmarkTemplate(id){ return unmarkTemplateDomain(this, S, id); },
+  applyTemplateTo(templateId,targetIds){ return applyTemplateDomain(this, S, templateId, targetIds); },
+  toggleTemplateSelection(){ toggleTemplateSelectionUi(this, S); },
+  renameTemplateSelection(){ renameTemplateSelectionUi(this, S); },
+  openTemplatePicker(){ openTemplatePickerUi(this, S); },
+  applyTemplate(templateId){ applyTemplateSelectionUi(this, S, templateId); },
+
   // â”€ Due date modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openDueModal(){ openDueModalUi(this, S); },
   renderCal(){ renderCalUi(this, S); },
@@ -10445,6 +10721,8 @@ App.init();
 
 
 </script>
+
+
 
 
 

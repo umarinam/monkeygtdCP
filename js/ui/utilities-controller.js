@@ -392,6 +392,10 @@ function showShortcutsUi(app) {
       ['wipe', 'Wipe completed'],
       ['reset', 'Reset completed'],
     ]},
+    { heading: 'Templates', items: [
+      ['mt', 'Mark / unmark task as template'],
+      ['at', 'Apply template to selected task(s)'],
+    ]},
     { heading: 'Gist Sync', items: [
       ['sg', 'Sync now (bidirectional)'],
       ['sp', 'Pull from Gist'],

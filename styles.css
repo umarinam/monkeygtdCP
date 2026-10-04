@@ -110,6 +110,9 @@ body.zen #topbar{display:none}
       color:var(--muted);border:1px solid var(--border)}
 .trep{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
   color:var(--accent);border:1px solid var(--border);cursor:pointer}
+.ttpl{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
+  color:var(--accent);border:1px dashed var(--accent);cursor:pointer;white-space:nowrap}
+.ttpl:hover{background:var(--bg-hover)}
 .tjson{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
      color:var(--muted);border:1px solid var(--border);cursor:pointer;font-family:var(--mono)}
 .tjson:hover{color:var(--text);background:var(--bg-hover)}

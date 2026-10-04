@@ -47,6 +47,9 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Import', s: 'im', fn: () => app.openImport() },
     { l: 'Restore deleted', s: 'rd', fn: () => app.showRestoreDeleted() },
     { l: 'Extract branch as new list', s: 'xx', fn: () => app.extractBranch() },
+    { l: 'Mark/unmark as template', s: 'mt', fn: () => app.toggleTemplateSelection() },
+    { l: 'Apply template...', s: 'at', fn: () => app.openTemplatePicker() },
+    { l: 'Rename template...', fn: () => app.renameTemplateSelection() },
     { l: 'Undo', s: 'Ctrl+Z / uu', fn: () => app.undo() },
     { l: 'Redo', s: 'Ctrl+Y / Ctrl+Shift+Z', fn: () => app.redo() },
     { l: 'Sync now', s: 'sg', fn: () => app.syncNow() },
@@ -81,4 +84,12 @@ function buildCommandPaletteItems(app, state) {
     { l: 'New list', fn: () => { app.showPage('home'); app.createList(); } },
     ...app.select('cp.listTargets').map(l => ({ l: `Go to: ${l.name}`, fn: () => app.openList(l.id) }))
   ];
+}
+
+function buildTemplatePaletteItems(app) {
+  return app.select('templates.all').map(t => ({
+    l: t.name,
+    s: `${t.count} task${t.count === 1 ? '' : 's'}${t.listName ? ` · ${t.listName}` : ''}`,
+    fn: () => app.applyTemplate(t.id)
+  }));
 }

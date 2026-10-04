@@ -342,6 +342,8 @@ function registerAppQueries(app, deps) {
     currentListId: state.listId
   }));
 
+  app.queryService.register('templates.all', () => listTemplatesDomain(state));
+
   app.queryService.register('cp.listTargets', () => {
     const data = getData();
     return Object.values(data.lists)

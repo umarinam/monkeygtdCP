@@ -557,6 +557,15 @@ const App={
   copyWithUrl(){ copyWithUrlUi(this, S); },
   copyPermalink(){ copyPermalinkUi(this, S); },
 
+  // ─ Templates ─────────────────────────────────────────────────────
+  markTemplate(id,name){ return markTemplateDomain(this, S, id, name); },
+  unmarkTemplate(id){ return unmarkTemplateDomain(this, S, id); },
+  applyTemplateTo(templateId,targetIds){ return applyTemplateDomain(this, S, templateId, targetIds); },
+  toggleTemplateSelection(){ toggleTemplateSelectionUi(this, S); },
+  renameTemplateSelection(){ renameTemplateSelectionUi(this, S); },
+  openTemplatePicker(){ openTemplatePickerUi(this, S); },
+  applyTemplate(templateId){ applyTemplateSelectionUi(this, S, templateId); },
+
   // â”€ Due date modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openDueModal(){ openDueModalUi(this, S); },
   renderCal(){ renderCalUi(this, S); },
