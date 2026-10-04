@@ -434,7 +434,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-03T18:55:58+05:00',commit:'d9802c9'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-04T13:52:12+05:00',commit:'61d314a'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -2206,13 +2206,38 @@ function registerAppQueries(app, deps) {
     const rows = [];
     const seenIds = new Set();
 
-    const classify = (task, deletedAt) => {
+    // When a task was marked completed (status 1) inside the range, else ''.
+    const completedStamp = task => {
+      if (Number(task.status || 0) !== 1) return '';
+      if (inRange(task.completed_at)) return task.completed_at;
+      const done = (Array.isArray(task.history) ? task.history : [])
+        .filter(h => h?.type === 'status' && Number(h?.changes?.to) === 1 && inRange(h.at));
+      return done.length ? done[done.length - 1].at : '';
+    };
+
+    // Completing a parent finishes its still-open sub-tasks (the app leaves them open
+    // unless "close children on parent done" is on). Same rules as the weekly export:
+    // only open tasks, not ones added after the parent was closed or reopened since.
+    const finishedWithParent = (task, parentDoneAt) => {
+      if (!parentDoneAt || Number(task.status || 0) !== 0) return false;
+      const doneMs = Date.parse(parentDoneAt);
+      const createdMs = Date.parse(String(task.created_at || ''));
+      if (Number.isFinite(createdMs) && createdMs > doneMs) return false;
+      const reopened = (Array.isArray(task.history) ? task.history : []).filter(h => (
+        h?.type === 'status' && Number(h?.changes?.from) === 1 && Number(h?.changes?.to) === 0
+        && h?.changes?.source !== 'reset-completed' && inRange(h.at)
+      ));
+      return !(reopened.length && Date.parse(reopened[reopened.length - 1].at) > doneMs);
+    };
+
+    const classify = (task, deletedAt, parentDoneAt) => {
       const history = Array.isArray(task.history) ? task.history : [];
       const added = inRange(task.created_at) || history.some(h => h?.type === 'creation' && inRange(h.at));
       const deleted = !!deletedAt && inRange(deletedAt)
         || history.some(h => h?.type === 'deletion' && inRange(h.at));
       const completed = inRange(task.completed_at)
-        || history.some(h => h?.type === 'status' && Number(h?.changes?.to) === 1 && inRange(h.at));
+        || history.some(h => h?.type === 'status' && Number(h?.changes?.to) === 1 && inRange(h.at))
+        || finishedWithParent(task, parentDoneAt);
       const modified = inRange(task.updated_at)
         || history.some(h => ['title', 'tags', 'assignment', 'scheduling', 'priority', 'notes', 'structure'].includes(h?.type) && inRange(h.at));
 
@@ -2223,27 +2248,28 @@ function registerAppQueries(app, deps) {
       return 'untouched';
     };
 
-    const addRow = (task, depth, deletedAt) => {
+    const addRow = (task, depth, deletedAt, parentDoneAt) => {
       if (!task || seenIds.has(task.id)) return;
       seenIds.add(task.id);
       rows.push({
         id: task.id,
         content: task.content || '',
         depth: Math.max(0, depth || 0),
-        statusKey: classify(task, deletedAt)
+        statusKey: classify(task, deletedAt, parentDoneAt)
       });
     };
 
-    const walkList = (ids, depth) => {
+    // parentDoneAt: when the nearest ancestor completed in the range, '' if none.
+    const walkList = (ids, depth, parentDoneAt) => {
       for (const id of ids || []) {
         const t = data.tasks[id];
         if (!t || t.deleted) continue;
-        addRow(t, depth, '');
-        walkList(t.tasks || [], depth + 1);
+        addRow(t, depth, '', parentDoneAt);
+        walkList(t.tasks || [], depth + 1, completedStamp(t) || parentDoneAt);
       }
     };
 
-    walkList(list.root_tasks || [], 0);
+    walkList(list.root_tasks || [], 0, '');
 
     for (const item of (data.deletedItems || [])) {
       const snap = item?.snapshot;
