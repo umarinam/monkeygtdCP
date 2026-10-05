@@ -370,6 +370,14 @@ function registerAppQueries(app, deps) {
 
   app.queryService.register('templates.all', () => listTemplatesDomain(state));
 
+  app.queryService.register('time.totals', ({nowMs} = {}) => timeTotalsDomain(state, nowMs));
+  app.queryService.register('time.taskSummary', ({taskId, nowMs}) => taskTimeSummaryDomain(state, taskId, nowMs));
+  app.queryService.register('time.sessionsForTask', ({taskId}) => sessionsForTaskDomain(getData(), taskId));
+  app.queryService.register('time.report', payload => timeReportDomain(getData(), {
+    ...payload,
+    currentListId: state.listId
+  }));
+
   app.queryService.register('cp.listTargets', () => {
     const data = getData();
     return Object.values(data.lists)

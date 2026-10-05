@@ -16,6 +16,7 @@ const S={
   lastCdAt:0,
   repoVersions:null,
   collapsedDueSections:new Set(),
+  timer:null, timeTotals:null, timeLogTaskId:null, checkInShownFor:null,
   iac:{open:false,taskId:null,type:'',query:'',start:0,end:0,items:[],index:0}
 };
 
@@ -44,6 +45,7 @@ const App={
     if(gs.zenMode) document.body.classList.add('zen');
     this.initCqrs();
     this.bindGlobal();
+    startTimeTrackingUi(this, S);
     this.render();
     this.syncSettings();
     if (S.data.settings.gistAutoSyncEnabled !== false) {
@@ -419,6 +421,7 @@ const App={
 
   renderReport(){ renderReportUi(this, S); },
   setReportLastDays(){ setReportLastDaysUi(this, S); },
+  setReportToday(){ setReportTodayUi(this, S); },
   copyWeeklyReport(){ copyWeeklyReportUi(this, S); },
   downloadWeeklyReport(){ downloadWeeklyReportUi(this, S); },
   toggleReportFilter(key){
@@ -565,6 +568,29 @@ const App={
   renameTemplateSelection(){ renameTemplateSelectionUi(this, S); },
   openTemplatePicker(){ openTemplatePickerUi(this, S); },
   applyTemplate(templateId){ applyTemplateSelectionUi(this, S, templateId); },
+
+  // ─ Time tracking ─────────────────────────────────────────────────
+  saveTimer(){ DB.saveTimer(S.timer); },
+  startTimerOn(taskId,nowMs){ return startTimerDomain(this, S, taskId, nowMs); },
+  stopTimerNow(nowMs){ return stopTimerDomain(this, S, nowMs); },
+  resumeTimerNow(nowMs){ return resumeTimerDomain(this, S, nowMs); },
+  answerTimerCheckIn(answer,nowMs){ return answerCheckInDomain(this, S, answer, nowMs); },
+  recoverTimerAutoPause(nowMs){ return recoverAutoPauseDomain(this, S, nowMs); },
+  dismissTimerAutoPause(){ return dismissAutoPauseDomain(this, S); },
+  addManualTimeTo(taskId,durationMs,date,nowMs){ return addManualTimeDomain(this, S, taskId, durationMs, date, nowMs); },
+  deleteTimeSessionById(sessionId){ return deleteTimeSessionDomain(this, S, sessionId); },
+  timeTick(nowMs){ timeTickUi(this, S, nowMs); },
+  toggleTimerSelection(){ toggleTimerSelectionUi(this, S); },
+  startTimer(taskId){ return startTimerUi(this, S, taskId); },
+  stopTimer(){ stopTimerUi(this, S); },
+  resumeTimer(){ resumeTimerUi(this, S); },
+  jumpToTimedTask(){ jumpToTimedTaskUi(this, S); },
+  openCheckIn(){ openCheckInUi(this, S); },
+  answerCheckIn(answer){ answerCheckInUi(this, S, answer); },
+  openTimeLog(id){ openTimeLogUi(this, S, id); },
+  toggleTimerForLog(){ toggleTimerForLogUi(this, S); },
+  addManualTime(){ addManualTimeUi(this, S); },
+  deleteTimeSession(sessionId){ deleteTimeSessionUi(this, S, sessionId); },
 
   // â”€ Due date modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openDueModal(){ openDueModalUi(this, S); },
@@ -744,6 +770,24 @@ const App={
   setDark(v){ setDarkModeUi(this, S, v); },
   setZen(v){ setZenModeUi(this, S, v); },
   setListStyle(v){ setListStyleUi(this, S, v); },
+  setTimerCheckInMin(v){
+    const n = parseInt(v, 10);
+    setSettingDomain(this, S, 'timerCheckInMin', Number.isFinite(n) ? Math.max(0, n) : TIME_DEFAULTS.checkInMin);
+    this.syncSettings();
+    this.timeTick();
+  },
+  setTimerGraceMin(v){
+    const n = parseInt(v, 10);
+    setSettingDomain(this, S, 'timerGraceMin', Number.isFinite(n) ? Math.max(0, n) : TIME_DEFAULTS.graceMin);
+    this.syncSettings();
+    this.timeTick();
+  },
+  setTimerNotify(v){ setTimerNotifyUi(this, S, !!v); },
+  setTimeRetentionDays(v){
+    const n = parseInt(v, 10);
+    setSettingDomain(this, S, 'timeRetentionDays', Number.isFinite(n) ? Math.max(0, n) : TIME_DEFAULTS.retentionDays);
+    this.syncSettings();
+  },
 
   setGistToken(v){
     setSettingDomain(this, S, 'gistToken', v.trim());

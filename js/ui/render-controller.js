@@ -61,6 +61,11 @@ function bindTaskListEvents(app, state) {
       app.renameTemplateSelection();
       return;
     }
+    if (a === 'time') {
+      state.selId = id;
+      app.openTimeLog(id);
+      return;
+    }
 
     const ts = Date.now();
     const isPlainClick = !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
@@ -187,6 +192,7 @@ function renderReportUi(app, state) {
   state.reportStart = start;
   state.reportEnd = end;
 
+  const timeByTask = typeof renderReportTimeUi === 'function' ? renderReportTimeUi(app, state, start, end) : {};
   const rows = app.select('report.rows', { start, end });
   const filters = ensureReportFilters(state);
   const counts = rows.reduce((acc, row) => {
@@ -213,10 +219,11 @@ function renderReportUi(app, state) {
     const indent = Math.max(0, Number(r.depth || 0)) * 18;
     const deletedMark = r.statusKey === 'deleted' ? '<span class="report-deleted-mark">deleted</span>' : '';
     const contentHtml = renderSummaryContentUi(state, r.content || '(untitled)');
+    const timeMark = timeByTask[r.id] ? `<span class="report-time-mark" title="Time tracked in this period">⏱ ${formatDurationDomain(timeByTask[r.id])}</span>` : '';
     return `<div class="report-row rk-${r.statusKey}" style="padding-left:${indent + 10}px">
       <span class="report-dot"></span>
       <span class="report-content">${contentHtml}</span>
-      ${deletedMark}
+      ${timeMark}${deletedMark}
     </div>`;
   }).join('');
 
@@ -609,6 +616,7 @@ function renderListUi(app, state) {
   app.renderBreadcrumbs();
 
   const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
+  state.timeTotals = readTimeTotalsUi(app);
   const html = buildTaskTreeUi(app, state, roots, 0, list);
   const taskListEl = document.getElementById('task-list');
   taskListEl.className = getTaskListLayoutClassName(state.data.settings || {});
@@ -720,6 +728,38 @@ function renderSummaryContentUi(state, content) {
   return md(wikiAwareContent);
 }
 
+// Tracked time per task, computed once per list render (null when unavailable).
+function readTimeTotalsUi(app) {
+  try {
+    return app.select('time.totals', {});
+  } catch {
+    return null;
+  }
+}
+
+// The time chip shows the total including sub-tasks; running/paused when timed.
+function timeChipModelUi(state, totals, id) {
+  const rolled = (totals && totals.rolled[id]) || 0;
+  const own = (totals && totals.own[id]) || 0;
+  const timer = state.timer && state.timer.taskId === id ? state.timer : null;
+  if (!rolled && !timer) return { show: false, label: '', cls: '', title: '' };
+  const running = !!timer && timer.status === 'running';
+  const paused = !!timer && timer.status === 'paused';
+  const label = `${running ? '●' : (paused ? '⏸' : '⏱')} ${formatDurationDomain(rolled)}`;
+  const parts = [`Own: ${formatDurationDomain(own)}`];
+  if (rolled > own) parts.push(`With sub-tasks: ${formatDurationDomain(rolled)}`);
+  if (running) parts.push('Timer running');
+  if (paused) parts.push('Timer paused');
+  parts.push('Click for the time log (tl)');
+  return { show: true, label, cls: running ? ' running' : (paused ? ' paused' : ''), title: parts.join(' · ') };
+}
+
+function buildTimeChipUi(state, totals, id) {
+  const m = timeChipModelUi(state, totals, id);
+  if (!m.show) return '';
+  return `<span class="ttime${m.cls}" data-id="${id}" data-a="time" title="${esc(m.title)}">${esc(m.label)}</span>`;
+}
+
 function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
   const t = state.data.tasks[id];
   if (!t || t.deleted) return '';
@@ -770,6 +810,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
     const tplLabel = t.template_name ? `template: ${esc(t.template_name)}` : 'template';
     metaH += `<span class="ttpl" data-id="${id}" data-a="tpl" title="Template - press at on another task to apply it; click to rename">📋 ${tplLabel}</span>`;
   }
+  if (state.timeTotals) metaH += buildTimeChipUi(state, state.timeTotals, id);
   if (t.tags_as_text) {
     metaH += `<span class="ttags">${t.tags_as_text
       .split(',')

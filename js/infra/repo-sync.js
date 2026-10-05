@@ -824,7 +824,7 @@ async function optimizeRepoRemote(app, state, options) {
     const pushed = await syncToRepoRemote(app, state, { silent: true });
     if (!pushed) throw new Error(`Optimized locally but push failed (snapshot tag ${tag}). Run Sync now.`);
 
-    const summary = `Optimized: removed ${stats.removed} task(s) (${stats.untitled} untitled, ${stats.completed} completed, ${stats.deleted} deleted), trimmed history on ${stats.historyTrimmedTasks}. Snapshot tag ${tag}`;
+    const summary = `Optimized: removed ${stats.removed} task(s) (${stats.untitled} untitled, ${stats.completed} completed, ${stats.deleted} deleted), trimmed history on ${stats.historyTrimmedTasks}${stats.timeSessionsPruned ? `, pruned ${stats.timeSessionsPruned} old time session(s)` : ''}. Snapshot tag ${tag}`;
     repoRememberSyncSummary(state, `Optimized (snapshot ${tag})`);
     app.save({ touchLocalSaveAt: false });
     app.syncSettings();

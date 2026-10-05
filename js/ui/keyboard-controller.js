@@ -62,7 +62,7 @@ function handleGlobalKey(app, state, e) {
 
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json sync-settings-json repo-versions shortcuts quickadd'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json sync-settings-json repo-versions shortcuts quickadd timelog checkin'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');
@@ -468,6 +468,8 @@ function handleTwoKeySequence(app, state, e) {
     'df': () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); app.toast(`Dates: ${state.data.settings.relativeDates ? 'relative' : 'exact'}`); },
     'tt': () => app.addTagSelection(),
     'th': () => { if (state.selId) app.openTaskHistory(state.selId); },
+    'ts': () => app.toggleTimerSelection(),
+    'tl': () => { if (state.selId) app.openTimeLog(state.selId); },
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
     'lj': () => app.openListJson(state.listId),
     'gt': () => app.showPage('tags'),

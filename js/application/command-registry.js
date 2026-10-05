@@ -27,4 +27,12 @@ function registerAppCommands(app) {
   app.commandBus.register('task.markTemplate', ({id, name}) => app.markTemplate(id, name));
   app.commandBus.register('task.unmarkTemplate', ({id}) => app.unmarkTemplate(id));
   app.commandBus.register('task.applyTemplate', ({templateId, targetIds}) => app.applyTemplateTo(templateId, targetIds));
+  app.commandBus.register('time.start', ({taskId, nowMs}) => app.startTimerOn(taskId, nowMs));
+  app.commandBus.register('time.stop', ({nowMs} = {}) => app.stopTimerNow(nowMs));
+  app.commandBus.register('time.resume', ({nowMs} = {}) => app.resumeTimerNow(nowMs));
+  app.commandBus.register('time.answerCheckIn', ({answer, nowMs}) => app.answerTimerCheckIn(answer, nowMs));
+  app.commandBus.register('time.recoverAutoPause', ({nowMs} = {}) => app.recoverTimerAutoPause(nowMs));
+  app.commandBus.register('time.dismissAutoPause', () => app.dismissTimerAutoPause());
+  app.commandBus.register('time.addManual', ({taskId, durationMs, date, nowMs}) => app.addManualTimeTo(taskId, durationMs, date, nowMs));
+  app.commandBus.register('time.deleteSession', ({sessionId}) => app.deleteTimeSessionById(sessionId));
 }
