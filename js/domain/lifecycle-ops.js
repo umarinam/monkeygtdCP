@@ -172,6 +172,12 @@ function optimizeDataDomain(state, options) {
     task.history = historyLimit ? task.history.slice(-historyLimit) : [];
   }
 
+  // Time sessions are records of their own: they outlive the tasks removed above
+  // (reports name them from their snapshot title) until they age out.
+  stats.timeSessionsPruned = typeof pruneTimeSessionsDomain === 'function'
+    ? pruneTimeSessionsDomain(state, timeSettingsDomain(data.settings).retentionDays, opts.nowMs)
+    : 0;
+
   if (state.selId && !alive(state.selId)) state.selId = null;
   if (state.editId && !alive(state.editId)) state.editId = null;
   if (state.hoistId && !alive(state.hoistId)) state.hoistId = null;

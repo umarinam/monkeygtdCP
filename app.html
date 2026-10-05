@@ -75,20 +75,23 @@
             <input id="report-days" type="number" min="1" max="366" value="7" onkeydown="if(event.key==='Enter')App.setReportLastDays()">
           </div>
           <button class="btn btn-sm" onclick="App.setReportLastDays()" title="Set the dates to the last N days ending today">Set</button>
+          <button class="btn btn-sm" onclick="App.setReportToday()" title="Set both dates to today (daily report)">Today</button>
         </div>
         <div class="report-controls" id="report-export-controls">
           <div class="fg" style="margin:0;min-width:150px">
             <label for="report-export-scope">Export scope</label>
-            <select id="report-export-scope">
+            <select id="report-export-scope" onchange="App.renderReport()">
               <option value="all">All lists</option>
               <option value="current">Current list</option>
             </select>
           </div>
           <label class="report-check"><input id="report-incl-prompt" type="checkbox" checked> AI instructions</label>
           <label class="report-check"><input id="report-incl-upcoming" type="checkbox" checked> Upcoming due</label>
+          <label class="report-check"><input id="report-incl-time" type="checkbox" checked> Time tracked</label>
           <button class="btn btn-sm" onclick="App.copyWeeklyReport()" title="Copy a Markdown export of what changed in this date range, ready to paste into an LLM">Copy for AI</button>
           <button class="btn btn-sm" onclick="App.downloadWeeklyReport()">Download .md</button>
         </div>
+        <div id="report-time" class="report-time"></div>
         <div id="report-legend" class="report-legend"></div>
         <div id="report-c"></div>
       </div>
@@ -118,6 +121,7 @@
     <span class="sbi" id="sb-sel" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px"></span>
     <span class="sbi click" id="sb-filt" style="display:none" onclick="App.clearSearch()"></span>
     <span style="flex:1"></span>
+    <span class="sbi" id="sb-timer" style="display:none"></span>
     <span class="sbi" id="sb-sync" title="Last Gist sync status"></span>
     <span class="sbi" id="sb-cnt"></span>
   </div>
@@ -508,6 +512,23 @@
           </select></div></div>
       </div>
       <div style="margin-bottom:18px">
+        <div class="sst">Time Tracking</div>
+        <div class="fg">
+          <label for="s-timer-checkin">Check-in reminder every (minutes, 0 = off)</label>
+          <input id="s-timer-checkin" type="number" min="0" step="1" placeholder="15" onchange="App.setTimerCheckInMin(this.value)">
+        </div>
+        <div class="fg">
+          <label for="s-timer-grace">Auto-pause when a check-in is unanswered for (minutes, 0 = never)</label>
+          <input id="s-timer-grace" type="number" min="0" step="1" placeholder="5" onchange="App.setTimerGraceMin(this.value)">
+        </div>
+        <div class="ssi"><div><div class="ssl">Desktop Notifications</div><div class="ssd">Show check-ins as a browser notification while MonkeyGTD is in the background</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-timer-notify" onchange="App.setTimerNotify(this.checked)"><span class="tslider"></span></label></div>
+        <div class="fg">
+          <label for="s-time-retention">Keep time sessions for (days, 0 = forever) - applied by Optimize repo</label>
+          <input id="s-time-retention" type="number" min="0" step="1" placeholder="365" onchange="App.setTimeRetentionDays(this.value)">
+        </div>
+      </div>
+      <div style="margin-bottom:18px">
         <div class="sst">Keyboard</div>
         <div class="ssi"><div><div class="ssl">CapsLock Double-Tap Action</div><div class="ssd">Press CapsLock twice quickly to run this action from anywhere</div></div>
           <div class="fg" style="min-width:160px"><select id="s-capslock-action" onchange="App.setSetting('capsLockAction',this.value)">
@@ -692,6 +713,42 @@
   </div>
 </div>
 
+<!-- Time log (per task) -->
+<div id="ov-timelog" class="ov hidden">
+  <div class="modal" style="max-width:560px">
+    <div class="mh"><span class="mt">Time Log</span><span class="mx" onclick="App.closeModal('ov-timelog')">✕</span></div>
+    <div class="mb">
+      <div id="timelog-task" class="timelog-task"></div>
+      <div id="timelog-summary" class="timelog-summary"></div>
+      <div class="timelog-add">
+        <div class="fg">
+          <label for="timelog-dur">Add time</label>
+          <input id="timelog-dur" type="text" placeholder="e.g. 25m, 1h30, 1:15" autocomplete="off" onkeydown="if(event.key==='Enter')App.addManualTime()">
+        </div>
+        <div class="fg">
+          <label for="timelog-date">Date</label>
+          <input id="timelog-date" type="date">
+        </div>
+        <button class="btn btn-sm" onclick="App.addManualTime()">Add</button>
+      </div>
+      <div id="timelog-list" class="timelog-list"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" id="timelog-toggle" onclick="App.toggleTimerForLog()">Start timer</button>
+      <button class="btn" onclick="App.closeModal('ov-timelog')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timer check-in: "still working on this task?" -->
+<div id="ov-checkin" class="ov hidden">
+  <div class="modal" style="max-width:560px">
+    <div class="mh"><span class="mt" id="checkin-title">Still working?</span><span class="mx" onclick="App.closeModal('ov-checkin')">✕</span></div>
+    <div class="mb"><div id="checkin-body" class="checkin-body"></div></div>
+    <div class="mf checkin-actions" id="checkin-actions"></div>
+  </div>
+</div>
+
 <!-- Single-instance lock: shown when another tab already has the app open.
      Deliberately has no backdrop-click or Escape dismissal - only the
      buttons below can get past it. -->
@@ -715,6 +772,7 @@
 <script src="js/core/cqrs.js"></script>
 <script src="js/core/traversal.js"></script>
 <script src="js/core/utils.js"></script>
+<script src="js/domain/time-tracking-ops.js"></script>
 <script src="js/domain/weekly-report.js"></script>
 <script src="js/domain/template-ops.js"></script>
 <script src="js/domain/queries.js"></script>
@@ -740,6 +798,7 @@
 <script src="js/ui/command-palette-commands.js"></script>
 <script src="js/ui/command-palette-controller.js"></script>
 <script src="js/ui/template-controller.js"></script>
+<script src="js/ui/time-tracking-controller.js"></script>
 <script src="js/ui/chrome-controller.js"></script>
 <script src="js/ui/search-controller.js"></script>
 <script src="js/ui/settings-controller.js"></script>

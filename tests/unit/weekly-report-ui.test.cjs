@@ -123,7 +123,8 @@ test('copyWeeklyReportUi sends the page options to report.weekly and copies the 
       end: '2026-06-08',
       scope: 'current',
       includePrompt: false,
-      includeUpcoming: true
+      includeUpcoming: true,
+      includeTime: true
     }
   });
   assert.deepEqual(written, [okResult.text]);
@@ -140,7 +141,8 @@ test('copyWeeklyReportUi falls back to state dates and defaults when the control
     end: '2026-06-08',
     scope: 'all',
     includePrompt: true,
-    includeUpcoming: true
+    includeUpcoming: true,
+    includeTime: true
   });
 });
 
@@ -245,4 +247,11 @@ test('app.html loads the weekly report modules and wires the Reporting page cont
   for (const method of ['setReportLastDays()', 'copyWeeklyReport()', 'downloadWeeklyReport()']) {
     assert.equal(appSource.includes(method), true, `App should define ${method}`);
   }
+});
+
+test('readReportExportOptions turns the time section off when its box is unchecked', () => {
+  const { readReportExportOptions } = loadController({ elements: { 'report-incl-time': { checked: false } } });
+  const opts = readReportExportOptions({ reportStart: '2026-06-01', reportEnd: '2026-06-08' });
+  assert.equal(opts.includeTime, false);
+  assert.equal(opts.includeUpcoming, true);
 });

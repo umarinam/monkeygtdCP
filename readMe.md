@@ -469,7 +469,8 @@ On the Reporting page (**`gr`**), **Copy for AI** / **Download .md** export ever
 - Notes added in the period appear under their task as `note (mm-dd): ...`. Tags, assignees and due dates are appended to changed tasks.
 - Left out on purpose: reorders/moves, priority/tag/due-date tweaks on otherwise unchanged tasks, blank tasks, tasks created and deleted in the same week, and a typed-in first title.
 - Day boundaries use your local time. Completing a recurring task counts as `[DONE]` (only its latest completion is visible).
-- Export **before** running Optimize Repo: it removes completed tasks and trims per-task history, which erases `[DONE]` items and edit history for earlier weeks.
+- **Time tracked** (checked by default) appends hours logged per day and per task in the period; see [Time Tracking](#time-reports).
+- Export **before** running Optimize Repo: it removes completed tasks and trims per-task history, which erases `[DONE]` items and edit history for earlier weeks. Tracked time survives Optimize Repo until it is older than the retention period.
 
 
 ---
@@ -539,6 +540,40 @@ Templates live wherever you keep them (any list, including archived ones) and sy
 
 ---
 
+## Time Tracking
+
+Track how long you spend on each task with a timer, and get a periodic check-in that asks whether you are still on that task or got distracted.
+
+- **`ts`** — start the timer on the selected task. If another task is being timed, its time is logged and the timer switches over. Pressing `ts` on the running task stops it; on a paused task it resumes. Only open tasks can be timed.
+- **Status bar** — while a timer runs it shows `⏱ 0:12:34 · Task`: click it to jump to the task, **■** to stop. A paused timer shows `⏸ Task · resume` (click to resume, **✕** to clear it). The browser tab title shows the running task too.
+- **Task chip** — a task with tracked time shows a `⏱ 1h 25m` chip with the total **including its sub-tasks** (hover for its own time). It turns green with a pulsing dot while timed. Click it to open the time log.
+- **`tl`** — time log of the selected task: totals (own, with sub-tasks, today, this week), every session with its date and times, **Add time** (type `25m`, `1h30`, `1:15` or `90` for minutes, and pick a date: today ends the session now, an earlier date starts it at 09:00), and **✕** to delete a session (asks first, as sessions are not part of undo).
+- Completing, invalidating or deleting the timed task stops its timer (a completion ends the session at the completion time). Sessions shorter than 1 minute are not logged.
+- The timer belongs to this device: it survives a page reload, is not overwritten by a sync, and is not shown on your other devices. Logged time itself syncs like the rest of your data.
+- Command palette: Start/stop timer, Time log, Stop timer, Resume timer, Jump to timed task.
+
+### Check-ins
+
+Every N minutes (Settings › Time Tracking, default 15, 0 = off) while a timer runs, a dialog asks **"Still working on <task>?"**:
+
+- **Yes, still on it** (Enter) — carry on; the next check-in is N minutes from now.
+- **Pause - keep all time** — pause and log the whole session up to now.
+- **Pause - drop time since HH:MM** — pause and log only up to the last time you confirmed (or started). Use it when you got distracted.
+
+If a check-in goes unanswered for the grace period (default 5 minutes, 0 = never), the timer pauses on its own and logs only up to the last confirmation. When you come back the dialog says so and offers **I was working - add HH:MM → now** (puts the gap back and keeps the timer running), **Resume** (new session from now) or **Stay paused**. This also covers a closed tab or a sleeping laptop: on return the timer is caught up from its timestamps.
+
+Esc or ✕ only hides the check-in; it stays pending (the status bar shows **⏰ Check-in**, click to reopen) and the grace period keeps running. While a check-in is pending the tab title flashes **⏰ Still working?**. Turn on **Desktop Notifications** in Settings to also get a browser notification when MonkeyGTD is in the background (the browser asks for permission once; this needs the https/localhost version, not a file opened from disk).
+
+### Time reports
+
+- **Reporting page** (`gr`): a **Time tracked** panel shows the total for the selected dates, a bar per day and the time per task as `List › Parent › Task`, most time first (click a row to jump to the task). It follows the **Export scope** selector (all lists or the current list). Report rows show a `⏱` badge with the time logged in the period. **Today** sets both dates to today for a daily report; **Last N days** covers weekly ones.
+- **Weekly AI export**: with **Time tracked** checked, Copy for AI / Download .md add a `# Time tracked` section (by day and by task), and the AI instructions explain how to use it.
+- Time is clipped to the date range and split at local midnight. Only logged sessions count, not a timer that is still running.
+- Logged time is stored separately from tasks (see [JSON Data Schema](#time-sessions)), so undo, copying a task or applying a template never changes it, and time on tasks that Optimize Repo removes stays in reports under the task's title at the time.
+
+
+---
+
 ## Settings Panel
 
 A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
@@ -554,8 +589,9 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 - Zen mode (`om`)
 - Task list layout: density, parent emphasis, indent-guide style, branch spacing, Focus Treatment mode, content width
 - CapsLock double-tap action: pick any command-palette action (e.g. "Toggle Focus Treatment") to run when CapsLock is pressed twice quickly, from anywhere in the app, regardless of selection. Off by default.
+- Time tracking: check-in interval (minutes, 0 = off), auto-pause grace period (minutes, 0 = never), desktop notifications, and how many days of time sessions Optimize Repo keeps (default 365, 0 = forever). See [Time Tracking](#time-tracking).
 - Gist / repo sync provider and credentials
-- **Optimize Repo** (Repo provider only; also in the command palette as "Optimize repo"): shrinks the synced backup. After a confirmation it syncs, creates a lightweight Git tag `pre-optimize-YYYY-MM-DD` (or `pre-optimize-YYYY-MM-DD-HHMMSS` if one already exists that day) on the sync branch as a restorable snapshot, then, across every list: deletes untitled tasks (their subtasks move up into the vacated slot), deletes completed/invalidated tasks with their subtasks, permanently removes soft-deleted tasks and empties Restore Deleted, trims each task's history to the last 4 entries, and pushes the result. If the sync or tag step fails, nothing is changed. The local cleanse is a single undo step.
+- **Optimize Repo** (Repo provider only; also in the command palette as "Optimize repo"): shrinks the synced backup. After a confirmation it syncs, creates a lightweight Git tag `pre-optimize-YYYY-MM-DD` (or `pre-optimize-YYYY-MM-DD-HHMMSS` if one already exists that day) on the sync branch as a restorable snapshot, then, across every list: deletes untitled tasks (their subtasks move up into the vacated slot), deletes completed/invalidated tasks with their subtasks, permanently removes soft-deleted tasks and empties Restore Deleted, trims each task's history to the last 4 entries, drops time sessions older than the time-tracking retention period (time on the removed tasks is otherwise kept), and pushes the result. If the sync or tag step fails, nothing is changed. The local cleanse is a single undo step.
 - **Export/Import Sync Settings**: from the GitHub Gist Sync section, exports the sync provider, both Gist and Repo credentials/paths, and auto-sync settings as JSON (pre-filled into a textarea, with a Copy button) — paste that JSON on another machine and click Import to carry sync configuration over without re-entering each field by hand. The export includes the Personal Access Token in plain text; the modal warns to treat it like a password. A partial/hand-edited payload only updates the fields it contains, leaving the rest as-is.
 - **Restore Older Version** (GitHub Repo provider only): every push to the repo is a commit to the backup file, so its commit history doubles as a version list. "Restore Older Version…" in the repo sync fields (or "Restore older version from repo" in the command palette) lists those versions newest first, 30 at a time ("Load older versions" pages further back), with an optional "Show versions up to" date to jump back without paging. Picking one shows its list/task counts next to the current ones in a confirmation; confirming replaces local data with that version and immediately pushes it back as the repo's latest version so other devices pick it up — the replaced head stays in git history. The restored copy's own sync configuration (repo path/branch, provider, sync timestamps) is ignored in favour of this device's current settings. The restore is a single undo step (Ctrl+Z / `uu`) for tasks and lists. If the push fails, the restore is kept locally and the next sync pushes it rather than pulling the old head back.
 
@@ -687,6 +723,13 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `mt` | Mark / unmark selected task as a template |
 | `at` | Apply a template to the selected task(s) |
 
+### Time Tracking
+
+| Shortcut | Action |
+|---|---|
+| `ts` | Start / stop the timer on the selected task (resumes it when paused) |
+| `tl` | Time log of the selected task (add or delete time) |
+
 ### Formatting
 
 | Shortcut | Action |
@@ -777,6 +820,32 @@ Use the following structure for each task/list-item (matches `mkTask` in `js/cor
 | `overdue_ack_due` | Tracks which due date the user has acknowledged as overdue, to avoid re-flagging the same date |
 | `is_template` | Optional; `true` when the task is a template (see [Templates](#templates)). Absent on ordinary tasks |
 | `template_name` | Optional; the template's custom name. Blank means the template is named after the task's `content` |
+
+### Time sessions
+
+Logged time is stored at the top level of the app data as `timeSessions`, an array of records linked to tasks by id (not inside the task):
+
+```json
+{
+  "id": "",
+  "taskId": "",
+  "start": "",
+  "end": "",
+  "source": "timer",
+  "taskTitle": "",
+  "listId": "",
+  "listName": ""
+}
+```
+
+| Field | Description |
+|---|---|
+| `taskId` | ID of the task the time was spent on |
+| `start` / `end` | ISO timestamps of the session |
+| `source` | `timer` (from the timer) or `manual` (added in the time log) |
+| `taskTitle` / `listId` / `listName` | Copied from the task and its list when the session is logged, so reports can still name a task after it has been removed |
+
+The running timer is not part of this data: it is kept per device in `localStorage['mgtd3_timer']`.
 
 
 ---

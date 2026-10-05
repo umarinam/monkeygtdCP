@@ -8,7 +8,8 @@ function readReportExportOptions(state) {
     end: (el('report-end') && el('report-end').value) || state.reportEnd,
     scope: el('report-export-scope') && el('report-export-scope').value === 'current' ? 'current' : 'all',
     includePrompt: checked('report-incl-prompt', true),
-    includeUpcoming: checked('report-incl-upcoming', true)
+    includeUpcoming: checked('report-incl-upcoming', true),
+    includeTime: checked('report-incl-time', true)
   };
 }
 

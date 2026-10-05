@@ -33,6 +33,8 @@ const WEEKLY_REPORT_PROMPT = [
   'Tone: factual, first person, past tense for completed work, no filler or hype.'
 ].join('\n');
 
+const WEEKLY_REPORT_TIME_HINT = '- The "Time tracked" section is the time I logged per task (by day and by task path). Use it to show where the effort went, largest first, and to mention significant work on tasks not tagged above. Logged time is effort, not proof that something was finished.';
+
 function buildWeeklyReportDomain(data, options) {
   const opts = options || {};
   const counts = { done: 0, new: 0, edited: 0, dropped: 0, reopened: 0, newLists: 0 };
@@ -326,9 +328,29 @@ function buildWeeklyReportDomain(data, options) {
     out.push('');
   }
 
+  let hasTime = false;
+  if (opts.includeTime && typeof timeReportDomain === 'function') {
+    const time = timeReportDomain(data, { start, end, scope: opts.scope, currentListId: opts.currentListId });
+    if (time.totalMs > 0) {
+      hasTime = true;
+      const weekday = ymd => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(`${ymd}T00:00:00`).getDay()];
+      out.push(`# Time tracked (total ${formatDurationDomain(time.totalMs)})`, '## By day');
+      for (const d of time.days) out.push(`- ${d.date.slice(5)} ${weekday(d.date)}: ${formatDurationDomain(d.ms)}`);
+      out.push('', '## By task (most time first)');
+      for (const t of time.tasks.slice(0, 50)) {
+        out.push(`- ${t.crumb}: ${formatDurationDomain(t.ms)}${t.removed ? ' (task since removed)' : ''}`);
+      }
+      if (time.tasks.length > 50) out.push(`- (+${time.tasks.length - 50} more)`);
+      out.push('');
+    }
+  }
+
   const markdown = out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+  const prompt = hasTime
+    ? WEEKLY_REPORT_PROMPT.replace('\n\nRULES', `\n${WEEKLY_REPORT_TIME_HINT}\n\nRULES`)
+    : WEEKLY_REPORT_PROMPT;
   const text = opts.includePrompt
-    ? `${WEEKLY_REPORT_PROMPT}\n\n--- EXPORT BELOW ---\n\n${markdown}`
+    ? `${prompt}\n\n--- EXPORT BELOW ---\n\n${markdown}`
     : markdown;
   return { text, counts, error: '' };
 }

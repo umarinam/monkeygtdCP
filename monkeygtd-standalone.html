@@ -430,11 +430,68 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+/* -- Time tracking ------------------------------------------------------- */
+.ttime{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
+  color:var(--muted);border:1px solid var(--border);cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ttime:hover{color:var(--text);background:var(--bg-hover)}
+.ttime.running{color:var(--ok);border-color:var(--ok);animation:ttime-pulse 2s ease-in-out infinite}
+.ttime.paused{color:var(--warn);border-color:var(--warn)}
+@keyframes ttime-pulse{50%{opacity:.55}}
+.sb-timer{display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;max-width:46vw}
+.sb-timer.running{color:var(--ok)}
+.sb-timer.paused{color:var(--warn)}
+.sb-timer .click{cursor:pointer}
+.sb-timer .click:hover{color:var(--text)}
+.sbt-main{overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.sbt-alert{color:var(--bg);background:var(--warn);border-radius:8px;padding:0 6px;cursor:pointer;font-weight:600}
+.sbt-stop{padding:0 2px}
+.checkin-q{font-size:15px;margin-bottom:8px}
+.checkin-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.mf.checkin-actions{flex-wrap:wrap}
+.timelog-task{font-weight:600;margin-bottom:10px;word-break:break-word}
+.tl-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.tl-stat{flex:1;min-width:90px;background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--r);padding:6px 10px}
+.tl-stat-v{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.tl-stat-l{font-size:11px;color:var(--muted)}
+.tl-running{font-size:12px;color:var(--ok);margin-bottom:8px;font-variant-numeric:tabular-nums}
+.timelog-add{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin:10px 0}
+.timelog-add .fg{margin:0;flex:1;min-width:140px}
+.timelog-list{max-height:40vh;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r)}
+.tl-row{display:flex;align-items:center;gap:10px;padding:5px 10px;border-bottom:1px solid var(--border);font-size:13px;font-variant-numeric:tabular-nums}
+.tl-row:last-child{border-bottom:none}
+.tl-date{min-width:78px;color:var(--muted)}
+.tl-span{flex:1}
+.tl-dur{font-weight:600}
+.tl-src{font-size:11px;color:var(--muted);min-width:44px}
+.tl-del{cursor:pointer;color:var(--muted);padding:0 4px;border-radius:4px}
+.tl-del:hover{color:var(--danger);background:var(--bg-hover)}
+.tl-empty{padding:12px;color:var(--muted);font-size:13px}
+.report-time{margin-bottom:12px;border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;background:var(--bg)}
+.report-time:empty{display:none}
+.rt-head{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rt-total{font-variant-numeric:tabular-nums}
+.rt-scope{font-size:11px;font-weight:400;color:var(--muted)}
+.rt-empty{font-size:12px;color:var(--muted)}
+.rt-days{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.rt-day{display:flex;align-items:center;gap:8px;font-size:12px;font-variant-numeric:tabular-nums}
+.rt-dl{min-width:78px;color:var(--muted)}
+.rt-bar{flex:1;height:8px;background:var(--bg-alt);border-radius:4px;overflow:hidden}
+.rt-bar span{display:block;height:100%;background:var(--accent);border-radius:4px}
+.rt-dv{min-width:56px;text-align:right}
+.rt-tasks{display:flex;flex-direction:column}
+.rt-task{display:flex;align-items:baseline;gap:10px;font-size:13px;padding:3px 4px;border-radius:4px}
+.rt-task.click{cursor:pointer}
+.rt-task.click:hover{background:var(--bg-hover)}
+.rt-tn{flex:1;word-break:break-word}
+.rt-tv{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rt-removed{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:0 5px}
+.report-time-mark{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.report-time-mark + .report-deleted-mark{margin-left:0}
 
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-04T13:52:12+05:00',commit:'61d314a'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-04T18:33:13+05:00',commit:'242b10c'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -503,20 +560,23 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
             <input id="report-days" type="number" min="1" max="366" value="7" onkeydown="if(event.key==='Enter')App.setReportLastDays()">
           </div>
           <button class="btn btn-sm" onclick="App.setReportLastDays()" title="Set the dates to the last N days ending today">Set</button>
+          <button class="btn btn-sm" onclick="App.setReportToday()" title="Set both dates to today (daily report)">Today</button>
         </div>
         <div class="report-controls" id="report-export-controls">
           <div class="fg" style="margin:0;min-width:150px">
             <label for="report-export-scope">Export scope</label>
-            <select id="report-export-scope">
+            <select id="report-export-scope" onchange="App.renderReport()">
               <option value="all">All lists</option>
               <option value="current">Current list</option>
             </select>
           </div>
           <label class="report-check"><input id="report-incl-prompt" type="checkbox" checked> AI instructions</label>
           <label class="report-check"><input id="report-incl-upcoming" type="checkbox" checked> Upcoming due</label>
+          <label class="report-check"><input id="report-incl-time" type="checkbox" checked> Time tracked</label>
           <button class="btn btn-sm" onclick="App.copyWeeklyReport()" title="Copy a Markdown export of what changed in this date range, ready to paste into an LLM">Copy for AI</button>
           <button class="btn btn-sm" onclick="App.downloadWeeklyReport()">Download .md</button>
         </div>
+        <div id="report-time" class="report-time"></div>
         <div id="report-legend" class="report-legend"></div>
         <div id="report-c"></div>
       </div>
@@ -546,6 +606,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
     <span class="sbi" id="sb-sel" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px"></span>
     <span class="sbi click" id="sb-filt" style="display:none" onclick="App.clearSearch()"></span>
     <span style="flex:1"></span>
+    <span class="sbi" id="sb-timer" style="display:none"></span>
     <span class="sbi" id="sb-sync" title="Last Gist sync status"></span>
     <span class="sbi" id="sb-cnt"></span>
   </div>
@@ -936,6 +997,23 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           </select></div></div>
       </div>
       <div style="margin-bottom:18px">
+        <div class="sst">Time Tracking</div>
+        <div class="fg">
+          <label for="s-timer-checkin">Check-in reminder every (minutes, 0 = off)</label>
+          <input id="s-timer-checkin" type="number" min="0" step="1" placeholder="15" onchange="App.setTimerCheckInMin(this.value)">
+        </div>
+        <div class="fg">
+          <label for="s-timer-grace">Auto-pause when a check-in is unanswered for (minutes, 0 = never)</label>
+          <input id="s-timer-grace" type="number" min="0" step="1" placeholder="5" onchange="App.setTimerGraceMin(this.value)">
+        </div>
+        <div class="ssi"><div><div class="ssl">Desktop Notifications</div><div class="ssd">Show check-ins as a browser notification while MonkeyGTD is in the background</div></div>
+          <label class="tog-sw"><input type="checkbox" id="s-timer-notify" onchange="App.setTimerNotify(this.checked)"><span class="tslider"></span></label></div>
+        <div class="fg">
+          <label for="s-time-retention">Keep time sessions for (days, 0 = forever) - applied by Optimize repo</label>
+          <input id="s-time-retention" type="number" min="0" step="1" placeholder="365" onchange="App.setTimeRetentionDays(this.value)">
+        </div>
+      </div>
+      <div style="margin-bottom:18px">
         <div class="sst">Keyboard</div>
         <div class="ssi"><div><div class="ssl">CapsLock Double-Tap Action</div><div class="ssd">Press CapsLock twice quickly to run this action from anywhere</div></div>
           <div class="fg" style="min-width:160px"><select id="s-capslock-action" onchange="App.setSetting('capsLockAction',this.value)">
@@ -1117,6 +1195,42 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
       <button class="btn" onclick="App.closeModal('ov-list')">Cancel</button>
       <button class="btn btn-p" id="list-ok" onclick="App.confirmList()">Create</button>
     </div>
+  </div>
+</div>
+
+<!-- Time log (per task) -->
+<div id="ov-timelog" class="ov hidden">
+  <div class="modal" style="max-width:560px">
+    <div class="mh"><span class="mt">Time Log</span><span class="mx" onclick="App.closeModal('ov-timelog')">✕</span></div>
+    <div class="mb">
+      <div id="timelog-task" class="timelog-task"></div>
+      <div id="timelog-summary" class="timelog-summary"></div>
+      <div class="timelog-add">
+        <div class="fg">
+          <label for="timelog-dur">Add time</label>
+          <input id="timelog-dur" type="text" placeholder="e.g. 25m, 1h30, 1:15" autocomplete="off" onkeydown="if(event.key==='Enter')App.addManualTime()">
+        </div>
+        <div class="fg">
+          <label for="timelog-date">Date</label>
+          <input id="timelog-date" type="date">
+        </div>
+        <button class="btn btn-sm" onclick="App.addManualTime()">Add</button>
+      </div>
+      <div id="timelog-list" class="timelog-list"></div>
+    </div>
+    <div class="mf">
+      <button class="btn" id="timelog-toggle" onclick="App.toggleTimerForLog()">Start timer</button>
+      <button class="btn" onclick="App.closeModal('ov-timelog')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timer check-in: "still working on this task?" -->
+<div id="ov-checkin" class="ov hidden">
+  <div class="modal" style="max-width:560px">
+    <div class="mh"><span class="mt" id="checkin-title">Still working?</span><span class="mx" onclick="App.closeModal('ov-checkin')">✕</span></div>
+    <div class="mb"><div id="checkin-body" class="checkin-body"></div></div>
+    <div class="mf checkin-actions" id="checkin-actions"></div>
   </div>
 </div>
 
@@ -1451,6 +1565,509 @@ const seedData = () => {
 
 'use strict';
 
+// Time tracking. Logged time lives in data.timeSessions as records of their own,
+// linked to tasks by taskId: undo snapshots (tasks/lists only), task copies and
+// repo optimize never touch it, and each session keeps a copy of the task title
+// and list name so reports can still name a task that was optimized away.
+//
+// The running timer is per-device state on state.timer, persisted through
+// app.saveTimer(). Every rule below works from timestamps (nowMs is passed in),
+// so a closed tab or a sleeping laptop is caught up on the next evaluation.
+//
+// timer: { taskId, taskTitle, status: 'running'|'paused', startedAt,
+//          lastConfirmedAt, promptAt, autoPaused: {from, to}|null }  (epoch ms)
+
+const TIME_MIN_SESSION_MS = 60 * 1000;
+const TIME_MAX_MANUAL_MS = 24 * 60 * 60 * 1000;
+const TIME_MANUAL_START_HOUR = 9;
+const TIME_DEFAULTS = { checkInMin: 15, graceMin: 5, retentionDays: 365 };
+
+function timeNowMs(nowMs) {
+  return Number.isFinite(nowMs) ? nowMs : Date.now();
+}
+
+function timeYmd(ms) {
+  const d = new Date(ms);
+  const pad2 = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function timeDayStartMs(ms) {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function timeNextDayMs(ms) {
+  const d = new Date(timeDayStartMs(ms));
+  d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+
+// Monday 00:00 local of the week containing ms.
+function timeWeekStartMs(ms) {
+  const d = new Date(timeDayStartMs(ms));
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.getTime();
+}
+
+function timeCleanTitle(s) {
+  return String(s || '')
+    .replace(/\[([^\]]*)\]\(#[^)]*\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function timeSettingsDomain(settings) {
+  const s = settings || {};
+  const minutes = (v, fallback) => {
+    if (v === undefined || v === null || v === '') return fallback;
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, n) : fallback;
+  };
+  return {
+    checkInMs: minutes(s.timerCheckInMin, TIME_DEFAULTS.checkInMin) * 60000,
+    graceMs: minutes(s.timerGraceMin, TIME_DEFAULTS.graceMin) * 60000,
+    retentionDays: minutes(s.timeRetentionDays, TIME_DEFAULTS.retentionDays)
+  };
+}
+
+// "25m", "1h30", "1h 30m", "1.5h", "1:30" (h:mm), "90" (minutes) -> ms; 0 when invalid.
+function parseDurationDomain(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (!s) return 0;
+
+  let m = s.match(/^(\d+):(\d{1,2})$/);
+  if (m) return Number(m[2]) < 60 ? (Number(m[1]) * 60 + Number(m[2])) * 60000 : 0;
+
+  m = s.match(/^\d+(?:\.\d+)?$/);
+  if (m) return Math.round(parseFloat(s) * 60000);
+
+  m = s.match(/^(?:(\d+(?:\.\d+)?)\s*h(?:ours?|rs?)?)?\s*(?:(\d+(?:\.\d+)?)\s*(m(?:in(?:ute)?s?)?)?)?$/);
+  if (!m || (m[1] === undefined && m[2] === undefined)) return 0;
+  // A bare trailing number only means minutes after an hour part ("1h30").
+  if (m[1] === undefined && !m[3]) return 0;
+  const hours = m[1] === undefined ? 0 : parseFloat(m[1]);
+  const mins = m[2] === undefined ? 0 : parseFloat(m[2]);
+  return Math.round((hours * 60 + mins) * 60000);
+}
+
+// "1h 25m" / "45m" / "2h" (or "0:12:34" with { clock: true }).
+function formatDurationDomain(ms, options) {
+  const total = Math.max(0, Math.floor(Number(ms) || 0));
+  if (options && options.clock) {
+    const secs = Math.floor(total / 1000);
+    const pad2 = n => String(n).padStart(2, '0');
+    return `${Math.floor(secs / 3600)}:${pad2(Math.floor(secs / 60) % 60)}:${pad2(secs % 60)}`;
+  }
+  const mins = Math.floor(total / 60000);
+  if (!mins) return total > 0 ? '<1m' : '0m';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (!h) return `${m}m`;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+function ensureTimeSessions(state) {
+  if (!Array.isArray(state.data.timeSessions)) state.data.timeSessions = [];
+  return state.data.timeSessions;
+}
+
+function timeSessionMs(session) {
+  const start = Date.parse(String(session && session.start || ''));
+  const end = Date.parse(String(session && session.end || ''));
+  return Number.isFinite(start) && Number.isFinite(end) && end > start ? { start, end } : null;
+}
+
+function addTimeSessionDomain(app, state, entry) {
+  const startMs = Number(entry && entry.start);
+  const endMs = Number(entry && entry.end);
+  if (!entry || !entry.taskId || !Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
+  if (endMs - startMs < TIME_MIN_SESSION_MS) return null;
+
+  const task = state.data.tasks[entry.taskId];
+  const listId = task ? task.checklist_id : (entry.listId || '');
+  const list = state.data.lists[listId];
+  const session = {
+    id: uid(),
+    taskId: entry.taskId,
+    start: new Date(startMs).toISOString(),
+    end: new Date(endMs).toISOString(),
+    source: entry.source === 'manual' ? 'manual' : 'timer',
+    taskTitle: timeCleanTitle(task ? task.content : entry.taskTitle),
+    listId: listId || '',
+    listName: list ? String(list.name || '') : ''
+  };
+  ensureTimeSessions(state).push(session);
+  app.save();
+  return session;
+}
+
+function deleteTimeSessionDomain(app, state, sessionId) {
+  const sessions = ensureTimeSessions(state);
+  const idx = sessions.findIndex(s => s && s.id === sessionId);
+  if (idx < 0) return false;
+  sessions.splice(idx, 1);
+  app.save();
+  return true;
+}
+
+function sessionsForTaskDomain(data, taskId) {
+  return (Array.isArray(data.timeSessions) ? data.timeSessions : [])
+    .filter(s => s && s.taskId === taskId && timeSessionMs(s))
+    .sort((a, b) => String(b.start).localeCompare(String(a.start)));
+}
+
+function addManualTimeDomain(app, state, taskId, durationMs, date, nowMs) {
+  const at = timeNowMs(nowMs);
+  const task = state.data.tasks[taskId];
+  if (!task || task.deleted) return { session: null, error: 'Select a task first' };
+  const ms = Number(durationMs);
+  if (!Number.isFinite(ms) || ms < TIME_MIN_SESSION_MS) return { session: null, error: 'Enter at least 1 minute, e.g. 25m or 1h30' };
+  if (ms > TIME_MAX_MANUAL_MS) return { session: null, error: 'Enter at most 24 hours' };
+
+  const day = String(date || '').trim() || timeYmd(at);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { session: null, error: 'Pick a valid date' };
+  const today = timeYmd(at);
+  if (day > today) return { session: null, error: 'Time cannot be added to a future date' };
+
+  let start;
+  let end;
+  if (day === today) {
+    end = at;
+    start = end - ms;
+  } else {
+    start = new Date(`${day}T${String(TIME_MANUAL_START_HOUR).padStart(2, '0')}:00:00`).getTime();
+    end = start + ms;
+  }
+  return { session: addTimeSessionDomain(app, state, { taskId, start, end, source: 'manual' }), error: '' };
+}
+
+function timerElapsedDomain(timer, nowMs) {
+  if (!timer || timer.status !== 'running') return 0;
+  return Math.max(0, timeNowMs(nowMs) - timer.startedAt);
+}
+
+// own: task id -> ms logged on that task (plus the running session).
+// rolled: the same including every descendant.
+function timeTotalsDomain(state, nowMs) {
+  const own = {};
+  const add = (id, ms) => { own[id] = (own[id] || 0) + ms; };
+  for (const s of Array.isArray(state.data.timeSessions) ? state.data.timeSessions : []) {
+    const span = timeSessionMs(s);
+    if (span) add(s.taskId, span.end - span.start);
+  }
+  const timer = state.timer;
+  if (timer && timer.status === 'running') add(timer.taskId, timerElapsedDomain(timer, nowMs));
+
+  const tasks = state.data.tasks || {};
+  const rolled = {};
+  for (const [id, ms] of Object.entries(own)) {
+    const seen = new Set();
+    for (let cur = id; cur && !seen.has(cur); cur = tasks[cur] ? tasks[cur].parent_id : '') {
+      seen.add(cur);
+      rolled[cur] = (rolled[cur] || 0) + ms;
+    }
+  }
+  return { own, rolled };
+}
+
+// Totals for the time-log dialog: own, with sub-tasks, today and this week (own).
+function taskTimeSummaryDomain(state, taskId, nowMs) {
+  const at = timeNowMs(nowMs);
+  const totals = timeTotalsDomain(state, at);
+  const dayStart = timeDayStartMs(at);
+  const weekStart = timeWeekStartMs(at);
+  let todayMs = 0;
+  let weekMs = 0;
+  const spans = sessionsForTaskDomain(state.data, taskId).map(timeSessionMs);
+  const timer = state.timer;
+  if (timer && timer.status === 'running' && timer.taskId === taskId) spans.push({ start: timer.startedAt, end: at });
+  for (const span of spans) {
+    todayMs += Math.max(0, Math.min(span.end, at) - Math.max(span.start, dayStart));
+    weekMs += Math.max(0, Math.min(span.end, at) - Math.max(span.start, weekStart));
+  }
+  return { ownMs: totals.own[taskId] || 0, rolledMs: totals.rolled[taskId] || 0, todayMs, weekMs };
+}
+
+// Time logged between two local dates (inclusive), clipped to the range and split
+// at local midnight. scope 'current' keeps the current list only. A session whose
+// task is gone (optimized away) is reported under its snapshot title as removed.
+function timeReportDomain(data, options) {
+  const opts = options || {};
+  const result = { totalMs: 0, days: [], tasks: [], error: '' };
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  const start = String(opts.start || '').trim();
+  const end = String(opts.end || '').trim();
+  if (!data || !dateRe.test(start) || !dateRe.test(end)) return { ...result, error: 'Pick a valid date range' };
+  const rangeStart = new Date(`${start}T00:00:00`).getTime();
+  const rangeEnd = timeNextDayMs(new Date(`${end}T00:00:00`).getTime());
+  if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd) || rangeEnd <= rangeStart) {
+    return { ...result, error: 'Pick a valid date range' };
+  }
+
+  const tasks = data.tasks || {};
+  const lists = data.lists || {};
+  const listOf = s => (tasks[s.taskId] ? tasks[s.taskId].checklist_id : s.listId);
+  const byDay = new Map();
+  const byTask = new Map();
+
+  for (const s of Array.isArray(data.timeSessions) ? data.timeSessions : []) {
+    const span = timeSessionMs(s);
+    if (!span) continue;
+    if (opts.scope === 'current' && listOf(s) !== opts.currentListId) continue;
+    const from = Math.max(span.start, rangeStart);
+    const to = Math.min(span.end, rangeEnd);
+    if (to <= from) continue;
+
+    for (let cur = from; cur < to;) {
+      const next = Math.min(to, timeNextDayMs(cur));
+      const day = timeYmd(cur);
+      byDay.set(day, (byDay.get(day) || 0) + (next - cur));
+      cur = next;
+    }
+    if (!byTask.has(s.taskId)) byTask.set(s.taskId, { ms: 0, session: s });
+    byTask.get(s.taskId).ms += to - from;
+    result.totalMs += to - from;
+  }
+
+  result.days = [...byDay.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, ms]) => ({ date, ms }));
+
+  result.tasks = [...byTask.entries()].map(([taskId, { ms, session }]) => {
+    const task = tasks[taskId];
+    if (!task) {
+      const listName = timeCleanTitle(session.listName || (lists[session.listId] || {}).name);
+      const title = session.taskTitle || '(untitled)';
+      return { taskId, title, crumb: [listName, title].filter(Boolean).join(' › '), listName, ms, removed: true };
+    }
+    const names = [];
+    for (let cur = task, guard = 0; cur && guard < 100; guard++) {
+      names.unshift(timeCleanTitle(cur.content) || '(untitled)');
+      cur = tasks[cur.parent_id];
+    }
+    const listName = timeCleanTitle((lists[task.checklist_id] || {}).name || session.listName);
+    return {
+      taskId,
+      title: names[names.length - 1],
+      crumb: [listName, ...names].filter(Boolean).join(' › '),
+      listName,
+      ms,
+      removed: !!task.deleted
+    };
+  }).sort((a, b) => b.ms - a.ms || a.crumb.localeCompare(b.crumb));
+
+  return result;
+}
+
+// Drops sessions that ended more than retentionDays ago (0 keeps everything).
+function pruneTimeSessionsDomain(state, retentionDays, nowMs) {
+  const days = Number(retentionDays);
+  if (!Number.isFinite(days) || days <= 0 || !Array.isArray(state.data.timeSessions)) return 0;
+  const cutoff = timeNowMs(nowMs) - days * 24 * 60 * 60 * 1000;
+  const before = state.data.timeSessions.length;
+  state.data.timeSessions = state.data.timeSessions.filter(s => {
+    const end = Date.parse(String(s && s.end || ''));
+    return !Number.isFinite(end) || end >= cutoff;
+  });
+  return before - state.data.timeSessions.length;
+}
+
+// ── Timer state machine ─────────────────────────────────────────────
+
+function normalizeTimerDomain(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.taskId) return null;
+  const status = raw.status === 'paused' ? 'paused' : 'running';
+  const num = v => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Number(v) : null);
+  const timer = {
+    taskId: String(raw.taskId),
+    taskTitle: String(raw.taskTitle || ''),
+    status,
+    startedAt: num(raw.startedAt),
+    lastConfirmedAt: num(raw.lastConfirmedAt),
+    promptAt: num(raw.promptAt),
+    autoPaused: null
+  };
+  if (raw.autoPaused && num(raw.autoPaused.from) !== null && num(raw.autoPaused.to) !== null) {
+    timer.autoPaused = { from: num(raw.autoPaused.from), to: num(raw.autoPaused.to) };
+  }
+  if (status === 'running') {
+    if (timer.startedAt === null) return null;
+    if (timer.lastConfirmedAt === null) timer.lastConfirmedAt = timer.startedAt;
+  }
+  return timer;
+}
+
+function logRunningSessionDomain(app, state, endMs) {
+  const timer = state.timer;
+  if (!timer || timer.status !== 'running') return null;
+  const end = Math.max(timer.startedAt, endMs);
+  return addTimeSessionDomain(app, state, {
+    taskId: timer.taskId, start: timer.startedAt, end, source: 'timer', taskTitle: timer.taskTitle
+  });
+}
+
+// Starts timing a task; a timer running on another task is stopped (its time logged).
+function startTimerDomain(app, state, taskId, nowMs) {
+  const at = timeNowMs(nowMs);
+  const task = state.data.tasks[taskId];
+  if (!task || task.deleted) return { ok: false, error: 'Select a task to time' };
+  if (Number(task.status || 0) !== 0) return { ok: false, error: 'Reopen the task to track time on it' };
+
+  const prev = state.timer;
+  if (prev && prev.status === 'running' && prev.taskId === taskId) return { ok: true, already: true, logged: null };
+  const logged = prev && prev.status === 'running' ? logRunningSessionDomain(app, state, at) : null;
+  const switchedFrom = prev && prev.taskId !== taskId ? prev.taskId : '';
+
+  state.timer = {
+    taskId,
+    taskTitle: timeCleanTitle(task.content),
+    status: 'running',
+    startedAt: at,
+    lastConfirmedAt: at,
+    promptAt: null,
+    autoPaused: null
+  };
+  app.saveTimer();
+  return { ok: true, already: false, logged, switchedFrom };
+}
+
+// Logs the running session up to opts.endMs (default now). With opts.pause the
+// task is remembered as paused so it can be resumed; otherwise the timer clears.
+function stopTimerDomain(app, state, nowMs, options) {
+  const opts = options || {};
+  const timer = state.timer;
+  if (!timer) return { stopped: false, logged: null, taskId: '' };
+  const at = timeNowMs(nowMs);
+  const endMs = Number.isFinite(opts.endMs) ? Math.min(opts.endMs, at) : at;
+  const logged = logRunningSessionDomain(app, state, endMs);
+
+  state.timer = opts.pause
+    ? {
+      taskId: timer.taskId,
+      taskTitle: timer.taskTitle,
+      status: 'paused',
+      startedAt: null,
+      lastConfirmedAt: null,
+      promptAt: null,
+      autoPaused: opts.autoPaused || null
+    }
+    : null;
+  app.saveTimer();
+  return { stopped: true, logged, taskId: timer.taskId };
+}
+
+function resumeTimerDomain(app, state, nowMs) {
+  const timer = state.timer;
+  if (!timer || timer.status !== 'paused') return { ok: false, error: 'No paused timer' };
+  return startTimerDomain(app, state, timer.taskId, nowMs);
+}
+
+// 'none' | 'prompt' (a check-in is due/pending) | 'autopause' (it went
+// unanswered past the grace period: time after the last confirmed check-in is
+// not logged and the timer pauses with autoPaused = {from, to}).
+function evaluateCheckInDomain(app, state, nowMs) {
+  const timer = state.timer;
+  if (!timer || timer.status !== 'running') return 'none';
+  const at = timeNowMs(nowMs);
+  const { checkInMs, graceMs } = timeSettingsDomain(state.data.settings);
+  if (!checkInMs) {
+    if (timer.promptAt !== null) {
+      timer.promptAt = null;
+      app.saveTimer();
+    }
+    return 'none';
+  }
+
+  const dueAt = timer.lastConfirmedAt + checkInMs;
+  if (timer.promptAt === null) {
+    if (at < dueAt) return 'none';
+    timer.promptAt = dueAt;
+    app.saveTimer();
+  }
+
+  if (graceMs && at >= timer.promptAt + graceMs) {
+    const autoPaused = { from: timer.lastConfirmedAt, to: timer.promptAt };
+    stopTimerDomain(app, state, at, { endMs: timer.lastConfirmedAt, pause: true, autoPaused });
+    return 'autopause';
+  }
+  return 'prompt';
+}
+
+// answer: 'working' (confirm), 'keep' (pause, log until now) or 'drop' (pause,
+// log only until the last confirmed check-in).
+function answerCheckInDomain(app, state, answer, nowMs) {
+  const timer = state.timer;
+  if (!timer || timer.status !== 'running') return { ok: false, logged: null };
+  const at = timeNowMs(nowMs);
+
+  if (answer === 'working') {
+    timer.lastConfirmedAt = at;
+    timer.promptAt = null;
+    app.saveTimer();
+    return { ok: true, logged: null };
+  }
+  if (answer === 'keep' || answer === 'drop') {
+    const endMs = answer === 'drop' ? timer.lastConfirmedAt : at;
+    const res = stopTimerDomain(app, state, at, { endMs, pause: true });
+    return { ok: true, logged: res.logged };
+  }
+  return { ok: false, logged: null };
+}
+
+// After an auto-pause the user says they were working all along: the timer runs
+// again from where logging stopped, so the gap is counted in the next session.
+function recoverAutoPauseDomain(app, state, nowMs) {
+  const timer = state.timer;
+  if (!timer || timer.status !== 'paused' || !timer.autoPaused) return { ok: false };
+  const res = startTimerDomain(app, state, timer.taskId, nowMs);
+  if (!res.ok) return res;
+  state.timer.startedAt = Math.min(timer.autoPaused.from, state.timer.startedAt);
+  app.saveTimer();
+  return res;
+}
+
+function dismissAutoPauseDomain(app, state) {
+  const timer = state.timer;
+  if (!timer || !timer.autoPaused) return false;
+  timer.autoPaused = null;
+  app.saveTimer();
+  return true;
+}
+
+// Why the timed task can no longer be timed ('' while it is still open).
+function timerTaskClosedReasonDomain(state) {
+  const timer = state.timer;
+  if (!timer) return '';
+  const task = state.data.tasks[timer.taskId];
+  if (!task) return 'removed';
+  if (task.deleted) return 'deleted';
+  const status = Number(task.status || 0);
+  if (status === 1) return 'completed';
+  if (status === 2) return 'invalidated';
+  // Completing a recurring task re-opens it at once; completed_at still moves.
+  const doneMs = Date.parse(String(task.completed_at || ''));
+  if (timer.status === 'running' && Number.isFinite(doneMs) && doneMs >= timer.startedAt) return 'completed';
+  return '';
+}
+
+// Stops (and forgets) the timer once its task is completed, invalidated or
+// deleted, however that happened. A completion ends the session at completed_at.
+function autoStopTimerDomain(app, state, nowMs) {
+  const reason = timerTaskClosedReasonDomain(state);
+  if (!reason) return null;
+  const at = timeNowMs(nowMs);
+  const task = state.data.tasks[state.timer.taskId];
+  const doneMs = task ? Date.parse(String(task.completed_at || '')) : NaN;
+  const endMs = reason === 'completed' && Number.isFinite(doneMs) ? Math.min(doneMs, at) : at;
+  const res = stopTimerDomain(app, state, at, { endMs });
+  return { reason, logged: res.logged, taskId: res.taskId };
+}
+
+
+'use strict';
+
 // Weekly report export: turns "what changed between two dates" into an
 // indented Markdown outline an LLM can turn into a status report. Pure domain
 // code (data in, text out) so it can be used from the query bus and unit tests.
@@ -1483,6 +2100,8 @@ const WEEKLY_REPORT_PROMPT = [
   '',
   'Tone: factual, first person, past tense for completed work, no filler or hype.'
 ].join('\n');
+
+const WEEKLY_REPORT_TIME_HINT = '- The "Time tracked" section is the time I logged per task (by day and by task path). Use it to show where the effort went, largest first, and to mention significant work on tasks not tagged above. Logged time is effort, not proof that something was finished.';
 
 function buildWeeklyReportDomain(data, options) {
   const opts = options || {};
@@ -1777,9 +2396,29 @@ function buildWeeklyReportDomain(data, options) {
     out.push('');
   }
 
+  let hasTime = false;
+  if (opts.includeTime && typeof timeReportDomain === 'function') {
+    const time = timeReportDomain(data, { start, end, scope: opts.scope, currentListId: opts.currentListId });
+    if (time.totalMs > 0) {
+      hasTime = true;
+      const weekday = ymd => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(`${ymd}T00:00:00`).getDay()];
+      out.push(`# Time tracked (total ${formatDurationDomain(time.totalMs)})`, '## By day');
+      for (const d of time.days) out.push(`- ${d.date.slice(5)} ${weekday(d.date)}: ${formatDurationDomain(d.ms)}`);
+      out.push('', '## By task (most time first)');
+      for (const t of time.tasks.slice(0, 50)) {
+        out.push(`- ${t.crumb}: ${formatDurationDomain(t.ms)}${t.removed ? ' (task since removed)' : ''}`);
+      }
+      if (time.tasks.length > 50) out.push(`- (+${time.tasks.length - 50} more)`);
+      out.push('');
+    }
+  }
+
   const markdown = out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+  const prompt = hasTime
+    ? WEEKLY_REPORT_PROMPT.replace('\n\nRULES', `\n${WEEKLY_REPORT_TIME_HINT}\n\nRULES`)
+    : WEEKLY_REPORT_PROMPT;
   const text = opts.includePrompt
-    ? `${WEEKLY_REPORT_PROMPT}\n\n--- EXPORT BELOW ---\n\n${markdown}`
+    ? `${prompt}\n\n--- EXPORT BELOW ---\n\n${markdown}`
     : markdown;
   return { text, counts, error: '' };
 }
@@ -2286,6 +2925,14 @@ function registerAppQueries(app, deps) {
   }));
 
   app.queryService.register('templates.all', () => listTemplatesDomain(state));
+
+  app.queryService.register('time.totals', ({nowMs} = {}) => timeTotalsDomain(state, nowMs));
+  app.queryService.register('time.taskSummary', ({taskId, nowMs}) => taskTimeSummaryDomain(state, taskId, nowMs));
+  app.queryService.register('time.sessionsForTask', ({taskId}) => sessionsForTaskDomain(getData(), taskId));
+  app.queryService.register('time.report', payload => timeReportDomain(getData(), {
+    ...payload,
+    currentListId: state.listId
+  }));
 
   app.queryService.register('cp.listTargets', () => {
     const data = getData();
@@ -3624,6 +4271,12 @@ function optimizeDataDomain(state, options) {
     task.history = historyLimit ? task.history.slice(-historyLimit) : [];
   }
 
+  // Time sessions are records of their own: they outlive the tasks removed above
+  // (reports name them from their snapshot title) until they age out.
+  stats.timeSessionsPruned = typeof pruneTimeSessionsDomain === 'function'
+    ? pruneTimeSessionsDomain(state, timeSettingsDomain(data.settings).retentionDays, opts.nowMs)
+    : 0;
+
   if (state.selId && !alive(state.selId)) state.selId = null;
   if (state.editId && !alive(state.editId)) state.editId = null;
   if (state.hoistId && !alive(state.hoistId)) state.hoistId = null;
@@ -3787,6 +4440,14 @@ function registerAppCommands(app) {
   app.commandBus.register('task.markTemplate', ({id, name}) => app.markTemplate(id, name));
   app.commandBus.register('task.unmarkTemplate', ({id}) => app.unmarkTemplate(id));
   app.commandBus.register('task.applyTemplate', ({templateId, targetIds}) => app.applyTemplateTo(templateId, targetIds));
+  app.commandBus.register('time.start', ({taskId, nowMs}) => app.startTimerOn(taskId, nowMs));
+  app.commandBus.register('time.stop', ({nowMs} = {}) => app.stopTimerNow(nowMs));
+  app.commandBus.register('time.resume', ({nowMs} = {}) => app.resumeTimerNow(nowMs));
+  app.commandBus.register('time.answerCheckIn', ({answer, nowMs}) => app.answerTimerCheckIn(answer, nowMs));
+  app.commandBus.register('time.recoverAutoPause', ({nowMs} = {}) => app.recoverTimerAutoPause(nowMs));
+  app.commandBus.register('time.dismissAutoPause', () => app.dismissTimerAutoPause());
+  app.commandBus.register('time.addManual', ({taskId, durationMs, date, nowMs}) => app.addManualTimeTo(taskId, durationMs, date, nowMs));
+  app.commandBus.register('time.deleteSession', ({sessionId}) => app.deleteTimeSessionById(sessionId));
 }
 
 
@@ -3903,7 +4564,10 @@ function runAppSmokeChecks(app, state) {
 
 const DB={
   get(){ try{ const r=localStorage.getItem('mgtd3'); return r?JSON.parse(r):null; }catch{return null;} },
-  save(d){ try{ localStorage.setItem('mgtd3',JSON.stringify(d)); }catch(e){ console.error(e); } }
+  save(d){ try{ localStorage.setItem('mgtd3',JSON.stringify(d)); }catch(e){ console.error(e); } },
+  // The running timer is per-device, so it lives outside the synced app data.
+  getTimer(){ try{ const r=localStorage.getItem('mgtd3_timer'); return r?JSON.parse(r):null; }catch{return null;} },
+  saveTimer(t){ try{ if(t) localStorage.setItem('mgtd3_timer',JSON.stringify(t)); else localStorage.removeItem('mgtd3_timer'); }catch(e){ console.error(e); } }
 };
 
 
@@ -5316,7 +5980,7 @@ async function optimizeRepoRemote(app, state, options) {
     const pushed = await syncToRepoRemote(app, state, { silent: true });
     if (!pushed) throw new Error(`Optimized locally but push failed (snapshot tag ${tag}). Run Sync now.`);
 
-    const summary = `Optimized: removed ${stats.removed} task(s) (${stats.untitled} untitled, ${stats.completed} completed, ${stats.deleted} deleted), trimmed history on ${stats.historyTrimmedTasks}. Snapshot tag ${tag}`;
+    const summary = `Optimized: removed ${stats.removed} task(s) (${stats.untitled} untitled, ${stats.completed} completed, ${stats.deleted} deleted), trimmed history on ${stats.historyTrimmedTasks}${stats.timeSessionsPruned ? `, pruned ${stats.timeSessionsPruned} old time session(s)` : ''}. Snapshot tag ${tag}`;
     repoRememberSyncSummary(state, `Optimized (snapshot ${tag})`);
     app.save({ touchLocalSaveAt: false });
     app.syncSettings();
@@ -6867,7 +7531,7 @@ function handleGlobalKey(app, state, e) {
 
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json sync-settings-json repo-versions shortcuts quickadd'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json sync-settings-json repo-versions shortcuts quickadd timelog checkin'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');
@@ -7273,6 +7937,8 @@ function handleTwoKeySequence(app, state, e) {
     'df': () => { state.data.settings.relativeDates = !state.data.settings.relativeDates; app.save(); app.render(); app.toast(`Dates: ${state.data.settings.relativeDates ? 'relative' : 'exact'}`); },
     'tt': () => app.addTagSelection(),
     'th': () => { if (state.selId) app.openTaskHistory(state.selId); },
+    'ts': () => app.toggleTimerSelection(),
+    'tl': () => { if (state.selId) app.openTimeLog(state.selId); },
     'tj': () => { if (state.selId) app.openTaskJson(state.selId); },
     'lj': () => app.openListJson(state.listId),
     'gt': () => app.showPage('tags'),
@@ -7715,6 +8381,11 @@ function bindTaskListEvents(app, state) {
       app.renameTemplateSelection();
       return;
     }
+    if (a === 'time') {
+      state.selId = id;
+      app.openTimeLog(id);
+      return;
+    }
 
     const ts = Date.now();
     const isPlainClick = !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
@@ -7841,6 +8512,7 @@ function renderReportUi(app, state) {
   state.reportStart = start;
   state.reportEnd = end;
 
+  const timeByTask = typeof renderReportTimeUi === 'function' ? renderReportTimeUi(app, state, start, end) : {};
   const rows = app.select('report.rows', { start, end });
   const filters = ensureReportFilters(state);
   const counts = rows.reduce((acc, row) => {
@@ -7867,10 +8539,11 @@ function renderReportUi(app, state) {
     const indent = Math.max(0, Number(r.depth || 0)) * 18;
     const deletedMark = r.statusKey === 'deleted' ? '<span class="report-deleted-mark">deleted</span>' : '';
     const contentHtml = renderSummaryContentUi(state, r.content || '(untitled)');
+    const timeMark = timeByTask[r.id] ? `<span class="report-time-mark" title="Time tracked in this period">⏱ ${formatDurationDomain(timeByTask[r.id])}</span>` : '';
     return `<div class="report-row rk-${r.statusKey}" style="padding-left:${indent + 10}px">
       <span class="report-dot"></span>
       <span class="report-content">${contentHtml}</span>
-      ${deletedMark}
+      ${timeMark}${deletedMark}
     </div>`;
   }).join('');
 
@@ -8263,6 +8936,7 @@ function renderListUi(app, state) {
   app.renderBreadcrumbs();
 
   const roots = state.hoistId ? [state.hoistId] : (list.root_tasks || []);
+  state.timeTotals = readTimeTotalsUi(app);
   const html = buildTaskTreeUi(app, state, roots, 0, list);
   const taskListEl = document.getElementById('task-list');
   taskListEl.className = getTaskListLayoutClassName(state.data.settings || {});
@@ -8374,6 +9048,38 @@ function renderSummaryContentUi(state, content) {
   return md(wikiAwareContent);
 }
 
+// Tracked time per task, computed once per list render (null when unavailable).
+function readTimeTotalsUi(app) {
+  try {
+    return app.select('time.totals', {});
+  } catch {
+    return null;
+  }
+}
+
+// The time chip shows the total including sub-tasks; running/paused when timed.
+function timeChipModelUi(state, totals, id) {
+  const rolled = (totals && totals.rolled[id]) || 0;
+  const own = (totals && totals.own[id]) || 0;
+  const timer = state.timer && state.timer.taskId === id ? state.timer : null;
+  if (!rolled && !timer) return { show: false, label: '', cls: '', title: '' };
+  const running = !!timer && timer.status === 'running';
+  const paused = !!timer && timer.status === 'paused';
+  const label = `${running ? '●' : (paused ? '⏸' : '⏱')} ${formatDurationDomain(rolled)}`;
+  const parts = [`Own: ${formatDurationDomain(own)}`];
+  if (rolled > own) parts.push(`With sub-tasks: ${formatDurationDomain(rolled)}`);
+  if (running) parts.push('Timer running');
+  if (paused) parts.push('Timer paused');
+  parts.push('Click for the time log (tl)');
+  return { show: true, label, cls: running ? ' running' : (paused ? ' paused' : ''), title: parts.join(' · ') };
+}
+
+function buildTimeChipUi(state, totals, id) {
+  const m = timeChipModelUi(state, totals, id);
+  if (!m.show) return '';
+  return `<span class="ttime${m.cls}" data-id="${id}" data-a="time" title="${esc(m.title)}">${esc(m.label)}</span>`;
+}
+
 function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
   const t = state.data.tasks[id];
   if (!t || t.deleted) return '';
@@ -8424,6 +9130,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
     const tplLabel = t.template_name ? `template: ${esc(t.template_name)}` : 'template';
     metaH += `<span class="ttpl" data-id="${id}" data-a="tpl" title="Template - press at on another task to apply it; click to rename">📋 ${tplLabel}</span>`;
   }
+  if (state.timeTotals) metaH += buildTimeChipUi(state, state.timeTotals, id);
   if (t.tags_as_text) {
     metaH += `<span class="ttags">${t.tags_as_text
       .split(',')
@@ -8483,7 +9190,8 @@ function readReportExportOptions(state) {
     end: (el('report-end') && el('report-end').value) || state.reportEnd,
     scope: el('report-export-scope') && el('report-export-scope').value === 'current' ? 'current' : 'all',
     includePrompt: checked('report-incl-prompt', true),
-    includeUpcoming: checked('report-incl-upcoming', true)
+    includeUpcoming: checked('report-incl-upcoming', true),
+    includeTime: checked('report-incl-time', true)
   };
 }
 
@@ -8597,6 +9305,11 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Mark/unmark as template', s: 'mt', fn: () => app.toggleTemplateSelection() },
     { l: 'Apply template...', s: 'at', fn: () => app.openTemplatePicker() },
     { l: 'Rename template...', fn: () => app.renameTemplateSelection() },
+    { l: 'Start/stop timer', s: 'ts', fn: () => app.toggleTimerSelection() },
+    { l: 'Time log', s: 'tl', fn: () => app.openTimeLog() },
+    { l: 'Stop timer', fn: () => app.stopTimer() },
+    { l: 'Resume timer', fn: () => app.resumeTimer() },
+    { l: 'Jump to timed task', fn: () => app.jumpToTimedTask() },
     { l: 'Undo', s: 'Ctrl+Z / uu', fn: () => app.undo() },
     { l: 'Redo', s: 'Ctrl+Y / Ctrl+Shift+Z', fn: () => app.redo() },
     { l: 'Sync now', s: 'sg', fn: () => app.syncNow() },
@@ -8784,6 +9497,575 @@ function applyTemplateSelectionUi(app, state, templateId) {
 
 'use strict';
 
+// Time tracking UI: a 1s ticker drives the timer rules from
+// domain/time-tracking-ops.js and keeps the status bar, tab title, task-row
+// chips, check-in dialog and time log current without re-rendering the list.
+
+const TIME_TICK_MS = 1000;
+
+function startTimeTrackingUi(app, state) {
+  state.timer = normalizeTimerDomain(DB.getTimer());
+  state.baseTitle = state.baseTitle || document.title || 'MonkeyGTD';
+  if (state.timeTickTimer) clearInterval(state.timeTickTimer);
+  state.timeTickTimer = setInterval(() => timeTickUi(app, state), TIME_TICK_MS);
+  if (!state.timeListenersBound && typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', () => timeTickUi(app, state));
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('focus', () => timeTickUi(app, state));
+    }
+    state.timeListenersBound = true;
+  }
+  timeTickUi(app, state);
+}
+
+function timeTaskLabelUi(state, timer, max) {
+  const task = timer ? state.data.tasks[timer.taskId] : null;
+  const title = timeCleanTitle(task ? task.content : (timer && timer.taskTitle)) || '(untitled)';
+  const limit = max || 40;
+  return title.length > limit ? `${title.slice(0, limit - 1)}…` : title;
+}
+
+function timeClockUi(ms) {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function timeWeekdayUi(ymd) {
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(`${ymd}T00:00:00`).getDay()] || '';
+}
+
+function isOverlayOpenUi(id) {
+  const el = document.getElementById(id);
+  return !!el && !el.classList.contains('hidden');
+}
+
+function timerCheckInKeyUi(timer) {
+  if (!timer) return '';
+  if (timer.status === 'running' && timer.promptAt !== null) return `prompt:${timer.promptAt}`;
+  if (timer.status === 'paused' && timer.autoPaused) return `auto:${timer.autoPaused.from}`;
+  return '';
+}
+
+function timeTickUi(app, state, nowMs) {
+  if (!state.data) return;
+  const at = Number.isFinite(nowMs) ? nowMs : Date.now();
+
+  if (state.timer) {
+    const wasRunning = state.timer.status === 'running';
+    const closed = autoStopTimerDomain(app, state, at);
+    if (closed) {
+      if (wasRunning) app.toast(`Timer stopped - task ${closed.reason} (${loggedTextUi(closed.logged)})`);
+      if (isOverlayOpenUi('ov-checkin')) app.closeModal('ov-checkin');
+      refreshTimerUi(app, state, at, { render: false });
+      return;
+    }
+
+    const verdict = evaluateCheckInDomain(app, state, at);
+    const key = timerCheckInKeyUi(state.timer);
+    if (key && state.checkInShownFor !== key) {
+      state.checkInShownFor = key;
+      const title = timeTaskLabelUi(state, state.timer, 60);
+      openCheckInUi(app, state, at);
+      if (verdict === 'autopause') {
+        notifyTimerUi(app, state, 'Timer paused', `No answer to the check-in - "${title}" was paused.`);
+        refreshTimerUi(app, state, at, { render: false });
+        return;
+      }
+      notifyTimerUi(app, state, 'Still working?', `Are you still working on "${title}"?`);
+    } else if (isOverlayOpenUi('ov-checkin')) {
+      renderCheckInUi(app, state, at, { actions: false });
+    }
+  }
+
+  updateTimerChromeUi(app, state, at);
+  if (isOverlayOpenUi('ov-timelog') && state.timer && state.timer.status === 'running' && state.timer.taskId === state.timeLogTaskId) {
+    renderTimeLogSummaryUi(app, state, at);
+  }
+}
+
+// Status bar, tab title and (once a minute) the task-row chips.
+function updateTimerChromeUi(app, state, nowMs, force) {
+  const at = Number.isFinite(nowMs) ? nowMs : Date.now();
+  const timer = state.timer;
+  const sb = document.getElementById('sb-timer');
+  const pending = !!timerCheckInKeyUi(timer);
+
+  if (sb) {
+    const key = timer ? `${timer.status}:${timer.taskId}:${pending}` : '';
+    if (force || key !== state.sbTimerKey) {
+      state.sbTimerKey = key;
+      sb.style.display = timer ? '' : 'none';
+      const title = esc(timeTaskLabelUi(state, timer, 30));
+      const alert = pending ? '<span class="sbt-alert" onclick="App.openCheckIn()" title="Answer the check-in">⏰ Check-in</span>' : '';
+      if (!timer) {
+        sb.innerHTML = '';
+      } else if (timer.status === 'running') {
+        sb.className = 'sbi sb-timer running';
+        sb.innerHTML = `<span class="sbt-main click" onclick="App.jumpToTimedTask()" title="Jump to the timed task">⏱ <span id="sb-timer-clock"></span> · ${title}</span>${alert}<span class="sbt-stop click" onclick="App.stopTimer()" title="Stop timer">■</span>`;
+      } else {
+        sb.className = 'sbi sb-timer paused';
+        sb.innerHTML = `<span class="sbt-main click" onclick="App.resumeTimer()" title="Resume timer">⏸ ${title} · resume</span>${alert}<span class="sbt-stop click" onclick="App.stopTimer()" title="Clear paused timer">✕</span>`;
+      }
+    }
+    const clock = document.getElementById('sb-timer-clock');
+    if (clock && timer && timer.status === 'running') {
+      clock.textContent = formatDurationDomain(timerElapsedDomain(timer, at), { clock: true });
+    }
+  }
+
+  const base = state.baseTitle || 'MonkeyGTD';
+  let title = base;
+  if (pending && Math.floor(at / 1000) % 2 === 0) title = timer.status === 'running' ? '⏰ Still working?' : '⏰ Timer paused';
+  else if (timer && timer.status === 'running') {
+    const clock = formatDurationDomain(timerElapsedDomain(timer, at), { clock: true }).replace(/:\d\d$/, '');
+    title = `⏱ ${clock} ${timeTaskLabelUi(state, timer, 30)}`;
+  } else if (timer) title = `⏸ ${base}`;
+  if (document.title !== title) document.title = title;
+
+  const minute = timer && timer.status === 'running' ? Math.floor(timerElapsedDomain(timer, at) / 60000) : -1;
+  if (force || minute !== state.timeChipMinute) {
+    state.timeChipMinute = minute;
+    updateTimeChipsUi(app, state, at);
+  }
+}
+
+function updateTimeChipsUi(app, state, nowMs) {
+  if (typeof document.querySelectorAll !== 'function') return;
+  const chips = document.querySelectorAll('.ttime[data-id]');
+  if (!chips.length) return;
+  let totals;
+  try { totals = app.select('time.totals', { nowMs }); } catch { return; }
+  chips.forEach(chip => {
+    const model = timeChipModelUi(state, totals, chip.dataset.id);
+    if (!model.show) {
+      chip.remove();
+      return;
+    }
+    if (chip.textContent !== model.label) chip.textContent = model.label;
+    chip.className = `ttime${model.cls}`;
+    chip.title = model.title;
+  });
+}
+
+// After a timer change: forget cached chrome state and repaint.
+function refreshTimerUi(app, state, nowMs, options) {
+  const opts = options || {};
+  if (!timerCheckInKeyUi(state.timer)) closeTimerNotificationUi(state);
+  state.sbTimerKey = null;
+  if (opts.render !== false) app.render();
+  updateTimerChromeUi(app, state, nowMs, true);
+  if (isOverlayOpenUi('ov-timelog')) renderTimeLogUi(app, state, nowMs);
+}
+
+function loggedTextUi(session) {
+  const span = session ? timeSessionMs(session) : null;
+  return span ? `logged ${formatDurationDomain(span.end - span.start)}` : 'under 1 min, not logged';
+}
+
+// ── Start / stop ────────────────────────────────────────────────────
+
+function startTimerUi(app, state, taskId) {
+  const before = state.timer;
+  const res = app.dispatch('time.start', { taskId });
+  if (!res || !res.ok) {
+    app.toast((res && res.error) || 'Select a task to time');
+    return false;
+  }
+  if (!res.already) {
+    const title = timeTaskLabelUi(state, state.timer);
+    if (res.switchedFrom && before && before.status === 'running') {
+      app.toast(`Timer switched to "${title}" (${loggedTextUi(res.logged)} on the previous task)`);
+    } else {
+      app.toast(`Timer started: "${title}"`);
+    }
+  }
+  refreshTimerUi(app, state);
+  return true;
+}
+
+function stopTimerUi(app, state) {
+  const timer = state.timer;
+  if (!timer) {
+    app.toast('No timer running');
+    return;
+  }
+  const title = timeTaskLabelUi(state, timer);
+  const res = app.dispatch('time.stop', {});
+  app.toast(timer.status === 'running'
+    ? `Timer stopped: ${loggedTextUi(res && res.logged)} on "${title}"`
+    : 'Paused timer cleared');
+  if (isOverlayOpenUi('ov-checkin')) app.closeModal('ov-checkin');
+  refreshTimerUi(app, state);
+}
+
+function resumeTimerUi(app, state) {
+  const timer = state.timer;
+  if (!timer || timer.status !== 'paused') {
+    app.toast(timer ? 'Timer is already running' : 'No paused timer');
+    return;
+  }
+  const res = app.dispatch('time.resume', {});
+  if (!res || !res.ok) {
+    app.toast((res && res.error) || 'Could not resume the timer');
+    return;
+  }
+  if (isOverlayOpenUi('ov-checkin')) app.closeModal('ov-checkin');
+  app.toast(`Timer resumed: "${timeTaskLabelUi(state, state.timer)}"`);
+  refreshTimerUi(app, state);
+}
+
+// ts: start on the selected task, stop it if it is the one running, resume it if paused.
+function toggleTimerSelectionUi(app, state) {
+  const taskId = state.selId;
+  const task = taskId ? state.data.tasks[taskId] : null;
+  if (!task || task.deleted) {
+    app.toast('Select a task to time');
+    return;
+  }
+  const timer = state.timer;
+  if (timer && timer.taskId === taskId) {
+    if (timer.status === 'running') stopTimerUi(app, state);
+    else resumeTimerUi(app, state);
+    return;
+  }
+  startTimerUi(app, state, taskId);
+}
+
+function jumpToTimedTaskUi(app, state) {
+  const timer = state.timer;
+  const task = timer ? state.data.tasks[timer.taskId] : null;
+  if (!task || task.deleted) {
+    app.toast('No timed task');
+    return;
+  }
+  app.jumpTo(task.id);
+}
+
+// ── Check-in dialog ─────────────────────────────────────────────────
+
+function openCheckInUi(app, state, nowMs) {
+  if (!timerCheckInKeyUi(state.timer)) {
+    app.toast('No check-in pending');
+    return;
+  }
+  renderCheckInUi(app, state, nowMs, { actions: true });
+  app.openModal('ov-checkin');
+  if (!state.editId) {
+    setTimeout(() => {
+      const btn = document.getElementById('checkin-primary');
+      if (btn && typeof btn.focus === 'function') btn.focus();
+    }, 50);
+  }
+}
+
+function renderCheckInUi(app, state, nowMs, options) {
+  const opts = options || {};
+  const at = Number.isFinite(nowMs) ? nowMs : Date.now();
+  const timer = state.timer;
+  const titleEl = document.getElementById('checkin-title');
+  const bodyEl = document.getElementById('checkin-body');
+  const actionsEl = document.getElementById('checkin-actions');
+  if (!timer || !bodyEl) return;
+  const task = `<strong>${esc(timeTaskLabelUi(state, timer, 80))}</strong>`;
+  const { graceMs } = timeSettingsDomain(state.data.settings);
+
+  if (timer.status === 'running' && timer.promptAt !== null) {
+    if (titleEl) titleEl.textContent = 'Still working?';
+    const waited = at - timer.promptAt;
+    const lines = [
+      `<p class="checkin-q">Still working on ${task}?</p>`,
+      `<p class="checkin-meta">Timer running for ${formatDurationDomain(timerElapsedDomain(timer, at))} · last check-in at ${timeClockUi(timer.lastConfirmedAt)} (${formatDurationDomain(at - timer.lastConfirmedAt)} ago)</p>`
+    ];
+    if (waited >= 60000) lines.push(`<p class="checkin-meta">This check-in has been waiting ${formatDurationDomain(waited)}.</p>`);
+    if (graceMs) lines.push(`<p class="checkin-meta">No answer by ${timeClockUi(timer.promptAt + graceMs)} pauses the timer and drops the time after ${timeClockUi(timer.lastConfirmedAt)}.</p>`);
+    bodyEl.innerHTML = lines.join('');
+    if (opts.actions && actionsEl) {
+      actionsEl.innerHTML = [
+        `<button class="btn" onclick="App.answerCheckIn('drop')" title="Pause and log time only up to the last check-in">Pause - drop time since ${timeClockUi(timer.lastConfirmedAt)}</button>`,
+        '<button class="btn" onclick="App.answerCheckIn(\'keep\')" title="Pause and log all time until now">Pause - keep all time</button>',
+        '<button class="btn btn-p" id="checkin-primary" onclick="App.answerCheckIn(\'working\')">Yes, still on it</button>'
+      ].join('');
+    }
+    return;
+  }
+
+  if (timer.status === 'paused' && timer.autoPaused) {
+    if (titleEl) titleEl.textContent = 'Timer paused';
+    const { from, to } = timer.autoPaused;
+    bodyEl.innerHTML = [
+      `<p class="checkin-q">${task} was paused at ${timeClockUi(from)}.</p>`,
+      `<p class="checkin-meta">The ${timeClockUi(to)} check-in went unanswered, so time after ${timeClockUi(from)} (the last check-in) was not logged.</p>`
+    ].join('');
+    if (opts.actions && actionsEl) {
+      actionsEl.innerHTML = [
+        '<button class="btn" onclick="App.answerCheckIn(\'stay\')">Stay paused</button>',
+        '<button class="btn" onclick="App.resumeTimer()" title="Start a new session from now">Resume</button>',
+        `<button class="btn btn-p" id="checkin-primary" onclick="App.answerCheckIn('recover')" title="Count ${timeClockUi(from)} until now and keep the timer running">I was working - add ${timeClockUi(from)} → now</button>`
+      ].join('');
+    }
+  }
+}
+
+// answer: 'working' | 'keep' | 'drop' (check-in) or 'recover' | 'stay' (after an auto-pause).
+function answerCheckInUi(app, state, answer) {
+  const timer = state.timer;
+  if (!timer) {
+    app.closeModal('ov-checkin');
+    return;
+  }
+  const title = timeTaskLabelUi(state, timer);
+
+  if (answer === 'recover') {
+    const from = timer.autoPaused ? timer.autoPaused.from : null;
+    const res = app.dispatch('time.recoverAutoPause', {});
+    if (res && res.ok) app.toast(`Timer running again on "${title}" from ${timeClockUi(from)}`);
+    else app.toast((res && res.error) || 'Could not resume the timer');
+  } else if (answer === 'stay') {
+    app.dispatch('time.dismissAutoPause', {});
+  } else {
+    const res = app.dispatch('time.answerCheckIn', { answer });
+    if (res && res.ok && answer !== 'working') {
+      app.toast(`Paused "${title}": ${loggedTextUi(res.logged)}${answer === 'drop' ? ' (time since the last check-in dropped)' : ''}`);
+    }
+  }
+
+  state.checkInShownFor = timerCheckInKeyUi(state.timer) || null;
+  app.closeModal('ov-checkin');
+  refreshTimerUi(app, state, undefined, { render: false });
+}
+
+function notifyTimerUi(app, state, title, body) {
+  const s = state.data.settings || {};
+  const away = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
+  if (!s.timerNotify || !away) return;
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  try {
+    closeTimerNotificationUi(state);
+    const n = new Notification(title, { body, tag: 'mgtd-checkin', requireInteraction: true });
+    n.onclick = () => {
+      try { window.focus(); } catch {}
+      n.close();
+      if (timerCheckInKeyUi(state.timer)) app.openCheckIn();
+    };
+    state.timerNotification = n;
+  } catch {}
+}
+
+function closeTimerNotificationUi(state) {
+  if (!state.timerNotification) return;
+  try { state.timerNotification.close(); } catch {}
+  state.timerNotification = null;
+}
+
+function setTimerNotifyUi(app, state, value) {
+  const revert = msg => {
+    setSettingDomain(app, state, 'timerNotify', false);
+    app.syncSettings();
+    if (msg) app.toast(msg);
+  };
+  if (!value) {
+    revert('');
+    return;
+  }
+  if (typeof Notification === 'undefined') {
+    revert('Desktop notifications are not supported here (they need https or localhost)');
+    return;
+  }
+  const enable = () => {
+    setSettingDomain(app, state, 'timerNotify', true);
+    app.syncSettings();
+    app.toast('Check-ins will also show as desktop notifications');
+  };
+  if (Notification.permission === 'granted') {
+    enable();
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    revert('Notifications are blocked for this site - allow them in the browser settings');
+    return;
+  }
+  Promise.resolve(Notification.requestPermission())
+    .then(p => (p === 'granted' ? enable() : revert('Notification permission was not granted')))
+    .catch(() => revert('Notification permission was not granted'));
+}
+
+// ── Time log dialog ─────────────────────────────────────────────────
+
+function openTimeLogUi(app, state, taskId) {
+  const id = taskId || state.selId;
+  const task = id ? state.data.tasks[id] : null;
+  if (!task || task.deleted) {
+    app.toast('Select a task to see its time log');
+    return;
+  }
+  state.timeLogTaskId = id;
+  const durEl = document.getElementById('timelog-dur');
+  const dateEl = document.getElementById('timelog-date');
+  if (durEl) durEl.value = '';
+  if (dateEl) {
+    dateEl.value = todayS();
+    dateEl.max = todayS();
+  }
+  renderTimeLogUi(app, state);
+  app.openModal('ov-timelog');
+  setTimeout(() => { if (durEl && typeof durEl.focus === 'function') durEl.focus(); }, 50);
+}
+
+function renderTimeLogUi(app, state, nowMs) {
+  const at = Number.isFinite(nowMs) ? nowMs : Date.now();
+  const taskId = state.timeLogTaskId;
+  const task = taskId ? state.data.tasks[taskId] : null;
+  const taskEl = document.getElementById('timelog-task');
+  if (taskEl) taskEl.textContent = task ? (timeCleanTitle(task.content) || '(untitled)') : '';
+  renderTimeLogSummaryUi(app, state, at);
+
+  const listEl = document.getElementById('timelog-list');
+  if (listEl) {
+    const sessions = app.select('time.sessionsForTask', { taskId });
+    listEl.innerHTML = sessions.length
+      ? sessions.map(s => {
+        const span = timeSessionMs(s);
+        const day = timeYmd(span.start);
+        return `<div class="tl-row">
+          <span class="tl-date">${timeWeekdayUi(day)} ${day.slice(5)}</span>
+          <span class="tl-span">${timeClockUi(span.start)}–${timeClockUi(span.end)}</span>
+          <span class="tl-dur">${formatDurationDomain(span.end - span.start)}</span>
+          <span class="tl-src">${s.source === 'manual' ? 'manual' : 'timer'}</span>
+          <span class="tl-del" onclick="App.deleteTimeSession('${esc(s.id)}')" title="Delete this session">✕</span>
+        </div>`;
+      }).join('')
+      : '<div class="tl-empty">No time logged yet. Start the timer (ts) or add time above.</div>';
+  }
+
+  const toggle = document.getElementById('timelog-toggle');
+  if (toggle) {
+    const timer = state.timer;
+    const mine = timer && timer.taskId === taskId;
+    toggle.textContent = mine && timer.status === 'running' ? 'Stop timer' : (mine ? 'Resume timer' : 'Start timer');
+  }
+}
+
+function renderTimeLogSummaryUi(app, state, nowMs) {
+  const el = document.getElementById('timelog-summary');
+  const taskId = state.timeLogTaskId;
+  if (!el || !taskId) return;
+  const at = Number.isFinite(nowMs) ? nowMs : Date.now();
+  const sum = app.select('time.taskSummary', { taskId, nowMs: at });
+  const stat = (label, ms) => `<div class="tl-stat"><div class="tl-stat-v">${formatDurationDomain(ms)}</div><div class="tl-stat-l">${label}</div></div>`;
+  const stats = [stat('Total', sum.ownMs)];
+  if (sum.rolledMs > sum.ownMs) stats.push(stat('With sub-tasks', sum.rolledMs));
+  stats.push(stat('Today', sum.todayMs), stat('This week', sum.weekMs));
+  const timer = state.timer;
+  const running = timer && timer.taskId === taskId && timer.status === 'running'
+    ? `<div class="tl-running">● Running since ${timeClockUi(timer.startedAt)} (${formatDurationDomain(timerElapsedDomain(timer, at), { clock: true })})</div>`
+    : '';
+  el.innerHTML = `<div class="tl-stats">${stats.join('')}</div>${running}`;
+}
+
+function toggleTimerForLogUi(app, state) {
+  const taskId = state.timeLogTaskId;
+  if (!taskId) return;
+  const timer = state.timer;
+  if (timer && timer.taskId === taskId) {
+    if (timer.status === 'running') stopTimerUi(app, state);
+    else resumeTimerUi(app, state);
+    return;
+  }
+  startTimerUi(app, state, taskId);
+}
+
+function addManualTimeUi(app, state) {
+  const taskId = state.timeLogTaskId;
+  const durEl = document.getElementById('timelog-dur');
+  const dateEl = document.getElementById('timelog-date');
+  const raw = durEl ? durEl.value : '';
+  const durationMs = parseDurationDomain(raw);
+  if (!durationMs) {
+    app.toast('Enter a duration like 25m, 1h30 or 1:15');
+    return;
+  }
+  const res = app.dispatch('time.addManual', { taskId, durationMs, date: dateEl ? dateEl.value : '' });
+  if (!res || res.error) {
+    app.toast((res && res.error) || 'Could not add time');
+    return;
+  }
+  if (durEl) durEl.value = '';
+  app.toast(`Added ${formatDurationDomain(durationMs)}`);
+  app.render();
+  renderTimeLogUi(app, state);
+  updateTimerChromeUi(app, state, undefined, true);
+}
+
+function deleteTimeSessionUi(app, state, sessionId) {
+  const session = (state.data.timeSessions || []).find(s => s && s.id === sessionId);
+  const span = session ? timeSessionMs(session) : null;
+  if (!span) return;
+  const day = timeYmd(span.start);
+  if (!confirm(`Delete the ${formatDurationDomain(span.end - span.start)} session on ${day} (${timeClockUi(span.start)}–${timeClockUi(span.end)})? This cannot be undone.`)) return;
+  if (!app.dispatch('time.deleteSession', { sessionId })) return;
+  app.toast('Time session deleted');
+  app.render();
+  renderTimeLogUi(app, state);
+  updateTimerChromeUi(app, state, undefined, true);
+}
+
+// ── Reporting page ──────────────────────────────────────────────────
+
+function setReportTodayUi(app, state) {
+  state.reportStart = todayS();
+  state.reportEnd = state.reportStart;
+  const startEl = document.getElementById('report-start');
+  const endEl = document.getElementById('report-end');
+  if (startEl) startEl.value = state.reportStart;
+  if (endEl) endEl.value = state.reportEnd;
+  app.renderReport();
+}
+
+// Renders the "Time tracked" panel; returns task id -> ms for the row badges.
+function renderReportTimeUi(app, state, start, end) {
+  const el = document.getElementById('report-time');
+  const scopeEl = document.getElementById('report-export-scope');
+  const scope = scopeEl && scopeEl.value === 'current' ? 'current' : 'all';
+  let report;
+  try { report = app.select('time.report', { start, end, scope }); } catch { return {}; }
+  const byTask = {};
+  for (const t of report.tasks || []) byTask[t.taskId] = t.ms;
+  if (!el) return byTask;
+  if (report.error) {
+    el.innerHTML = '';
+    return byTask;
+  }
+
+  const scopeLabel = scope === 'current' ? 'current list' : 'all lists';
+  const head = `<div class="rt-head">⏱ Time tracked <span class="rt-total">${formatDurationDomain(report.totalMs)}</span><span class="rt-scope">${scopeLabel}</span></div>`;
+  if (!report.totalMs) {
+    el.innerHTML = `${head}<div class="rt-empty">No time tracked in this period. Select a task and press ts to start a timer.</div>`;
+    return byTask;
+  }
+
+  const maxDay = Math.max(...report.days.map(d => d.ms));
+  const days = report.days.length > 1
+    ? `<div class="rt-days">${report.days.map(d => `<div class="rt-day">
+        <span class="rt-dl">${timeWeekdayUi(d.date)} ${d.date.slice(5)}</span>
+        <span class="rt-bar"><span style="width:${Math.max(2, Math.round((d.ms / maxDay) * 100))}%"></span></span>
+        <span class="rt-dv">${formatDurationDomain(d.ms)}</span>
+      </div>`).join('')}</div>`
+    : '';
+  const tasks = report.tasks.slice(0, 50).map(t => {
+    const live = !t.removed && state.data.tasks[t.taskId];
+    return `<div class="rt-task${live ? ' click' : ''}"${live ? ` onclick="App.jumpTo('${esc(t.taskId)}')"` : ''}>
+      <span class="rt-tn">${esc(t.crumb)}${t.removed ? ' <span class="rt-removed">removed</span>' : ''}</span>
+      <span class="rt-tv">${formatDurationDomain(t.ms)}</span>
+    </div>`;
+  }).join('');
+  const more = report.tasks.length > 50 ? `<div class="rt-empty">+${report.tasks.length - 50} more</div>` : '';
+  el.innerHTML = `${head}${days}<div class="rt-tasks">${tasks}${more}</div>`;
+  return byTask;
+}
+
+
+'use strict';
+
 function formatDeployStamp(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -8924,6 +10206,17 @@ function syncSettingsUi(app, S) {
   syncSelect('s-branches', s.branchSpacing, 'relaxed');
   syncSelect('s-focus', s.focusMode, 'off');
   syncSelect('s-measure', s.contentWidth, 'measure');
+  if (typeof timeSettingsDomain === 'function') {
+    const time = timeSettingsDomain(s);
+    const syncNumber = (id, v) => {
+      const el = document.getElementById(id);
+      if (el) el.value = String(v);
+    };
+    syncNumber('s-timer-checkin', time.checkInMs / 60000);
+    syncNumber('s-timer-grace', time.graceMs / 60000);
+    syncNumber('s-time-retention', time.retentionDays);
+    syncCheckbox('s-timer-notify', s.timerNotify === true);
+  }
   const styleEl = document.getElementById('s-style');
   if (styleEl) styleEl.value = s.listStyle || 'none';
 
@@ -9192,6 +10485,9 @@ async function optimizeRepoUi(app, S) {
     app.toast('Optimize repo needs the GitHub Repo sync provider');
     return false;
   }
+  const retentionDays = typeof timeSettingsDomain === 'function'
+    ? timeSettingsDomain(S && S.data && S.data.settings).retentionDays
+    : 365;
   const ok = confirm([
     'Optimize repo? This will:',
     '1. Sync, then tag the current repo state as a pre-optimize-<date> snapshot',
@@ -9199,7 +10495,10 @@ async function optimizeRepoUi(app, S) {
     '3. Delete all completed tasks with their subtasks, in every list',
     '4. Permanently remove deleted tasks and empty Restore Deleted',
     `5. Keep only the last ${OPTIMIZE_HISTORY_LIMIT} history entries per task`,
-    '6. Push the result to the repo'
+    retentionDays > 0
+      ? `6. Drop time sessions older than ${retentionDays} days (time on removed tasks is otherwise kept)`
+      : '6. Keep all time sessions (retention is set to forever)',
+    '7. Push the result to the repo'
   ].join('\n'));
   if (!ok) return false;
   return optimizeRepoRemote(app, S, { silent: false });
@@ -9547,6 +10846,10 @@ function showShortcutsUi(app) {
     { heading: 'Templates', items: [
       ['mt', 'Mark / unmark task as template'],
       ['at', 'Apply template to selected task(s)'],
+    ]},
+    { heading: 'Time Tracking', items: [
+      ['ts', 'Start / stop / resume timer on selected task'],
+      ['tl', 'Time log of selected task (add or delete time)'],
     ]},
     { heading: 'Gist Sync', items: [
       ['sg', 'Sync now (bidirectional)'],
@@ -9896,6 +11199,7 @@ const S={
   lastCdAt:0,
   repoVersions:null,
   collapsedDueSections:new Set(),
+  timer:null, timeTotals:null, timeLogTaskId:null, checkInShownFor:null,
   iac:{open:false,taskId:null,type:'',query:'',start:0,end:0,items:[],index:0}
 };
 
@@ -9924,6 +11228,7 @@ const App={
     if(gs.zenMode) document.body.classList.add('zen');
     this.initCqrs();
     this.bindGlobal();
+    startTimeTrackingUi(this, S);
     this.render();
     this.syncSettings();
     if (S.data.settings.gistAutoSyncEnabled !== false) {
@@ -10299,6 +11604,7 @@ const App={
 
   renderReport(){ renderReportUi(this, S); },
   setReportLastDays(){ setReportLastDaysUi(this, S); },
+  setReportToday(){ setReportTodayUi(this, S); },
   copyWeeklyReport(){ copyWeeklyReportUi(this, S); },
   downloadWeeklyReport(){ downloadWeeklyReportUi(this, S); },
   toggleReportFilter(key){
@@ -10445,6 +11751,29 @@ const App={
   renameTemplateSelection(){ renameTemplateSelectionUi(this, S); },
   openTemplatePicker(){ openTemplatePickerUi(this, S); },
   applyTemplate(templateId){ applyTemplateSelectionUi(this, S, templateId); },
+
+  // ─ Time tracking ─────────────────────────────────────────────────
+  saveTimer(){ DB.saveTimer(S.timer); },
+  startTimerOn(taskId,nowMs){ return startTimerDomain(this, S, taskId, nowMs); },
+  stopTimerNow(nowMs){ return stopTimerDomain(this, S, nowMs); },
+  resumeTimerNow(nowMs){ return resumeTimerDomain(this, S, nowMs); },
+  answerTimerCheckIn(answer,nowMs){ return answerCheckInDomain(this, S, answer, nowMs); },
+  recoverTimerAutoPause(nowMs){ return recoverAutoPauseDomain(this, S, nowMs); },
+  dismissTimerAutoPause(){ return dismissAutoPauseDomain(this, S); },
+  addManualTimeTo(taskId,durationMs,date,nowMs){ return addManualTimeDomain(this, S, taskId, durationMs, date, nowMs); },
+  deleteTimeSessionById(sessionId){ return deleteTimeSessionDomain(this, S, sessionId); },
+  timeTick(nowMs){ timeTickUi(this, S, nowMs); },
+  toggleTimerSelection(){ toggleTimerSelectionUi(this, S); },
+  startTimer(taskId){ return startTimerUi(this, S, taskId); },
+  stopTimer(){ stopTimerUi(this, S); },
+  resumeTimer(){ resumeTimerUi(this, S); },
+  jumpToTimedTask(){ jumpToTimedTaskUi(this, S); },
+  openCheckIn(){ openCheckInUi(this, S); },
+  answerCheckIn(answer){ answerCheckInUi(this, S, answer); },
+  openTimeLog(id){ openTimeLogUi(this, S, id); },
+  toggleTimerForLog(){ toggleTimerForLogUi(this, S); },
+  addManualTime(){ addManualTimeUi(this, S); },
+  deleteTimeSession(sessionId){ deleteTimeSessionUi(this, S, sessionId); },
 
   // â”€ Due date modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openDueModal(){ openDueModalUi(this, S); },
@@ -10624,6 +11953,24 @@ const App={
   setDark(v){ setDarkModeUi(this, S, v); },
   setZen(v){ setZenModeUi(this, S, v); },
   setListStyle(v){ setListStyleUi(this, S, v); },
+  setTimerCheckInMin(v){
+    const n = parseInt(v, 10);
+    setSettingDomain(this, S, 'timerCheckInMin', Number.isFinite(n) ? Math.max(0, n) : TIME_DEFAULTS.checkInMin);
+    this.syncSettings();
+    this.timeTick();
+  },
+  setTimerGraceMin(v){
+    const n = parseInt(v, 10);
+    setSettingDomain(this, S, 'timerGraceMin', Number.isFinite(n) ? Math.max(0, n) : TIME_DEFAULTS.graceMin);
+    this.syncSettings();
+    this.timeTick();
+  },
+  setTimerNotify(v){ setTimerNotifyUi(this, S, !!v); },
+  setTimeRetentionDays(v){
+    const n = parseInt(v, 10);
+    setSettingDomain(this, S, 'timeRetentionDays', Number.isFinite(n) ? Math.max(0, n) : TIME_DEFAULTS.retentionDays);
+    this.syncSettings();
+  },
 
   setGistToken(v){
     setSettingDomain(this, S, 'gistToken', v.trim());
@@ -10747,6 +12094,8 @@ App.init();
 
 
 </script>
+
+
 
 
 

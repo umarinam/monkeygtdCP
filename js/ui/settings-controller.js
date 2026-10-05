@@ -41,6 +41,17 @@ function syncSettingsUi(app, S) {
   syncSelect('s-branches', s.branchSpacing, 'relaxed');
   syncSelect('s-focus', s.focusMode, 'off');
   syncSelect('s-measure', s.contentWidth, 'measure');
+  if (typeof timeSettingsDomain === 'function') {
+    const time = timeSettingsDomain(s);
+    const syncNumber = (id, v) => {
+      const el = document.getElementById(id);
+      if (el) el.value = String(v);
+    };
+    syncNumber('s-timer-checkin', time.checkInMs / 60000);
+    syncNumber('s-timer-grace', time.graceMs / 60000);
+    syncNumber('s-time-retention', time.retentionDays);
+    syncCheckbox('s-timer-notify', s.timerNotify === true);
+  }
   const styleEl = document.getElementById('s-style');
   if (styleEl) styleEl.value = s.listStyle || 'none';
 

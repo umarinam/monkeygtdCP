@@ -423,3 +423,60 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+/* -- Time tracking ------------------------------------------------------- */
+.ttime{font-size:11px;padding:1px 6px;border-radius:10px;background:var(--bg-alt);
+  color:var(--muted);border:1px solid var(--border);cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ttime:hover{color:var(--text);background:var(--bg-hover)}
+.ttime.running{color:var(--ok);border-color:var(--ok);animation:ttime-pulse 2s ease-in-out infinite}
+.ttime.paused{color:var(--warn);border-color:var(--warn)}
+@keyframes ttime-pulse{50%{opacity:.55}}
+.sb-timer{display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;max-width:46vw}
+.sb-timer.running{color:var(--ok)}
+.sb-timer.paused{color:var(--warn)}
+.sb-timer .click{cursor:pointer}
+.sb-timer .click:hover{color:var(--text)}
+.sbt-main{overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.sbt-alert{color:var(--bg);background:var(--warn);border-radius:8px;padding:0 6px;cursor:pointer;font-weight:600}
+.sbt-stop{padding:0 2px}
+.checkin-q{font-size:15px;margin-bottom:8px}
+.checkin-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.mf.checkin-actions{flex-wrap:wrap}
+.timelog-task{font-weight:600;margin-bottom:10px;word-break:break-word}
+.tl-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.tl-stat{flex:1;min-width:90px;background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--r);padding:6px 10px}
+.tl-stat-v{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.tl-stat-l{font-size:11px;color:var(--muted)}
+.tl-running{font-size:12px;color:var(--ok);margin-bottom:8px;font-variant-numeric:tabular-nums}
+.timelog-add{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin:10px 0}
+.timelog-add .fg{margin:0;flex:1;min-width:140px}
+.timelog-list{max-height:40vh;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r)}
+.tl-row{display:flex;align-items:center;gap:10px;padding:5px 10px;border-bottom:1px solid var(--border);font-size:13px;font-variant-numeric:tabular-nums}
+.tl-row:last-child{border-bottom:none}
+.tl-date{min-width:78px;color:var(--muted)}
+.tl-span{flex:1}
+.tl-dur{font-weight:600}
+.tl-src{font-size:11px;color:var(--muted);min-width:44px}
+.tl-del{cursor:pointer;color:var(--muted);padding:0 4px;border-radius:4px}
+.tl-del:hover{color:var(--danger);background:var(--bg-hover)}
+.tl-empty{padding:12px;color:var(--muted);font-size:13px}
+.report-time{margin-bottom:12px;border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;background:var(--bg)}
+.report-time:empty{display:none}
+.rt-head{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rt-total{font-variant-numeric:tabular-nums}
+.rt-scope{font-size:11px;font-weight:400;color:var(--muted)}
+.rt-empty{font-size:12px;color:var(--muted)}
+.rt-days{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.rt-day{display:flex;align-items:center;gap:8px;font-size:12px;font-variant-numeric:tabular-nums}
+.rt-dl{min-width:78px;color:var(--muted)}
+.rt-bar{flex:1;height:8px;background:var(--bg-alt);border-radius:4px;overflow:hidden}
+.rt-bar span{display:block;height:100%;background:var(--accent);border-radius:4px}
+.rt-dv{min-width:56px;text-align:right}
+.rt-tasks{display:flex;flex-direction:column}
+.rt-task{display:flex;align-items:baseline;gap:10px;font-size:13px;padding:3px 4px;border-radius:4px}
+.rt-task.click{cursor:pointer}
+.rt-task.click:hover{background:var(--bg-hover)}
+.rt-tn{flex:1;word-break:break-word}
+.rt-tv{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rt-removed{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:0 5px}
+.report-time-mark{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.report-time-mark + .report-deleted-mark{margin-left:0}

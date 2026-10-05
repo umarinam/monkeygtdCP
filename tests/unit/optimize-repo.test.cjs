@@ -470,3 +470,58 @@ test('Optimize repo is reachable from repo sync settings, the command palette an
 
   assert.match(read('js/app.js'), /async optimizeRepo\(\)\{ return optimizeRepoUi\(this, S\); \}/);
 });
+
+// ── Time sessions ────────────────────────────────────────────────────
+
+function loadDomainWithTime() {
+  return loadContext(['js/core/utils.js', 'js/domain/time-tracking-ops.js', 'js/domain/lifecycle-ops.js'], ['optimizeDataDomain']);
+}
+
+function timeSession(taskId, daysAgo, nowMs) {
+  const end = nowMs - daysAgo * 24 * 60 * 60 * 1000;
+  return { id: `s-${taskId}-${daysAgo}`, taskId, start: new Date(end - 3600000).toISOString(), end: new Date(end).toISOString(), source: 'timer', taskTitle: `Task ${taskId}`, listId: 'l1', listName: 'L1' };
+}
+
+test('optimizeDataDomain keeps time sessions of removed tasks but drops ones past the retention window', () => {
+  const { optimizeDataDomain } = loadDomainWithTime();
+  const nowMs = Date.parse('2026-10-05T12:00:00.000Z');
+  const state = mkState([mkT('live'), mkT('done', { status: 1 })], { l1: { id: 'l1', root_tasks: ['live', 'done'] } }, {
+    timeSessions: [timeSession('done', 400, nowMs), timeSession('done', 10, nowMs), timeSession('live', 2, nowMs)]
+  });
+
+  const stats = optimizeDataDomain(state, { nowMs });
+
+  assert.equal(state.data.tasks.done, undefined);
+  assert.equal(stats.timeSessionsPruned, 1);
+  assert.deepEqual(Array.from(state.data.timeSessions, s => s.id), ['s-done-10', 's-live-2']);
+});
+
+test('optimizeDataDomain honours the time retention setting (0 keeps every session)', () => {
+  const { optimizeDataDomain } = loadDomainWithTime();
+  const nowMs = Date.parse('2026-10-05T12:00:00.000Z');
+  const sessions = () => [timeSession('live', 400, nowMs), timeSession('live', 10, nowMs)];
+
+  const forever = mkState([mkT('live')], { l1: { id: 'l1', root_tasks: ['live'] } }, { timeSessions: sessions(), settings: { timeRetentionDays: 0 } });
+  assert.equal(optimizeDataDomain(forever, { nowMs }).timeSessionsPruned, 0);
+  assert.equal(forever.data.timeSessions.length, 2);
+
+  const week = mkState([mkT('live')], { l1: { id: 'l1', root_tasks: ['live'] } }, { timeSessions: sessions(), settings: { timeRetentionDays: 7 } });
+  assert.equal(optimizeDataDomain(week, { nowMs }).timeSessionsPruned, 2);
+  assert.equal(week.data.timeSessions.length, 0);
+});
+
+test('optimizeRepoUi lists the time-session retention step in its confirmation', async () => {
+  const prompts = [];
+  const { optimizeRepoUi } = loadContext(['js/domain/time-tracking-ops.js', 'js/ui/utilities-controller.js'], ['optimizeRepoUi'], {
+    OPTIMIZE_HISTORY_LIMIT: 4,
+    confirm: msg => { prompts.push(msg); return false; }
+  });
+  const app = { syncProvider: () => 'repo', toast: () => {} };
+
+  await optimizeRepoUi(app, { data: { settings: { timeRetentionDays: 90 } } });
+  await optimizeRepoUi(app, { data: { settings: { timeRetentionDays: 0 } } });
+
+  assert.match(prompts[0], /6\. Drop time sessions older than 90 days/);
+  assert.match(prompts[0], /7\. Push the result to the repo/);
+  assert.match(prompts[1], /6\. Keep all time sessions/);
+});

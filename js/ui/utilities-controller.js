@@ -40,6 +40,9 @@ async function optimizeRepoUi(app, S) {
     app.toast('Optimize repo needs the GitHub Repo sync provider');
     return false;
   }
+  const retentionDays = typeof timeSettingsDomain === 'function'
+    ? timeSettingsDomain(S && S.data && S.data.settings).retentionDays
+    : 365;
   const ok = confirm([
     'Optimize repo? This will:',
     '1. Sync, then tag the current repo state as a pre-optimize-<date> snapshot',
@@ -47,7 +50,10 @@ async function optimizeRepoUi(app, S) {
     '3. Delete all completed tasks with their subtasks, in every list',
     '4. Permanently remove deleted tasks and empty Restore Deleted',
     `5. Keep only the last ${OPTIMIZE_HISTORY_LIMIT} history entries per task`,
-    '6. Push the result to the repo'
+    retentionDays > 0
+      ? `6. Drop time sessions older than ${retentionDays} days (time on removed tasks is otherwise kept)`
+      : '6. Keep all time sessions (retention is set to forever)',
+    '7. Push the result to the repo'
   ].join('\n'));
   if (!ok) return false;
   return optimizeRepoRemote(app, S, { silent: false });
@@ -395,6 +401,10 @@ function showShortcutsUi(app) {
     { heading: 'Templates', items: [
       ['mt', 'Mark / unmark task as template'],
       ['at', 'Apply template to selected task(s)'],
+    ]},
+    { heading: 'Time Tracking', items: [
+      ['ts', 'Start / stop / resume timer on selected task'],
+      ['tl', 'Time log of selected task (add or delete time)'],
     ]},
     { heading: 'Gist Sync', items: [
       ['sg', 'Sync now (bidirectional)'],
