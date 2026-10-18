@@ -24,6 +24,17 @@ const SCRIPTS = [
 
 const MIN = 60 * 1000;
 
+// A Date whose "now" is pinned, so day-boundary results don't depend on when the suite runs.
+function fixedDate(nowMs) {
+  return class extends Date {
+    constructor(...args) {
+      if (args.length) super(...args);
+      else super(nowMs);
+    }
+    static now() { return nowMs; }
+  };
+}
+
 function makeNode(id, hidden) {
   const classes = new Set(hidden ? ['hidden'] : []);
   return {
@@ -37,7 +48,7 @@ function makeNode(id, hidden) {
   };
 }
 
-function bootApp() {
+function bootApp({ nowMs } = {}) {
   const nodes = {};
   const node = id => (nodes[id] = nodes[id] || makeNode(id, id.startsWith('ov-')));
   const toasts = [];
@@ -66,7 +77,8 @@ function bootApp() {
     addEventListener: noOp
   };
   const sandbox = {
-    console, JSON, Math, Date, Promise,
+    console, JSON, Math, Promise,
+    Date: nowMs === undefined ? Date : fixedDate(nowMs),
     setTimeout: fn => fn(),
     clearTimeout: noOp,
     setInterval: () => 1,
@@ -243,7 +255,8 @@ test('a running timer survives a reload, and completing its task stops it', () =
 });
 
 test('the time log adds and deletes time, and the report panel lists it', () => {
-  const { App, S, node, toasts, renderReportTime } = bootApp();
+  // Midday, so "1h30 ending now" stays within today wherever the suite runs.
+  const { App, S, node, toasts, renderReportTime } = bootApp({ nowMs: new Date(2026, 9, 19, 12, 0).getTime() });
 
   S.selId = 'a';
   App.openTimeLog();
@@ -275,4 +288,18 @@ test('the time log adds and deletes time, and the report panel lists it', () => 
   assert.equal(S.data.timeSessions.length, 0);
   assert.equal(toasts.at(-1), 'Time session deleted');
   assert.match(node('timelog-list').innerHTML, /No time logged yet/);
+});
+
+test('time added just after midnight is split between yesterday and today in the report', () => {
+  const { App, S, node, renderReportTime } = bootApp({ nowMs: new Date(2026, 9, 19, 0, 50).getTime() });
+
+  S.selId = 'a';
+  App.openTimeLog();
+  assert.equal(node('timelog-date').value, '2026-10-19');
+  node('timelog-dur').value = '1h30';
+  App.addManualTime();
+
+  assert.equal(renderReportTime(App, S, '2026-10-19', '2026-10-19').a, 50 * MIN);
+  assert.equal(renderReportTime(App, S, '2026-10-18', '2026-10-18').a, 40 * MIN);
+  assert.equal(renderReportTime(App, S, '2026-10-18', '2026-10-19').a, 90 * MIN);
 });
