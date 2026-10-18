@@ -16,6 +16,10 @@ function bindGlobalEvents(app, state) {
 
   document.getElementById('cpi').addEventListener('input', () => app.updateCP());
   document.getElementById('cpi').addEventListener('keydown', e => {
+    if (bookmarkPaletteDigitUi(app, state, e.key)) {
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'ArrowDown') {
       state.cpIdx = Math.min(state.cpIdx + 1, state.cpItems.length - 1);
       app.renderCPItems();
@@ -62,7 +66,7 @@ function handleGlobalKey(app, state, e) {
 
   const tag = document.activeElement?.tagName;
   const inIn = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json sync-settings-json repo-versions shortcuts quickadd timelog checkin'.split(' ')].some(
+  const anyModal = [...'due repeat tags notes move sort export import restore wc settings task-json task-history list-json all-lists-json sync-settings-json repo-versions shortcuts quickadd timelog checkin bookmark'.split(' ')].some(
     n => !document.getElementById(`ov-${n}`).classList.contains('hidden')
   );
   const cpOpen = !document.getElementById('ov-cp').classList.contains('hidden');
@@ -157,6 +161,16 @@ function handleGlobalKey(app, state, e) {
   if (!e.ctrlKey && !e.altKey && !e.metaKey && state.kbuf && /^[a-z]$/i.test(e.key)) {
     e.preventDefault();
     app.twoKey(e);
+    return;
+  }
+
+  // b0-b9 open a bookmark; without this the digit would set a priority colour below.
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && /^[0-9]$/.test(e.key) && String(state.kbuf || '').endsWith('b')) {
+    e.preventDefault();
+    clearTimeout(state.kbtimer);
+    state.kbuf = '';
+    app.clearKH();
+    app.openBookmarkByShortcut(e.key);
     return;
   }
 
@@ -409,7 +423,7 @@ function handleTwoKeySequence(app, state, e) {
     return;
   }
 
-  if (!state.selId && !state.kbuf && !['g', 'l', 'o', 'h', 's', 'f'].includes(e.key)) return;
+  if (!state.selId && !state.kbuf && !['g', 'l', 'o', 'h', 's', 'f', 'a', 'b', 'c'].includes(e.key)) return;
 
   state.kbuf += e.key;
   clearTimeout(state.kbtimer);
@@ -506,6 +520,10 @@ function handleTwoKeySequence(app, state, e) {
     'xx': () => app.extractBranch(),
     'mt': () => app.toggleTemplateSelection(),
     'at': () => app.openTemplatePicker(),
+    'ab': () => app.openBookmarkDlg(),
+    'bb': () => app.openBookmarkPicker(),
+    'mb': () => app.openMoveToBookmark(),
+    'cb': () => app.removeBookmarksHere(),
     'uu': () => app.undo(),
     'st': () => {
       if (!state.selId) {
@@ -543,7 +561,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj', 'ft', 'hc', 'hf'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj', 'ft', 'hc', 'hf', 'ab', 'bb', 'cb'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;

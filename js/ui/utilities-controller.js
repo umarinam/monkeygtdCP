@@ -402,6 +402,13 @@ function showShortcutsUi(app) {
       ['mt', 'Mark / unmark task as template'],
       ['at', 'Apply template to selected task(s)'],
     ]},
+    { heading: 'Bookmarks', items: [
+      ['ab', 'Add/edit bookmark'],
+      ['bb', 'Open bookmark'],
+      ['b0-b9', 'Open the bookmark on that digit'],
+      ['mb', 'Move to bookmark'],
+      ['cb', 'Remove bookmark here'],
+    ]},
     { heading: 'Time Tracking', items: [
       ['ts', 'Start / stop / resume timer on selected task'],
       ['tl', 'Time log of selected task (add or delete time)'],

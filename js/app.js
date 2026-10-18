@@ -569,6 +569,20 @@ const App={
   openTemplatePicker(){ openTemplatePickerUi(this, S); },
   applyTemplate(templateId){ applyTemplateSelectionUi(this, S, templateId); },
 
+  // ─ Bookmarks ─────────────────────────────────────────────────────
+  saveBookmark(payload){ return saveBookmarkDomain(this, S, payload); },
+  removeBookmarks(ids){ return removeBookmarksDomain(this, S, ids); },
+  openBookmarkDlg(){ openBookmarkDialogUi(this, S); },
+  refreshBookmarkDlg(){ refreshBookmarkDialogUi(this, S); },
+  saveBookmarkDlg(){ saveBookmarkDialogUi(this, S); },
+  removeBookmarkDlg(){ removeBookmarkDialogUi(this, S); },
+  openBookmarkPicker(){ openBookmarkPickerUi(this, S, 'bookmarks'); },
+  openMoveToBookmark(){ openBookmarkPickerUi(this, S, 'bookmarks-move'); },
+  openRemoveBookmarkPicker(){ openBookmarkPickerUi(this, S, 'bookmarks-remove'); },
+  openBookmarkByShortcut(digit){ openBookmarkByShortcutUi(this, S, digit); },
+  openBookmark(id){ openBookmarkUi(this, S, id); },
+  removeBookmarksHere(){ removeBookmarksHereUi(this, S); },
+
   // ─ Time tracking ─────────────────────────────────────────────────
   saveTimer(){ DB.saveTimer(S.timer); },
   startTimerOn(taskId,nowMs){ return startTimerDomain(this, S, taskId, nowMs); },

@@ -1,6 +1,6 @@
 Write a single HTML file using localStorage and JavaScript as a full-featured task manager and outliner app modelled after Checkvist (https://checkvist.com).
 
-> **Scope note:** This document describes MonkeyGTD's actual behavior as implemented in `js/**` — not a wishlist. Checkvist (the app this one is modelled after) has a much larger feature set — multi-user sharing/collaboration, paid subscription tiers, file attachments, calendar sync, bookmarks, print preview, and more — that MonkeyGTD does **not** implement; those sections have been removed here rather than left in as unimplemented aspirational text. For genuinely forward-looking, not-yet-built proposals, see [Macros.md](Macros.md) and [Scripts.md](Scripts.md), which are explicitly marked as design docs.
+> **Scope note:** This document describes MonkeyGTD's actual behavior as implemented in `js/**` — not a wishlist. Checkvist (the app this one is modelled after) has a much larger feature set — multi-user sharing/collaboration, paid subscription tiers, file attachments, calendar sync, print preview, and more — that MonkeyGTD does **not** implement; those sections have been removed here rather than left in as unimplemented aspirational text. For genuinely forward-looking, not-yet-built proposals, see [Macros.md](Macros.md) and [Scripts.md](Scripts.md), which are explicitly marked as design docs.
 
 ## GitHub Pages Hosting
 
@@ -540,6 +540,22 @@ Templates live wherever you keep them (any list, including archived ones) and sy
 
 ---
 
+## Bookmarks
+
+A bookmark takes you back to a task or a whole list (optionally with a search filter), and lets you send tasks there, from anywhere in the app.
+
+- **`ab`** — bookmark the selected task, or the current list when nothing is selected. The dialog switches between **This task** and **The whole list**, takes an optional name (blank keeps it named after the task or list, following renames), a digit shortcut **b0–b9**, and, while a search filter is active, whether to keep that filter. Pressing `ab` on something already bookmarked edits its bookmark and offers **Remove**.
+- **`bb`** — pick a bookmark to open: type to filter, or press its digit. Bookmarks also appear in the `ll` palette as `Go to: ★ …`.
+- **`b0`–`b9`** — open the bookmark on that digit. In a list, a digit with no bookmark opens the dialog to set one there. A digit belongs to one bookmark at a time; giving it to another bookmark moves it.
+- Opening a task bookmark hoists the task when it has sub-tasks and selects it otherwise; a list bookmark opens the list. A saved filter is applied either way. A task bookmark follows its task to another list; if the task was deleted, its list opens instead.
+- **`mb`** — move the selected task(s) to a bookmark: to the end of the bookmarked task's sub-tasks, or to the top level of the bookmarked list. `mb` followed by a digit moves straight to that bookmark.
+- **`cb`** — remove the bookmarks on the selected task(s), or the current list's own bookmarks when nothing is selected. **Remove a bookmark…** in the command palette removes any bookmark, including one whose task or list was deleted.
+- Bookmarked tasks show a **★** chip (with the digit, if any); click it to edit the bookmark.
+- Bookmarks are saved with your data and sync like it. Adding, editing or removing a bookmark is not an undo step.
+
+
+---
+
 ## Time Tracking
 
 Track how long you spend on each task with a timer, and get a periodic check-in that asks whether you are still on that task or got distracted.
@@ -723,6 +739,16 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `mt` | Mark / unmark selected task as a template |
 | `at` | Apply a template to the selected task(s) |
 
+### Bookmarks
+
+| Shortcut | Action |
+|---|---|
+| `ab` | Add / edit a bookmark for the selected task (or the list) |
+| `bb` | Open a bookmark |
+| `b0`–`b9` | Open the bookmark on that digit |
+| `mb` | Move selected task(s) to a bookmark (`mb` + digit: straight there) |
+| `cb` | Remove bookmarks on the selected task(s), or the list's own |
+
 ### Time Tracking
 
 | Shortcut | Action |
@@ -846,6 +872,31 @@ Logged time is stored at the top level of the app data as `timeSessions`, an arr
 | `taskTitle` / `listId` / `listName` | Copied from the task and its list when the session is logged, so reports can still name a task after it has been removed |
 
 The running timer is not part of this data: it is kept per device in `localStorage['mgtd3_timer']`.
+
+### Bookmarks
+
+Bookmarks are stored at the top level of the app data as `bookmarks`, an array of:
+
+```json
+{
+  "id": "",
+  "name": "",
+  "listId": "",
+  "taskId": "",
+  "filter": "",
+  "shortcut": "",
+  "created_at": "",
+  "updated_at": ""
+}
+```
+
+| Field | Description |
+|---|---|
+| `name` | Custom name; blank means the bookmark is named after its task (or list) |
+| `listId` | List the bookmark opens. For a task bookmark, the task's list when it was saved; while the task exists, its current list is used |
+| `taskId` | Bookmarked task; empty for a list bookmark |
+| `filter` | Search filter applied when the bookmark opens; empty for none |
+| `shortcut` | `b0`–`b9`, or empty. At most one bookmark holds each digit |
 
 
 ---

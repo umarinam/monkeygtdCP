@@ -87,7 +87,14 @@ function buildCommandPaletteItems(app, state) {
     { l: 'Tags page', s: 'gt', fn: () => app.showPage('tags') },
     { l: 'Edit current list JSON', s: 'lj', fn: () => app.openListJson(state.listId) },
     { l: 'New list', fn: () => { app.showPage('home'); app.createList(); } },
-    ...app.select('cp.listTargets').map(l => ({ l: `Go to: ${l.name}`, fn: () => app.openList(l.id) }))
+    { l: 'Add/edit bookmark', s: 'ab', fn: () => app.openBookmarkDlg() },
+    { l: 'Open bookmark...', s: 'bb / b0-b9', fn: () => app.openBookmarkPicker() },
+    { l: 'Move to bookmark...', s: 'mb', fn: () => app.openMoveToBookmark() },
+    { l: 'Remove bookmark here', s: 'cb', fn: () => app.removeBookmarksHere() },
+    { l: 'Remove a bookmark...', fn: () => app.openRemoveBookmarkPicker() },
+    ...app.select('cp.listTargets').map(l => ({ l: `Go to: ${l.name}`, fn: () => app.openList(l.id) })),
+    ...(typeof buildBookmarkPaletteItems === 'function' ? buildBookmarkPaletteItems(app, state, 'bookmarks') : [])
+      .map(item => ({ ...item, l: `Go to: ${item.l}` }))
   ];
 }
 
