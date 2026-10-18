@@ -491,7 +491,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-04T18:33:13+05:00',commit:'242b10c'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-05T11:42:39+05:00',commit:'4fb9dcf'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -3891,11 +3891,12 @@ function exportMarkdownDomain(state, ids, depth, notes, done, walkTasksFn, skipC
   let output = '';
   walkTasksFn(ids, state.data.tasks, (task, level) => {
     if (!done && task.status !== 0) return skipChildren;
-    const prefix = level === 0 ? '## ' : level === 1 ? '### ' : '- ';
+    const pad = level < 2 ? '' : '  '.repeat(level - 2);
+    const prefix = level === 0 ? '## ' : level === 1 ? '### ' : `${pad}- `;
     const check = task.status === 1 ? '[x] ' : task.status === 2 ? '[~] ' : '';
     output += `${prefix}${check}${task.content}\n`;
     if (notes && task.notes) {
-      for (const n of task.notes) output += `  > ${n.content}\n`;
+      for (const n of task.notes) output += `${pad}  > ${n.content}\n`;
     }
   }, depth);
   return output;
@@ -3948,21 +3949,68 @@ function exportTextDomain(state, ids, depth, notes, done, walkTasksFn, skipChild
   return output;
 }
 
+function addImportedNoteDomain(task, content, uidFn) {
+  const stamp = now();
+  task.notes = [...(task.notes || []), { id: uidFn(), author: 'me', content, created_at: stamp, updated_at: stamp }];
+  task.comments_count = task.notes.length;
+}
+
+// Reads indented text and Markdown, including what exportMarkdownDomain and exportTextDomain write.
+// A line nests under the nearest earlier line with a lower rank: a heading ranks by its level, above
+// any list item; other lines rank by their indentation (a tab counts as 4 spaces).
 function importTextDomain(state, text, list, uidFn, mkTaskFn) {
-  const lines = text.split('\n').filter(l => l.trim());
   const ids = [];
   const stack = [];
+  let last = null;
 
-  for (const line of lines) {
-    const clean = line.replace(/^[-*]\s*/, '').replace(/^\[\s*[x\s]?\]\s*/, '');
-    const ind = line.length - line.trimStart().length;
-    const depth = Math.floor(ind / 2);
+  for (const raw of String(text || '').split(/\r\n?|\n/)) {
+    let line = raw.trim();
+    if (!line) continue;
+
+    const note = line.match(/^(?:>|\[Note\])\s?(.*)$/);
+    if (note && last) {
+      if (note[1].trim()) addImportedNoteDomain(last, note[1].trim(), uidFn);
+      continue;
+    }
+
+    let rank = raw.match(/^[ \t]*/)[0].replace(/\t/g, '    ').length;
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      rank = heading[1].length - 7;
+      line = heading[2];
+    }
+
+    line = line.replace(/^(?:[-*+•](?:\s+|$)|\d+[.)]\s+)/, '');
+    let status = 0;
+    const box = line.match(/^\[([ xX~])\]\s*/);
+    if (box) {
+      status = box[1] === ' ' ? 0 : box[1] === '~' ? 2 : 1;
+      line = line.slice(box[0].length);
+    }
+    const strike = line.match(/^~~(.+)~~$/);
+    if (strike) {
+      status = 2;
+      line = strike[1];
+    }
+    const suffix = line.match(/^(.*?)\s+\((done|invalid)\)$/);
+    if (suffix) {
+      status = suffix[2] === 'done' ? 1 : 2;
+      line = suffix[1];
+    }
+
+    const content = line.trim();
+    if (!content) continue;
+
+    while (stack.length && stack[stack.length - 1].rank >= rank) stack.pop();
+    const parentId = stack.length ? stack[stack.length - 1].id : '';
     const id = uidFn();
-    const parentId = stack.filter(s => s.depth < depth).at(-1)?.id || '';
 
+    // completed_at stays blank: the real completion time is unknown, and stamping it now would
+    // make reports count old work as done this week.
     const task = mkTaskFn({
       id,
-      content: clean.trim(),
+      content,
+      status,
       parent_id: parentId,
       checklist_id: list.id
     });
@@ -3975,7 +4023,8 @@ function importTextDomain(state, text, list, uidFn, mkTaskFn) {
       ids.push(id);
     }
 
-    stack.push({ id, depth });
+    stack.push({ id, rank });
+    last = task;
   }
 
   return ids;
