@@ -31,6 +31,13 @@ function syncStatusBarUi(state) {
     sf.style.display = 'none';
   }
 
+  const sc = document.getElementById('sb-cut');
+  if (sc) {
+    const cutCount = (state.cutIds || []).length;
+    sc.style.display = cutCount ? '' : 'none';
+    sc.textContent = cutCount ? `${cutCount} cut - Ctrl+V to move` : '';
+  }
+
   const ss = document.getElementById('sb-sync');
   if (ss) {
     const settings = state.data?.settings || {};

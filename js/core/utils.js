@@ -241,7 +241,7 @@ const seedData = () => {
               showSearchMatchChildren:false,
               taskDensity:'comfortable',emphasizeParentTasks:true,indentGuideStyle:'subtle',
               branchSpacing:'relaxed',focusMode:'off',contentWidth:'measure',
-              listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,copyStatusPrefix:false,
+              listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,
               gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5,
               syncProvider:'gist',repoBranch:'main',repoPath:'monkeygtd-backup.json',
               collapsedDueSections:[]},

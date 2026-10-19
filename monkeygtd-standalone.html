@@ -70,6 +70,7 @@ body.zen #topbar{display:none}
                 font-weight:700;line-height:1;padding:1px 4px;border-radius:999px;
                 color:var(--accent);background:color-mix(in srgb, var(--accent) 16%, transparent);
                 border:1px solid color-mix(in srgb, var(--accent) 35%, var(--border));}
+.ti.cut .tog,.ti.cut .tcb,.ti.cut .tb{opacity:.45}
 .igw{display:flex;align-self:stretch}
 .ig{width:20px;position:relative;flex-shrink:0;align-self:stretch}
 .ig::before{content:'';position:absolute;left:10px;top:0;bottom:0;border-left:1px solid var(--border)}
@@ -494,7 +495,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-19T01:38:06+05:00',commit:'48e96c8'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-19T11:07:42+05:00',commit:'7c919d2'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -608,6 +609,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
     <span class="sbi" id="sb-list"></span>
     <span class="sbi" id="sb-sel" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px"></span>
     <span class="sbi click" id="sb-filt" style="display:none" onclick="App.clearSearch()"></span>
+    <span class="sbi click" id="sb-cut" style="display:none" title="Esc or click to cancel the cut" onclick="App.clearCut()"></span>
     <span style="flex:1"></span>
     <span class="sbi" id="sb-timer" style="display:none"></span>
     <span class="sbi" id="sb-sync" title="Last Gist sync status"></span>
@@ -958,10 +960,8 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
           <label class="tog-sw"><input type="checkbox" id="s-hf" onchange="App.setSetting('hideFuture',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Show Children Of Search Matches</div><div class="ssd">When a task matches search, keep its full child tree visible</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-search-kids" onchange="App.setSetting('showSearchMatchChildren',this.checked)"><span class="tslider"></span></label></div>
-        <div class="ssi"><div><div class="ssl">Copy Only Visible Subtasks</div><div class="ssd">When on, Copy skips hidden descendants (completed, future, collapsed)</div></div>
+        <div class="ssi"><div><div class="ssl">Copy Only Visible Subtasks</div><div class="ssd">When on, Copy skips hidden descendants (completed, future, collapsed). Cut always moves the whole branch</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-copy-visible" onchange="App.setSetting('copyOnlyVisibleSubtasks',this.checked)"><span class="tslider"></span></label></div>
-        <div class="ssi"><div><div class="ssl">Copy Task Status Prefix</div><div class="ssd">Prefix copied lines with [X] for completed and [ ] for others</div></div>
-          <label class="tog-sw"><input type="checkbox" id="s-copy-status" onchange="App.setSetting('copyStatusPrefix',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Show Task JSON Chip</div><div class="ssd">Display { } action next to each task</div></div>
           <label class="tog-sw"><input type="checkbox" id="s-jsonchip" onchange="App.setSetting('showTaskJsonChip',this.checked)"><span class="tslider"></span></label></div>
         <div class="ssi"><div><div class="ssl">Show Task History Chip</div><div class="ssd">Display H action next to each task</div></div>
@@ -1580,7 +1580,7 @@ const seedData = () => {
               showSearchMatchChildren:false,
               taskDensity:'comfortable',emphasizeParentTasks:true,indentGuideStyle:'subtle',
               branchSpacing:'relaxed',focusMode:'off',contentWidth:'measure',
-              listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,copyStatusPrefix:false,
+              listStyle:'none',showNotes:false,copyOnlyVisibleSubtasks:true,
               gistAutoSyncEnabled:true,gistAutoSyncIntervalMin:5,
               syncProvider:'gist',repoBranch:'main',repoPath:'monkeygtd-backup.json',
               collapsedDueSections:[]},
@@ -3278,25 +3278,27 @@ function cloneVisibleBranchDomain(state, taskId, includeChildren) {
   return clone;
 }
 
-function taskCopyPrefixDomain(state, task) {
-  if (state.data?.settings?.copyStatusPrefix !== true) return '';
-  return task?.status === 1 ? '[X] ' : '[ ] ';
-}
-
-function taskTextFromSnapshotDomain(state, snapshot, tasksById, depth) {
-  let out = '  '.repeat(depth) + taskCopyPrefixDomain(state, snapshot) + (snapshot.content || '');
+// Copy and cut write Markdown that other apps understand and importTextDomain reads back:
+// "- [ ]" / "- [x]", ~~invalidated~~, two spaces per level, and each note line as "  > ".
+function taskMarkdownFromSnapshotDomain(snapshot, tasksById, depth) {
+  const pad = '  '.repeat(depth);
+  const box = snapshot.status === 1 ? '[x]' : '[ ]';
+  const text = String(snapshot.content || '').replace(/\r\n?|\n/g, `\n${pad}  `);
+  const lines = [`${pad}- ${box} ${snapshot.status === 2 ? `~~${text}~~` : text}`];
+  for (const note of (snapshot.notes || [])) {
+    for (const line of String(note?.content || '').split(/\r\n?|\n/)) {
+      if (line.trim()) lines.push(`${pad}  > ${line}`);
+    }
+  }
   for (const childId of (snapshot.tasks || [])) {
     const child = tasksById[childId];
-    if (!child) continue;
-    out += '\n' + taskTextFromSnapshotDomain(state, child, tasksById, depth + 1);
+    if (child) lines.push(taskMarkdownFromSnapshotDomain(child, tasksById, depth + 1));
   }
-  return out;
+  return lines.join('\n');
 }
 
-function copyDomain(app, state) {
-  const ids = state.msel.size ? [...state.msel] : (state.selId ? [state.selId] : []);
-  if (!ids.length) return;
-
+// Snapshots the selected branches for an in-app paste and puts them on the system clipboard.
+function rememberClipboardDomain(state, ids) {
   const copiedTasks = {};
   const copyOne = (taskId, includeChildren) => {
     const cloned = cloneVisibleBranchDomain(state, taskId, includeChildren);
@@ -3312,17 +3314,43 @@ function copyDomain(app, state) {
   state.clipboardIndex = copiedTasks;
 
   navigator.clipboard?.writeText(
-    state.clipboard.map(t => taskTextFromSnapshotDomain(state, t, copiedTasks, 0)).join('\n')
+    state.clipboard.map(t => taskMarkdownFromSnapshotDomain(t, copiedTasks, 0)).join('\n')
   ).catch(() => {});
-
-  app.toast(`Copied ${ids.length} task(s)`);
 }
 
+function clipboardRootIdsDomain(app, state) {
+  return selectedMoveIds(app, state).filter(id => state.data.tasks[id] && !state.data.tasks[id].deleted);
+}
+
+function copyDomain(app, state) {
+  const ids = clipboardRootIdsDomain(app, state);
+  if (!ids.length) return;
+
+  const hadCut = !!state.cutIds;
+  rememberClipboardDomain(state, ids);
+  state.cutIds = null;
+  app.toast(`Copied ${ids.length} task(s)`);
+  if (hadCut) app.render();
+}
+
+// Cut only marks the branches (drawn dimmed); the paste that follows moves them.
 function cutDomain(app, state) {
-  copyDomain(app, state);
-  const ids = state.msel.size ? [...state.msel] : (state.selId ? [state.selId] : []);
-  for (const id of ids) app.deleteTask(id);
+  const ids = clipboardRootIdsDomain(app, state);
+  if (!ids.length) return;
+
+  rememberClipboardDomain(state, ids);
+  state.cutIds = ids;
+  app.toast(`Cut ${ids.length} task(s) - select where they go and press Ctrl+V`);
   app.render();
+}
+
+function clearCutDomain(app, state) {
+  if (!state.cutIds) return false;
+  state.cutIds = null;
+  state.clipboard = null;
+  state.clipboardIndex = null;
+  app.render();
+  return true;
 }
 
 function materializePastedChildrenDomain(state, index, snapshot, parentTask) {
@@ -3350,28 +3378,93 @@ function materializePastedChildrenDomain(state, index, snapshot, parentTask) {
   return childIds;
 }
 
+// Moves the cut branches themselves, so their ids, and with them permalinks, history, bookmarks
+// and logged time, stay the same. They go below the selected task, else to the end of the list.
+function pasteCutDomain(app, state) {
+  const tasks = state.data.tasks;
+  const live = state.cutIds.filter(id => tasks[id] && !tasks[id].deleted);
+  const ids = live.filter(id => !live.some(other => other !== id && isAncestorOf(state, other, id)));
+  if (!ids.length) {
+    clearCutDomain(app, state);
+    app.toast('Nothing to paste');
+    return;
+  }
+
+  const ref = state.selId ? tasks[state.selId] : null;
+  if (ref && ids.some(id => id === ref.id || isAncestorOf(state, id, ref.id))) {
+    app.toast('Select a place outside the cut tasks, then paste');
+    return;
+  }
+
+  const listId = ref ? ref.checklist_id : state.listId;
+  const list = state.data.lists[listId];
+  if (!list) return;
+
+  app.pushUndo(app.snap());
+
+  const from = {};
+  for (const id of ids) {
+    from[id] = { parent_id: tasks[id].parent_id || '', checklist_id: tasks[id].checklist_id || '' };
+    const s = sibListDomain(state, id);
+    const i = s ? s.indexOf(id) : -1;
+    if (i > -1) s.splice(i, 1);
+  }
+
+  const refSibs = ref ? sibListDomain(state, ref.id) : null;
+  const dest = refSibs || list.root_tasks;
+  const parentId = refSibs ? (ref.parent_id || '') : '';
+  let at = refSibs ? refSibs.indexOf(ref.id) + 1 : dest.length;
+
+  for (const id of ids) {
+    const t = tasks[id];
+    t.parent_id = parentId;
+    t.checklist_id = listId;
+    setChecklistOnSubtree(state, id, listId);
+    dest.splice(at++, 0, id);
+    logTaskHistory(t, 'structure', {
+      action: 'cut-paste',
+      afterTaskId: refSibs ? ref.id : '',
+      from: from[id],
+      to: { parent_id: parentId, checklist_id: listId }
+    });
+  }
+
+  state.cutIds = null;
+  state.clipboard = null;
+  state.clipboardIndex = null;
+  state.selId = ids[0];
+  state.msel = new Set(ids.length > 1 ? ids : []);
+
+  app.save();
+  app.render();
+  app.toast(`Moved ${ids.length} task(s)`);
+}
+
+// After a copy, paste adds new copies (fresh ids) below the selected task, in clipboard order.
 function pasteDomain(app, state) {
+  if (state.cutIds) {
+    pasteCutDomain(app, state);
+    return;
+  }
   if (!state.clipboard || !state.clipboard.length) return;
 
   app.pushUndo(app.snap());
   const list = state.data.lists[state.listId];
   const index = state.clipboardIndex || {};
+  const ref = state.selId ? state.data.tasks[state.selId] : null;
+  const sibs = ref ? app.sibList(state.selId) : null;
+  let at = sibs ? sibs.indexOf(state.selId) + 1 : -1;
 
   for (const src of state.clipboard) {
     const nt = { ...src, id: uid(), created_at: now(), updated_at: now() };
-    if (state.selId) {
-      const ref = state.data.tasks[state.selId];
-      const sibs = app.sibList(state.selId);
-      if (sibs) {
-        sibs.splice(sibs.indexOf(state.selId) + 1, 0, nt.id);
-        nt.parent_id = ref.parent_id;
-        nt.checklist_id = state.listId;
-      }
+    if (sibs) {
+      sibs.splice(at++, 0, nt.id);
+      nt.parent_id = ref.parent_id;
     } else {
       list.root_tasks.push(nt.id);
       nt.parent_id = '';
-      nt.checklist_id = state.listId;
     }
+    nt.checklist_id = state.listId;
     nt.tasks = materializePastedChildrenDomain(state, index, src, nt);
     state.data.tasks[nt.id] = nt;
     logTaskHistory(nt, 'creation', {
@@ -7852,6 +7945,10 @@ function handleGlobalKey(app, state, e) {
       app.clearSearch();
       return;
     }
+    if (state.cutIds) {
+      app.clearCut();
+      return;
+    }
     state.selId = null;
     app.render();
     return;
@@ -9336,6 +9433,16 @@ function buildTimeChipUi(state, totals, id) {
   return `<span class="ttime${m.cls}" data-id="${id}" data-a="time" title="${esc(m.title)}">${esc(m.label)}</span>`;
 }
 
+// A pending cut dims its tasks and everything under them until a paste moves them.
+function isCutTaskUi(state, id) {
+  const cut = state.cutIds;
+  if (!cut || !cut.length) return false;
+  for (let p = id; p; p = state.data.tasks[p]?.parent_id) {
+    if (cut.includes(p)) return true;
+  }
+  return false;
+}
+
 function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
   const t = state.data.tasks[id];
   if (!t || t.deleted) return '';
@@ -9348,6 +9455,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
   const sCls = ` s${t.status}`;
   const selCls = isSel ? ' sel' : '';
   const mselCls = isMsel ? ' msel' : '';
+  const cutCls = isCutTaskUi(state, id) ? ' cut' : '';
   const branchCls = hasKids ? ' has-kids' : ' leaf';
   const depthCls = ` depth-${depth}`;
   const focusCls = getTaskFocusClassName(state, id);
@@ -9422,7 +9530,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
     ? `<div class="tb"><textarea class="edit-area" id="ea-${id}" data-id="${id}">${esc(t.content)}</textarea><div class="iac" id="iac-${id}"></div></div>`
     : `<div class="tb"><div class="tline"><div class="tc">${pfx}${rendered}</div>${metaH ? `<div class="tmeta">${metaH}</div>` : ''}</div>${detailH}${notesH}</div>`;
 
-    let html = `<div class="ti${sCls}${colCls}${selCls}${mselCls}${branchCls}${depthCls}${focusCls}" data-id="${id}" data-depth="${depth}" draggable="true">
+    let html = `<div class="ti${sCls}${colCls}${selCls}${mselCls}${cutCls}${branchCls}${depthCls}${focusCls}" data-id="${id}" data-depth="${depth}" draggable="true">
       ${t.color > 0 ? '<div class="cbar"></div>' : ''}
       <div class="igw">${guides}</div>${tog}${cb}${bodyH}</div>`;
 
@@ -10370,6 +10478,13 @@ function syncStatusBarUi(state) {
     sf.style.display = 'none';
   }
 
+  const sc = document.getElementById('sb-cut');
+  if (sc) {
+    const cutCount = (state.cutIds || []).length;
+    sc.style.display = cutCount ? '' : 'none';
+    sc.textContent = cutCount ? `${cutCount} cut - Ctrl+V to move` : '';
+  }
+
   const ss = document.getElementById('sb-sync');
   if (ss) {
     const settings = state.data?.settings || {};
@@ -10703,7 +10818,6 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-hf', s.hideFuture);
   syncCheckbox('s-search-kids', s.showSearchMatchChildren === true);
   syncCheckbox('s-copy-visible', s.copyOnlyVisibleSubtasks !== false);
-  syncCheckbox('s-copy-status', s.copyStatusPrefix === true);
   syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);
   syncCheckbox('s-histchip', s.showTaskHistoryChip !== false);
   syncCheckbox('s-parent-emphasis', s.emphasizeParentTasks !== false);
@@ -10934,6 +11048,10 @@ function cutUi(app, S) {
 
 function pasteUi(app, S) {
   pasteDomain(app, S);
+}
+
+function clearCutUi(app, S) {
+  if (clearCutDomain(app, S)) app.toast('Cut cancelled');
 }
 
 function dupUi(app, S, id) {
@@ -11311,9 +11429,9 @@ function showShortcutsUi(app) {
       ['th', 'View task history'],
     ]},
     { heading: 'Copy & Clipboard', items: [
-      ['Ctrl+C', 'Copy'],
-      ['Ctrl+X', 'Cut'],
-      ['Ctrl+V', 'Paste'],
+      ['Ctrl+C', 'Copy (as Markdown)'],
+      ['Ctrl+X', 'Cut (marks; Esc cancels)'],
+      ['Ctrl+V', 'Paste (moves a cut, else adds copies)'],
       ['Ctrl+A', 'Select all visible'],
     ]},
     { heading: 'View & Navigation', items: [
@@ -11707,7 +11825,7 @@ const S={
   pendingNewEditId:null, pendingNewEditPrevId:null,
   reportStart:'', reportEnd:'',
   reportFilters:{ added:true, modified:true, completed:true, deleted:true, untouched:true },
-  showNotes:false, clipboard:null,
+  showNotes:false, clipboard:null, cutIds:null,
   lastClickId:'', lastClickAt:0,
   lastCdAt:0,
   repoVersions:null,
@@ -12252,6 +12370,7 @@ const App={
   copy(){ copyUi(this, S); },
   cut(){ cutUi(this, S); },
   paste(){ pasteUi(this, S); },
+  clearCut(){ clearCutUi(this, S); },
   dup(id){ dupUi(this, S, id); },
   copyWithUrl(){ copyWithUrlUi(this, S); },
   copyPermalink(){ copyPermalinkUi(this, S); },
