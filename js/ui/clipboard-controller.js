@@ -17,6 +17,10 @@ function pasteUi(app, S) {
   pasteDomain(app, S);
 }
 
+function clearCutUi(app, S) {
+  if (clearCutDomain(app, S)) app.toast('Cut cancelled');
+}
+
 function dupUi(app, S, id) {
   dupDomain(app, S, id);
 }

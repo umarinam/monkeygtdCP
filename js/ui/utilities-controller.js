@@ -360,9 +360,9 @@ function showShortcutsUi(app) {
       ['th', 'View task history'],
     ]},
     { heading: 'Copy & Clipboard', items: [
-      ['Ctrl+C', 'Copy'],
-      ['Ctrl+X', 'Cut'],
-      ['Ctrl+V', 'Paste'],
+      ['Ctrl+C', 'Copy (as Markdown)'],
+      ['Ctrl+X', 'Cut (marks; Esc cancels)'],
+      ['Ctrl+V', 'Paste (moves a cut, else adds copies)'],
       ['Ctrl+A', 'Select all visible'],
     ]},
     { heading: 'View & Navigation', items: [

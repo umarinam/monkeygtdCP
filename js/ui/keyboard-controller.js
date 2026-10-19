@@ -150,6 +150,10 @@ function handleGlobalKey(app, state, e) {
       app.clearSearch();
       return;
     }
+    if (state.cutIds) {
+      app.clearCut();
+      return;
+    }
     state.selId = null;
     app.render();
     return;

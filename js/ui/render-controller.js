@@ -765,6 +765,16 @@ function buildTimeChipUi(state, totals, id) {
   return `<span class="ttime${m.cls}" data-id="${id}" data-a="time" title="${esc(m.title)}">${esc(m.label)}</span>`;
 }
 
+// A pending cut dims its tasks and everything under them until a paste moves them.
+function isCutTaskUi(state, id) {
+  const cut = state.cutIds;
+  if (!cut || !cut.length) return false;
+  for (let p = id; p; p = state.data.tasks[p]?.parent_id) {
+    if (cut.includes(p)) return true;
+  }
+  return false;
+}
+
 function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
   const t = state.data.tasks[id];
   if (!t || t.deleted) return '';
@@ -777,6 +787,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
   const sCls = ` s${t.status}`;
   const selCls = isSel ? ' sel' : '';
   const mselCls = isMsel ? ' msel' : '';
+  const cutCls = isCutTaskUi(state, id) ? ' cut' : '';
   const branchCls = hasKids ? ' has-kids' : ' leaf';
   const depthCls = ` depth-${depth}`;
   const focusCls = getTaskFocusClassName(state, id);
@@ -851,7 +862,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
     ? `<div class="tb"><textarea class="edit-area" id="ea-${id}" data-id="${id}">${esc(t.content)}</textarea><div class="iac" id="iac-${id}"></div></div>`
     : `<div class="tb"><div class="tline"><div class="tc">${pfx}${rendered}</div>${metaH ? `<div class="tmeta">${metaH}</div>` : ''}</div>${detailH}${notesH}</div>`;
 
-    let html = `<div class="ti${sCls}${colCls}${selCls}${mselCls}${branchCls}${depthCls}${focusCls}" data-id="${id}" data-depth="${depth}" draggable="true">
+    let html = `<div class="ti${sCls}${colCls}${selCls}${mselCls}${cutCls}${branchCls}${depthCls}${focusCls}" data-id="${id}" data-depth="${depth}" draggable="true">
       ${t.color > 0 ? '<div class="cbar"></div>' : ''}
       <div class="igw">${guides}</div>${tog}${cb}${bodyH}</div>`;
 

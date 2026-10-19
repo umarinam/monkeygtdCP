@@ -63,6 +63,7 @@ body.zen #topbar{display:none}
                 font-weight:700;line-height:1;padding:1px 4px;border-radius:999px;
                 color:var(--accent);background:color-mix(in srgb, var(--accent) 16%, transparent);
                 border:1px solid color-mix(in srgb, var(--accent) 35%, var(--border));}
+.ti.cut .tog,.ti.cut .tcb,.ti.cut .tb{opacity:.45}
 .igw{display:flex;align-self:stretch}
 .ig{width:20px;position:relative;flex-shrink:0;align-self:stretch}
 .ig::before{content:'';position:absolute;left:10px;top:0;bottom:0;border-left:1px solid var(--border)}

@@ -510,9 +510,18 @@ Press **`wc`** or open the Actions menu → Word count. Shows word count and cha
 
 ## Copy Operations
 
-- **Ctrl+C** — copy selected task(s) and their full branch.
-- **Ctrl+X** — cut.
-- **Ctrl+V** — paste.
+- **Ctrl+C** — copy selected task(s) and their branch. The system clipboard gets the branch as Markdown, so it pastes as a checklist into other apps, and **Import** (text format) reads it back with statuses, nesting and notes:
+  ```
+  - [ ] Plan trip
+    > Budget is 2k
+    - [x] Book flights
+    - [ ] ~~Rent a car~~
+  ```
+  `- [ ]` is open, `- [x]` done, `~~text~~` invalidated; each level indents two spaces, and each note line follows its task as `> note` (a note with several lines comes back from Import as one note per line). With **Copy Only Visible Subtasks** on (the default), subtasks hidden by *show completed*, *hide future* or a collapsed parent are left out. Checkboxes are always written, so the old *Copy Task Status Prefix* setting has been removed.
+- **Ctrl+X** — cut. The tasks stay where they are, dimmed, and the status bar shows **N cut - Ctrl+V to move**. **Esc** cancels the cut (after it has cleared any multi-selection, hoist and search), as does a click on that status-bar hint. A cut also puts the branch on the system clipboard as Markdown, like a copy.
+- **Ctrl+V** — paste below the selected task, or at the end of the current list when nothing is selected.
+  - After a **cut**, paste *moves* the original tasks there, in this list or another, as one undo step. They keep their ids, so permalinks (`#task-<id>`), task history, bookmarks and logged time all stay with them, and each moved task records a *structure* history entry. A cut can't be pasted onto itself or one of its own subtasks: pick a place outside it.
+  - After a **copy**, paste adds new copies with new ids, as many times as you paste.
 - **Ctrl+D** — duplicate in place.
 - **Ctrl+Shift+C** — copy the task text **plus its unique permalink URL** (formatted in Markdown). If the task has children, copies the entire branch. Also available in the `ll` palette.
 
@@ -626,8 +635,8 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 | `Tab` / `Shift+Tab` | Indent / un-indent |
 | `ee` / `F2` | Edit selected task |
 | `ei` / `ea` | Edit: cursor at start / end |
-| `Esc` | Cancel edit; close popup; clear selection |
-| `Ctrl+C/X/V/D` | Copy / Cut / Paste / Duplicate |
+| `Esc` | Cancel edit; close popup; cancel a cut; clear selection |
+| `Ctrl+C/X/V/D` | Copy (as Markdown) / Cut (paste moves it) / Paste / Duplicate |
 | `Ctrl+Shift+C` | Copy with permalink URL |
 | `Del` | Delete task(s) |
 | `Ctrl+Z` / `uu` | Undo |

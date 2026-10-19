@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 function loadClipboardOps(overrides = {}) {
   const utils = fs.readFileSync(path.join(process.cwd(), 'js/core/utils.js'), 'utf8');
+  const treeOps = fs.readFileSync(path.join(process.cwd(), 'js/domain/tree-ops.js'), 'utf8');
   const source = fs.readFileSync(path.join(process.cwd(), 'js/domain/clipboard-ops.js'), 'utf8');
 
   const sandbox = {
@@ -18,6 +19,7 @@ function loadClipboardOps(overrides = {}) {
 
   vm.createContext(sandbox);
   vm.runInContext(utils, sandbox, { filename: 'utils.js' });
+  vm.runInContext(treeOps, sandbox, { filename: 'tree-ops.js' });
   vm.runInContext(source, sandbox, { filename: 'clipboard-ops.js' });
   vm.runInContext('globalThis.__exports = { copyDomain, pasteDomain, dupDomain };', sandbox, { filename: 'exports.js' });
   return sandbox.__exports;

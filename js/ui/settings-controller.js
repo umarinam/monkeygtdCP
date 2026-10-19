@@ -32,7 +32,6 @@ function syncSettingsUi(app, S) {
   syncCheckbox('s-hf', s.hideFuture);
   syncCheckbox('s-search-kids', s.showSearchMatchChildren === true);
   syncCheckbox('s-copy-visible', s.copyOnlyVisibleSubtasks !== false);
-  syncCheckbox('s-copy-status', s.copyStatusPrefix === true);
   syncCheckbox('s-jsonchip', s.showTaskJsonChip !== false);
   syncCheckbox('s-histchip', s.showTaskHistoryChip !== false);
   syncCheckbox('s-parent-emphasis', s.emphasizeParentTasks !== false);
