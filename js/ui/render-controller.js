@@ -61,6 +61,11 @@ function bindTaskListEvents(app, state) {
       app.renameTemplateSelection();
       return;
     }
+    if (a === 'bm') {
+      state.selId = id;
+      app.openBookmarkDlg();
+      return;
+    }
     if (a === 'time') {
       state.selId = id;
       app.openTimeLog(id);
@@ -810,6 +815,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
     const tplLabel = t.template_name ? `template: ${esc(t.template_name)}` : 'template';
     metaH += `<span class="ttpl" data-id="${id}" data-a="tpl" title="Template - press at on another task to apply it; click to rename">📋 ${tplLabel}</span>`;
   }
+  if (typeof bookmarkChipUi === 'function') metaH += bookmarkChipUi(state, id);
   if (state.timeTotals) metaH += buildTimeChipUi(state, state.timeTotals, id);
   if (t.tags_as_text) {
     metaH += `<span class="ttags">${t.tags_as_text

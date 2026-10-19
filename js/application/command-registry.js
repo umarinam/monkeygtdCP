@@ -27,6 +27,8 @@ function registerAppCommands(app) {
   app.commandBus.register('task.markTemplate', ({id, name}) => app.markTemplate(id, name));
   app.commandBus.register('task.unmarkTemplate', ({id}) => app.unmarkTemplate(id));
   app.commandBus.register('task.applyTemplate', ({templateId, targetIds}) => app.applyTemplateTo(templateId, targetIds));
+  app.commandBus.register('bookmark.save', payload => app.saveBookmark(payload));
+  app.commandBus.register('bookmark.remove', ({ids}) => app.removeBookmarks(ids));
   app.commandBus.register('time.start', ({taskId, nowMs}) => app.startTimerOn(taskId, nowMs));
   app.commandBus.register('time.stop', ({nowMs} = {}) => app.stopTimerNow(nowMs));
   app.commandBus.register('time.resume', ({nowMs} = {}) => app.resumeTimerNow(nowMs));

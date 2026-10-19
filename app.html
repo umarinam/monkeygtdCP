@@ -713,6 +713,29 @@
   </div>
 </div>
 
+<!-- Bookmark -->
+<div id="ov-bookmark" class="ov hidden">
+  <div class="modal" style="max-width:380px">
+    <div class="mh"><span class="mt" id="bm-title">Add Bookmark</span><span class="mx" onclick="App.closeModal('ov-bookmark')">✕</span></div>
+    <div class="mb">
+      <div class="fg" id="bm-target-row"><label>Bookmark</label>
+        <select id="bm-target" onchange="App.refreshBookmarkDlg()">
+          <option value="task">This task</option>
+          <option value="list">The whole list</option>
+        </select>
+      </div>
+      <div class="fg"><label>Name (blank: use the task or list name)</label><input id="bm-name" type="text" onkeydown="if(event.key==='Enter'){event.preventDefault();App.saveBookmarkDlg();}"></div>
+      <div class="fg"><label>Shortcut</label><select id="bm-shortcut"></select></div>
+      <label class="cb-lbl" id="bm-filter-row"><input type="checkbox" id="bm-filter"> <span id="bm-filter-label">Also apply the current filter</span></label>
+    </div>
+    <div class="mf">
+      <button class="btn" id="bm-remove" style="color:var(--danger);margin-right:auto" onclick="App.removeBookmarkDlg()">Remove</button>
+      <button class="btn" onclick="App.closeModal('ov-bookmark')">Cancel</button>
+      <button class="btn btn-p" onclick="App.saveBookmarkDlg()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Time log (per task) -->
 <div id="ov-timelog" class="ov hidden">
   <div class="modal" style="max-width:560px">
@@ -784,6 +807,7 @@
 <script src="js/domain/lifecycle-ops.js"></script>
 <script src="js/domain/list-ops.js"></script>
 <script src="js/domain/settings-ops.js"></script>
+<script src="js/domain/bookmark-ops.js"></script>
 <script src="js/application/command-registry.js"></script>
 <script src="js/application/query-registry.js"></script>
 <script src="js/application/smoke-checks.js"></script>
@@ -801,6 +825,7 @@
 <script src="js/ui/time-tracking-controller.js"></script>
 <script src="js/ui/chrome-controller.js"></script>
 <script src="js/ui/search-controller.js"></script>
+<script src="js/ui/bookmark-controller.js"></script>
 <script src="js/ui/settings-controller.js"></script>
 <script src="js/ui/navigation-controller.js"></script>
 <script src="js/ui/clipboard-controller.js"></script>
