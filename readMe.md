@@ -452,9 +452,9 @@ Press **`ex`** or use the Actions menu. Export scope depends on current selectio
 | Format | Notes |
 |---|---|
 | **JSON** | Raw list + tasks payload |
-| **Markdown** | Hierarchy exported as headings; notes exported as plain text |
-| **OPML** | Preserves task attributes including repeating due dates; compatible with other outline tools |
-| **Plain Text** | No formatting; sub-tasks indented |
+| **Markdown** | Top two levels as `##` / `###` headings, deeper levels as indented `- ` bullets; `[x]` / `[~]` mark completed / invalidated tasks; notes as `> ` lines. Imports back with the same structure |
+| **OPML** | Keeps status, due date / ASAP, tags, colour, assignees, notes (with author and date) and repeating patterns; also writes `_complete`, `_status` and `_note`, which other outline tools read. Imports back with the same structure |
+| **Plain Text** | No formatting; sub-tasks tab-indented, ` (done)` / ` (invalid)` after closed tasks, notes as `[Note]` lines. Imports back with the same structure |
 
 Each format has its own options (e.g. include/exclude notes, tags, due dates).
 
@@ -486,8 +486,8 @@ Pasting multi-line text with **Ctrl+V** into the list prompts the import dialog 
 | Format | Notes |
 |---|---|
 | **JSON** | Round-trips the app's own export payload |
-| **Indented text / Markdown** | Relative indentation determines hierarchy |
-| **OPML** | Full round-trip with all task attributes |
+| **Indented text / Markdown** | A line nests under the nearest less-indented line above it (a tab counts as 4 spaces), and Markdown headings nest the lines that follow them. `-` `*` `+` `•` `1.` bullets are stripped; `[x]` imports as completed, `[~]` or `~~text~~` as invalidated; `> ` and `[Note]` lines become notes on the task above. Imported completed tasks get no completion date, so reports don't count them as done this week |
+| **OPML** | Reads back everything the OPML export writes (not templates, collapsed state or history). From other outliners, `_complete="true"`, `_status="invalidated"` and `_note` are understood. Imported completed tasks get no completion date. A file that isn't valid XML shows an error instead of importing nothing |
 
 
 ---
