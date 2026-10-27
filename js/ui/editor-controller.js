@@ -127,6 +127,56 @@ function editKeyUi(app, S, e, id) {
     app.startEdit(id);
     return;
   }
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && /^[bi]$/i.test(e.key)) {
+    e.preventDefault();
+    const el = document.getElementById(`ea-${id}`);
+    if (el) applyMarkdownEmphasisUi(el, e.key.toLowerCase() === 'b' ? '**' : '*');
+    return;
+  }
+}
+
+// Wraps the selection in a Markdown emphasis marker ('**' bold, '*' italic), or removes
+// it if already applied. The asterisk run around the selection decides what's applied,
+// so ***text*** counts as both and each style toggles independently.
+function toggleMarkdownEmphasis(value, selStart, selEnd, marker) {
+  const text = String(value || '');
+  let start = Math.min(selStart, selEnd);
+  let end = Math.max(selStart, selEnd);
+  const countRun = (from, step) => {
+    let n = 0;
+    for (let i = from; i >= 0 && i < text.length && text[i] === '*'; i += step) n++;
+    return n;
+  };
+
+  // A selection that includes its own markers (e.g. "**bold**") is treated like the text inside them.
+  const inner = Math.min(countRun(start, 1), countRun(end - 1, -1));
+  if (inner > 0 && end - start > inner * 2) {
+    start += inner;
+    end -= inner;
+  }
+
+  const around = Math.min(countRun(start - 1, -1), countRun(end, 1));
+  const size = marker.length;
+  const active = size === 2 ? around >= 2 : around === 1 || around >= 3;
+  const selected = text.slice(start, end);
+
+  const edit = active
+    ? { replaceStart: start - size, replaceEnd: end + size, replacement: selected, selStart: start - size, selEnd: end - size }
+    : { replaceStart: start, replaceEnd: end, replacement: `${marker}${selected}${marker}`, selStart: start + size, selEnd: end + size };
+  edit.value = text.slice(0, edit.replaceStart) + edit.replacement + text.slice(edit.replaceEnd);
+  return edit;
+}
+
+function applyMarkdownEmphasisUi(el, marker) {
+  const edit = toggleMarkdownEmphasis(el.value, el.selectionStart, el.selectionEnd, marker);
+  el.focus();
+  el.setSelectionRange(edit.replaceStart, edit.replaceEnd);
+  // insertText keeps the change on the textarea's own undo stack (Ctrl+Z while editing);
+  // assigning .value would wipe that history, so it's only the fallback.
+  const inserted = typeof document.execCommand === 'function' &&
+    document.execCommand(edit.replacement ? 'insertText' : 'delete', false, edit.replacement);
+  if (!inserted) el.value = edit.value;
+  el.setSelectionRange(edit.selStart, edit.selEnd);
 }
 
 function commitEditUi(app, S, id) {

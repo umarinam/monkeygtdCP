@@ -93,7 +93,7 @@ On first run with no data, populate a default list with sample tasks demonstrati
 - From the home page the user can **create**, **rename**, **archive**, **delete**, and **tag** lists (tags are set in the same Create/Rename List dialog as the name, not via a separate inline interaction).
 - Every list and every task has a unique **permalink** id (`#task-<id>`) that never changes even if the item is moved or renamed; `tc` / `lc` copies it to the clipboard.
 - A list can be **extracted** from a branch: select the top task of a branch and press `xx` — it becomes a new standalone list.
-- **List styles** can be set per list: None (default), Numbered, Boxes (checkboxes before every item), Bullets. Individual items can override with smart-syntax prefixes `[]` (checkbox), `[*]` (bullet), `[1]` (numbered children).
+- **List styles** can be set per list: None (default), Numbered (a number before each task, counted among its siblings), Bullets (a `•` before each task), or Boxes. Every task always shows a completion checkbox, so Boxes currently looks the same as None. There are no per-item style overrides.
 
 
 ---
@@ -272,7 +272,7 @@ Weekday names (`^friday`), month names (`^25 Apr`), and natural-language date re
 
 ## Notes / Comments
 
-- Press **`nn`** on a selected task to add a note (comment). Notes support Markdown formatting.
+- Press **`nn`** on a selected task to add a note (comment). Notes support the same Markdown as task text (see **Formatting — Markdown**).
 - Double-click a note or press **`ee`** while a note is focused to edit it.
 - **`cn`** — remove all notes from the selected task(s).
 - **`sn`** — show / hide all notes on the page.
@@ -295,12 +295,12 @@ Weekday names (`^friday`), month names (`^25 Apr`), and natural-language date re
 
 ### Internal Links
 - While editing, type `[[` to open a completion popup of tasks and lists — select a target to insert a Markdown-style link `[text](#task-<id>)`.
-- Edit a link with **Ctrl+K** (also used for external links).
+- Links are plain Markdown in the task text, so change one by editing the task (`ee` / `F2`).
 - Filter: `has:hyperlink` finds tasks with any external `https://` link in their content.
 - Shortcut `tc` / `lc` copies the task's permalink to the clipboard.
 
 ### External Links
-- Press **Ctrl+K** while editing to add or edit a hyperlink (`[text](URL)`).
+- With a task selected (not while editing), press **Ctrl+K** to add a labeled web link: it asks for a label and a URL, then appends `[label](URL)` to the end of the task. A URL without `http(s)://` gets `https://` added.
 - Plain URLs typed in content (e.g. `https://example.com`) are auto-converted to hyperlinks.
 
 
@@ -387,7 +387,7 @@ All toggleable via the Options menu (`oo`) or dedicated shortcuts:
 
 **Dark UI**: toggle in Settings (`oo`).
 
-**List style**: set per list — None, Numbered, Boxes, Bullets. Individual items can override with `[]`, `[*]`, `[1]` prefixes.
+**List style**: set per list — None, Numbered, Boxes, Bullets. Boxes currently looks the same as None, since every task already shows a checkbox.
 
 
 ---
@@ -404,9 +404,6 @@ Smart syntax works while editing a task; use autocompletion to select tag/assign
 | `@username` | Assign to a person |
 | `[[` | Create an internal link to another task |
 | `[text](URL)` | External hyperlink (Markdown) |
-| `[]` | Prefix to show a checkbox for this item and sub-items |
-| `[*]` | Prefix to show bullets for this item and sub-items |
-| `[1]` | Prefix to enable numbering for sub-items |
 
 Attributes (`#`, `^`, `!`, `@`) should be placed at the end of the task content.
 
@@ -415,27 +412,43 @@ Attributes (`#`, `^`, `!`, `@`) should be placed at the end of the task content.
 
 ## Formatting — Markdown
 
-The app supports **GitHub Flavored Markdown** for rich text in task content and notes (always on — there is no per-list Markdown toggle).
+Task text and notes support a small subset of Markdown (always on — there is no per-list toggle). Anything not listed here is shown exactly as typed.
 
 ### Text Formatting
 
 | Syntax | Result |
 |---|---|
-| `**bold**` or Ctrl+B | **Bold** |
-| `*italic*` or Ctrl+I | *Italic* |
+| `**bold**` or `__bold__` | **Bold** |
+| `*italic*` or `_italic_` | *Italic* |
+| `***bold italic***` | ***Bold italic*** |
 | `~~deleted~~` | ~~Strikethrough~~ |
 | `` `inline code` `` | `inline code` |
-| ` ``` code block ``` ` | Fenced code block with syntax highlighting |
-| `> blockquote` | Blockquote |
-| `* item` | Unordered list item |
-| `1. item` | Ordered list item |
-| `[text](URL)` | Hyperlink |
-| `\| col \| col \|` | Table (GitHub table syntax) |
+| ` ``` code block ``` ` | Code block (monospace, no syntax highlighting) |
+| `[text](URL)` | Hyperlink (opens in a new tab) |
+| `[fa:icon](URL)` | Hyperlink shown as an icon instead of text: `envelope`, `outlook`, `calendar`, `link`, `task`, `file`, `github`, `onenote` |
+| A bare URL such as `https://example.com` | Turned into a link automatically |
+| Shift+Enter while editing | Line break |
 
-### Dates & Time Insertion
+URLs starting with `javascript:`, `vbscript:`, `data:` or `file:` are never turned into links.
 
-- **Ctrl+;** — insert the current date.
-- **Ctrl+:** — insert the current time.
+### Bold & Italic Shortcuts
+
+While editing a task, **Ctrl+B** toggles bold and **Ctrl+I** toggles italic on the selected text:
+
+- With text selected, it wraps the text in `**` (bold) or `*` (italic) and keeps it selected. Pressing the shortcut again on bold or italic text removes the markers, whether or not the selection includes them.
+- Bold and italic combine independently: Ctrl+B on italic text gives `***text***`, and Ctrl+I on that gives back `**text**`.
+- With nothing selected, it inserts an empty pair (`****` or `**`) with the cursor in between, ready to type. Pressing it again right away removes the pair.
+- **Ctrl+Z** undoes it like any other typing.
+
+### Not Supported
+
+Blockquotes (`>`), bullet and numbered lists, tables, headings and syntax highlighting are not rendered; the text is shown as typed.
+
+### Things to Watch For
+
+- Underscores inside a word are read as italics: `my_file_name` shows as my*file*name. URLs are not affected.
+- Bold and italic markers are applied even inside inline code and code blocks.
+- Any `word:text` with no space after the colon (e.g. `status:done`) is treated as a link. Add a space after the colon to avoid it.
 
 
 ---
@@ -769,12 +782,10 @@ A Settings / Options panel (accessible via `oo` or a toolbar gear icon) exposes:
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+B` | Bold |
-| `Ctrl+I` | Italic |
-| `Ctrl+K` | Add / edit hyperlink |
+| `Ctrl+B` | Toggle bold on the selected text (while editing) |
+| `Ctrl+I` | Toggle italic on the selected text (while editing) |
+| `Ctrl+K` | Add a labeled web link to the selected task |
 | `tc` / `lc` | Copy task permalink to clipboard |
-| `Ctrl+;` | Insert current date |
-| `Ctrl+:` | Insert current time |
 
 ### Search
 

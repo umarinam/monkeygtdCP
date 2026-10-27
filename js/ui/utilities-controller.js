@@ -326,6 +326,7 @@ function showShortcutsUi(app) {
       ['Shift+Enter', 'Add child task'],
       ['Alt+Enter', 'Add task above'],
       ['F2 / double-click', 'Edit task'],
+      ['Ctrl+B / Ctrl+I', 'Bold / italic (while editing)'],
       ['Delete', 'Delete task'],
       ['Tab / Shift+Tab', 'Indent / un-indent'],
       ['Ctrl+↑ / Ctrl+↓', 'Move task up / down'],

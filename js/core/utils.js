@@ -120,30 +120,38 @@ const fmtDue = (t,rel) => {
   return dispDate(t.due);
 };
 
+const mdEmphasis = h => h
+  .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+  .replace(/__(.+?)__/g,'<strong>$1</strong>')
+  .replace(/\*(.+?)\*/g,'<em>$1</em>')
+  .replace(/_(.+?)_/g,'<em>$1</em>')
+  .replace(/~~(.+?)~~/g,'<del>$1</del>');
+
 const md = text => {
   if(!text) return '';
   let h = esc(text);
   h = h.replace(/```([\s\S]*?)```/g, (_,c)=>`<pre><code>${c.trim()}</code></pre>`);
   h = h.replace(/`([^`]+)`/g,'<code>$1</code>');
-  h = h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-  h = h.replace(/__(.+?)__/g,'<strong>$1</strong>');
-  h = h.replace(/\*(.+?)\*/g,'<em>$1</em>');
-  h = h.replace(/_(.+?)_/g,'<em>$1</em>');
-  h = h.replace(/~~(.+?)~~/g,'<del>$1</del>');
-  const linkSlots = [];
-  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
+  // Links are rendered and set aside before the emphasis rules run, so underscores or
+  // asterisks in a URL (my_page_name) can't turn into <em>/<strong> inside the href.
+  // The placeholder uses private-use characters, which no emphasis rule or URL can match.
+  const slots = [];
+  const slot = html => `${slots.push(html) - 1}`;
+  const anchor = (url, labelHtml) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${labelHtml}</a>`;
+  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, label, url) => {
     const cleanUrl = String(url || '').trim();
-    if (!isAllowedLinkUrl(cleanUrl)) return `[${label}](${cleanUrl})`;
-    const html = `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${renderLinkLabel(label)}</a>`;
-    const idx = linkSlots.push(html) - 1;
-    return `__MGTD_LINK_${idx}__`;
+    if (!isAllowedLinkUrl(cleanUrl)) return slot(m);
+    return slot(anchor(cleanUrl, renderLinkLabel(mdEmphasis(label))));
   });
-  h = h.replace(/(?<!["'=])\b([a-z][a-z0-9+.-]*:[^\s<>"]+)/gi, (_m, rawUrl) => {
-    const cleanUrl = String(rawUrl || '').trim();
-    if (!isAllowedLinkUrl(cleanUrl)) return cleanUrl;
-    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
+  // Not \b: emphasis hasn't run yet, so _https://x.com_ must still match after the "_".
+  h = h.replace(/(?<![a-z0-9"'=])([a-z][a-z0-9+.-]*:[^\s<>"]+)/gi, (_m, rawUrl) => {
+    // Trailing markers close formatting around the URL (**https://x.com**); they aren't part of it.
+    const cleanUrl = rawUrl.replace(/[*_~]+$/, '');
+    if (!cleanUrl || !isAllowedLinkUrl(cleanUrl)) return rawUrl;
+    return slot(anchor(cleanUrl, cleanUrl)) + rawUrl.slice(cleanUrl.length);
   });
-  h = h.replace(/__MGTD_LINK_(\d+)__/g, (_m, idx) => linkSlots[Number(idx)] || '');
+  h = mdEmphasis(h);
+  h = h.replace(/(\d+)/g, (_m, idx) => slots[Number(idx)] || '');
   h = h.replace(/\n/g,'<br>');
   return h;
 };
