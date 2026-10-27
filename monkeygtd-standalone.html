@@ -495,7 +495,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-19T11:07:42+05:00',commit:'7c919d2'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-19T12:16:42+05:00',commit:'07012d8'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -1459,30 +1459,38 @@ const fmtDue = (t,rel) => {
   return dispDate(t.due);
 };
 
+const mdEmphasis = h => h
+  .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+  .replace(/__(.+?)__/g,'<strong>$1</strong>')
+  .replace(/\*(.+?)\*/g,'<em>$1</em>')
+  .replace(/_(.+?)_/g,'<em>$1</em>')
+  .replace(/~~(.+?)~~/g,'<del>$1</del>');
+
 const md = text => {
   if(!text) return '';
   let h = esc(text);
   h = h.replace(/```([\s\S]*?)```/g, (_,c)=>`<pre><code>${c.trim()}</code></pre>`);
   h = h.replace(/`([^`]+)`/g,'<code>$1</code>');
-  h = h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-  h = h.replace(/__(.+?)__/g,'<strong>$1</strong>');
-  h = h.replace(/\*(.+?)\*/g,'<em>$1</em>');
-  h = h.replace(/_(.+?)_/g,'<em>$1</em>');
-  h = h.replace(/~~(.+?)~~/g,'<del>$1</del>');
-  const linkSlots = [];
-  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
+  // Links are rendered and set aside before the emphasis rules run, so underscores or
+  // asterisks in a URL (my_page_name) can't turn into <em>/<strong> inside the href.
+  // The placeholder uses private-use characters, which no emphasis rule or URL can match.
+  const slots = [];
+  const slot = html => `${slots.push(html) - 1}`;
+  const anchor = (url, labelHtml) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${labelHtml}</a>`;
+  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, label, url) => {
     const cleanUrl = String(url || '').trim();
-    if (!isAllowedLinkUrl(cleanUrl)) return `[${label}](${cleanUrl})`;
-    const html = `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${renderLinkLabel(label)}</a>`;
-    const idx = linkSlots.push(html) - 1;
-    return `__MGTD_LINK_${idx}__`;
+    if (!isAllowedLinkUrl(cleanUrl)) return slot(m);
+    return slot(anchor(cleanUrl, renderLinkLabel(mdEmphasis(label))));
   });
-  h = h.replace(/(?<!["'=])\b([a-z][a-z0-9+.-]*:[^\s<>"]+)/gi, (_m, rawUrl) => {
-    const cleanUrl = String(rawUrl || '').trim();
-    if (!isAllowedLinkUrl(cleanUrl)) return cleanUrl;
-    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>`;
+  // Not \b: emphasis hasn't run yet, so _https://x.com_ must still match after the "_".
+  h = h.replace(/(?<![a-z0-9"'=])([a-z][a-z0-9+.-]*:[^\s<>"]+)/gi, (_m, rawUrl) => {
+    // Trailing markers close formatting around the URL (**https://x.com**); they aren't part of it.
+    const cleanUrl = rawUrl.replace(/[*_~]+$/, '');
+    if (!cleanUrl || !isAllowedLinkUrl(cleanUrl)) return rawUrl;
+    return slot(anchor(cleanUrl, cleanUrl)) + rawUrl.slice(cleanUrl.length);
   });
-  h = h.replace(/__MGTD_LINK_(\d+)__/g, (_m, idx) => linkSlots[Number(idx)] || '');
+  h = mdEmphasis(h);
+  h = h.replace(/(\d+)/g, (_m, idx) => slots[Number(idx)] || '');
   h = h.replace(/\n/g,'<br>');
   return h;
 };
@@ -8503,6 +8511,56 @@ function editKeyUi(app, S, e, id) {
     app.startEdit(id);
     return;
   }
+  if (e.ctrlKey && !e.shiftKey && !e.altKey && /^[bi]$/i.test(e.key)) {
+    e.preventDefault();
+    const el = document.getElementById(`ea-${id}`);
+    if (el) applyMarkdownEmphasisUi(el, e.key.toLowerCase() === 'b' ? '**' : '*');
+    return;
+  }
+}
+
+// Wraps the selection in a Markdown emphasis marker ('**' bold, '*' italic), or removes
+// it if already applied. The asterisk run around the selection decides what's applied,
+// so ***text*** counts as both and each style toggles independently.
+function toggleMarkdownEmphasis(value, selStart, selEnd, marker) {
+  const text = String(value || '');
+  let start = Math.min(selStart, selEnd);
+  let end = Math.max(selStart, selEnd);
+  const countRun = (from, step) => {
+    let n = 0;
+    for (let i = from; i >= 0 && i < text.length && text[i] === '*'; i += step) n++;
+    return n;
+  };
+
+  // A selection that includes its own markers (e.g. "**bold**") is treated like the text inside them.
+  const inner = Math.min(countRun(start, 1), countRun(end - 1, -1));
+  if (inner > 0 && end - start > inner * 2) {
+    start += inner;
+    end -= inner;
+  }
+
+  const around = Math.min(countRun(start - 1, -1), countRun(end, 1));
+  const size = marker.length;
+  const active = size === 2 ? around >= 2 : around === 1 || around >= 3;
+  const selected = text.slice(start, end);
+
+  const edit = active
+    ? { replaceStart: start - size, replaceEnd: end + size, replacement: selected, selStart: start - size, selEnd: end - size }
+    : { replaceStart: start, replaceEnd: end, replacement: `${marker}${selected}${marker}`, selStart: start + size, selEnd: end + size };
+  edit.value = text.slice(0, edit.replaceStart) + edit.replacement + text.slice(edit.replaceEnd);
+  return edit;
+}
+
+function applyMarkdownEmphasisUi(el, marker) {
+  const edit = toggleMarkdownEmphasis(el.value, el.selectionStart, el.selectionEnd, marker);
+  el.focus();
+  el.setSelectionRange(edit.replaceStart, edit.replaceEnd);
+  // insertText keeps the change on the textarea's own undo stack (Ctrl+Z while editing);
+  // assigning .value would wipe that history, so it's only the fallback.
+  const inserted = typeof document.execCommand === 'function' &&
+    document.execCommand(edit.replacement ? 'insertText' : 'delete', false, edit.replacement);
+  if (!inserted) el.value = edit.value;
+  el.setSelectionRange(edit.selStart, edit.selEnd);
 }
 
 function commitEditUi(app, S, id) {
@@ -11395,6 +11453,7 @@ function showShortcutsUi(app) {
       ['Shift+Enter', 'Add child task'],
       ['Alt+Enter', 'Add task above'],
       ['F2 / double-click', 'Edit task'],
+      ['Ctrl+B / Ctrl+I', 'Bold / italic (while editing)'],
       ['Delete', 'Delete task'],
       ['Tab / Shift+Tab', 'Indent / un-indent'],
       ['Ctrl+↑ / Ctrl+↓', 'Move task up / down'],
