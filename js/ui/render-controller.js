@@ -329,6 +329,11 @@ function filterTagUi(app, state, tg) {
   app.showPage('list');
 }
 
+// The created / updated / done dates shown by sd (toggle details).
+function taskDetailTextUi(t) {
+  return `Created: ${(t.created_at || '').slice(0,10)}${t.updated_at ? ` · Updated: ${t.updated_at.slice(0,10)}` : ''}${t.completed_at ? ` · Done: ${t.completed_at.slice(0,10)}` : ''}`;
+}
+
 // Sub-tasks (any depth) still open under a due task; nothing once none remain.
 function dueOpenChildrenChipUi(app, t) {
   if (!t.tasks || !t.tasks.length) return '';
@@ -353,7 +358,7 @@ function renderDueUi(app, state) {
       return `<div class="dti${priorityCls}${isSel ? ' sel' : ''}" onclick="App.selectDueTask('${t.id}')">
         ${t.color > 0 ? '<div class="cbar"></div>' : ''}
         <input type="checkbox" ${t.status === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
-        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}${dueOpenChildrenChipUi(app, t)}</div></div>
+        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}${dueOpenChildrenChipUi(app, t)}</div>${state.showDetails ? `<div class="tdetail on">${taskDetailTextUi(t)}</div>` : ''}</div>
         <div style="font-size:11px;color:var(--muted)">${fmtDue(t, state.data.settings.relativeDates)}</div>
         <div class="dacts">
           <button class="dgo" title="Adjust due date" onclick="event.stopPropagation();App.openDueForTask('${t.id}')">Due</button>
@@ -852,7 +857,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
     metaH += `<span class="thist" data-id="${id}" data-a="hist">H</span>`;
   }
 
-  const detailH = `<div class="tdetail" id="dtl-${id}">Created: ${(t.created_at || '').slice(0,10)}${t.updated_at ? ` · Updated: ${t.updated_at.slice(0,10)}` : ''}${t.completed_at ? ` · Done: ${t.completed_at.slice(0,10)}` : ''}</div>`;
+  const detailH = `<div class="tdetail${state.showDetails ? ' on' : ''}">${taskDetailTextUi(t)}</div>`;
   let notesH = '';
   if (state.showNotes && t.notes && t.notes.length) {
     notesH = `<div class="tnotes">${t.notes.map(n => `<div class="tnote"><div class="na">${esc(n.author)} · ${(n.created_at || '').slice(0,10)}</div><div>${md(n.content)}</div></div>`).join('')}</div>`;
