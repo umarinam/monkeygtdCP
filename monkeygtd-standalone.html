@@ -215,6 +215,9 @@ body.zen #topbar{display:none}
 .dpri.priority-7{color:var(--p7);border-color:color-mix(in srgb, var(--p7) 45%, var(--border))}
 .dpri.priority-8{color:var(--p8);border-color:color-mix(in srgb, var(--p8) 45%, var(--border))}
 .dpri.priority-9{color:var(--p9);border-color:color-mix(in srgb, var(--p9) 45%, var(--border))}
+.dkids{display:inline-flex;align-items:center;height:16px;margin-left:6px;padding:0 6px;
+      border-radius:999px;border:1px solid var(--border);font-size:10px;font-weight:600;
+      line-height:1;background:var(--bg-alt);color:var(--muted);white-space:nowrap}
 .tag-cloud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
 .tci{padding:4px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;
      font-size:13px;background:var(--bg-alt)}
@@ -495,7 +498,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-19T11:07:42+05:00',commit:'7c919d2'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-19T12:16:42+05:00',commit:'07012d8'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -8997,6 +9000,14 @@ function filterTagUi(app, state, tg) {
   app.showPage('list');
 }
 
+// Sub-tasks (any depth) still open under a due task; nothing once none remain.
+function dueOpenChildrenChipUi(app, t) {
+  if (!t.tasks || !t.tasks.length) return '';
+  const stats = app.select('stats.progress', { id: t.id });
+  if (!stats || !stats.open) return '';
+  return `<span class="dkids" title="${stats.open} of ${stats.total} sub-tasks open">${stats.open} open</span>`;
+}
+
 function renderDueUi(app, state) {
   const sections = app.select('due.sections', { q: state.filter });
   let h = sections.map(sec => {
@@ -9013,7 +9024,7 @@ function renderDueUi(app, state) {
       return `<div class="dti${priorityCls}${isSel ? ' sel' : ''}" onclick="App.selectDueTask('${t.id}')">
         ${t.color > 0 ? '<div class="cbar"></div>' : ''}
         <input type="checkbox" ${t.status === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
-        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}</div></div>
+        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}${dueOpenChildrenChipUi(app, t)}</div></div>
         <div style="font-size:11px;color:var(--muted)">${fmtDue(t, state.data.settings.relativeDates)}</div>
         <div class="dacts">
           <button class="dgo" title="Adjust due date" onclick="event.stopPropagation();App.openDueForTask('${t.id}')">Due</button>
