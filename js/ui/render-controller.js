@@ -329,6 +329,14 @@ function filterTagUi(app, state, tg) {
   app.showPage('list');
 }
 
+// Sub-tasks (any depth) still open under a due task; nothing once none remain.
+function dueOpenChildrenChipUi(app, t) {
+  if (!t.tasks || !t.tasks.length) return '';
+  const stats = app.select('stats.progress', { id: t.id });
+  if (!stats || !stats.open) return '';
+  return `<span class="dkids" title="${stats.open} of ${stats.total} sub-tasks open">${stats.open} open</span>`;
+}
+
 function renderDueUi(app, state) {
   const sections = app.select('due.sections', { q: state.filter });
   let h = sections.map(sec => {
@@ -345,7 +353,7 @@ function renderDueUi(app, state) {
       return `<div class="dti${priorityCls}${isSel ? ' sel' : ''}" onclick="App.selectDueTask('${t.id}')">
         ${t.color > 0 ? '<div class="cbar"></div>' : ''}
         <input type="checkbox" ${t.status === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
-        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}</div></div>
+        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}${dueOpenChildrenChipUi(app, t)}</div></div>
         <div style="font-size:11px;color:var(--muted)">${fmtDue(t, state.data.settings.relativeDates)}</div>
         <div class="dacts">
           <button class="dgo" title="Adjust due date" onclick="event.stopPropagation();App.openDueForTask('${t.id}')">Due</button>

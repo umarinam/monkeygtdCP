@@ -234,7 +234,7 @@ Weekday names (`^friday`), month names (`^25 Apr`), and natural-language date re
 
 ### Due Date Display
 - Toggle between **relative** ("in 2 days", "overdue 3 days") and **exact** date formats with **`df`**. Overdue dates appear in red.
-- All tasks with a due date appear on the **Due page** (shortcut `gd`), grouped into sections (Overdue, ASAP, Today, Tomorrow, This Week, Next Week, This Month, Upcoming). The search box filters the Due page the same way it filters the main list.
+- All tasks with a due date appear on the **Due page** (shortcut `gd`), grouped into sections (Overdue, ASAP, Today, Tomorrow, This Week, Next Week, This Month, Upcoming). The search box filters the Due page the same way it filters the main list. A task with sub-tasks still open shows a count of them (at any depth, e.g. "3 open").
 
 ### Repeating Tasks
 - Press **`dr`** or click "Repeat…" in the Due dialog to set a repeating pattern.
