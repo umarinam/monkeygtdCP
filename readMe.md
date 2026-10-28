@@ -379,7 +379,7 @@ All toggleable via the Options menu (`oo`) or dedicated shortcuts:
 |---|---|
 | `hc` | Hide / show completed and invalidated tasks |
 | `hf` | Hide tasks due after tomorrow (show only overdue, ASAP, today, tomorrow) |
-| `sd` | Show / hide item details (creation/update timestamps) |
+| `sd` | Show / hide item details (creation/update/done dates) on the list and Due pages |
 | `pc` | Show / hide progress counter |
 | `df` | Toggle relative vs. exact due date display |
 | `sn` | Show / hide all notes |

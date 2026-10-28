@@ -141,6 +141,7 @@ body.zen #topbar{display:none}
 .tnote{padding:3px 0;border-bottom:1px solid var(--border)}.tnote:last-child{border:none}
 .na{font-size:11px;color:var(--muted);margin-bottom:2px}
 .tdetail{font-size:11px;color:var(--muted);margin-top:3px;display:none}
+.tdetail.on{display:block}
 .edit-area{width:100%;min-height:24px;padding:2px 4px;border:1px solid var(--focus);
            border-radius:var(--r);background:var(--bg);color:var(--text);
            font-family:var(--font);font-size:14px;line-height:1.5;resize:none;outline:none;
@@ -498,7 +499,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-19T12:16:42+05:00',commit:'07012d8'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-28T21:07:39+05:00',commit:'500ee32'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -8371,7 +8372,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj', 'ft', 'hc', 'hf', 'ab', 'bb', 'cb'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj', 'ft', 'hc', 'hf', 'sd', 'ab', 'bb', 'cb'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;
@@ -9058,6 +9059,11 @@ function filterTagUi(app, state, tg) {
   app.showPage('list');
 }
 
+// The created / updated / done dates shown by sd (toggle details).
+function taskDetailTextUi(t) {
+  return `Created: ${(t.created_at || '').slice(0,10)}${t.updated_at ? ` · Updated: ${t.updated_at.slice(0,10)}` : ''}${t.completed_at ? ` · Done: ${t.completed_at.slice(0,10)}` : ''}`;
+}
+
 // Sub-tasks (any depth) still open under a due task; nothing once none remain.
 function dueOpenChildrenChipUi(app, t) {
   if (!t.tasks || !t.tasks.length) return '';
@@ -9082,7 +9088,7 @@ function renderDueUi(app, state) {
       return `<div class="dti${priorityCls}${isSel ? ' sel' : ''}" onclick="App.selectDueTask('${t.id}')">
         ${t.color > 0 ? '<div class="cbar"></div>' : ''}
         <input type="checkbox" ${t.status === 1 ? 'checked' : ''} onclick="event.stopPropagation();App.toggleStatus('${t.id}')">
-        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}${dueOpenChildrenChipUi(app, t)}</div></div>
+        <div style="flex:1"><div>${contentHtml}</div><div class="dlist">${priorityChip}${l ? esc(l.name) : ''}${dueOpenChildrenChipUi(app, t)}</div>${state.showDetails ? `<div class="tdetail on">${taskDetailTextUi(t)}</div>` : ''}</div>
         <div style="font-size:11px;color:var(--muted)">${fmtDue(t, state.data.settings.relativeDates)}</div>
         <div class="dacts">
           <button class="dgo" title="Adjust due date" onclick="event.stopPropagation();App.openDueForTask('${t.id}')">Due</button>
@@ -9581,7 +9587,7 @@ function buildTaskItemUi(app, state, id, depth, list, forceShowSearchSubtree) {
     metaH += `<span class="thist" data-id="${id}" data-a="hist">H</span>`;
   }
 
-  const detailH = `<div class="tdetail" id="dtl-${id}">Created: ${(t.created_at || '').slice(0,10)}${t.updated_at ? ` · Updated: ${t.updated_at.slice(0,10)}` : ''}${t.completed_at ? ` · Done: ${t.completed_at.slice(0,10)}` : ''}</div>`;
+  const detailH = `<div class="tdetail${state.showDetails ? ' on' : ''}">${taskDetailTextUi(t)}</div>`;
   let notesH = '';
   if (state.showNotes && t.notes && t.notes.length) {
     notesH = `<div class="tnotes">${t.notes.map(n => `<div class="tnote"><div class="na">${esc(n.author)} · ${(n.created_at || '').slice(0,10)}</div><div>${md(n.content)}</div></div>`).join('')}</div>`;
@@ -11149,11 +11155,11 @@ function showProgressUi(app, S, id) {
   app.toast(`${stats.done}/${stats.total} done`);
 }
 
-function toggleDetailsUi(app) {
-  const ds = document.querySelectorAll('[id^="dtl-"]');
-  const visible = ds.length && ds[0].style.display !== 'none';
-  ds.forEach((el) => (el.style.display = visible ? 'none' : 'block'));
-  app.toast(`Details ${visible ? 'hidden' : 'visible'}`);
+// Kept in state so the list and Due pages both render it and it survives re-renders.
+function toggleDetailsUi(app, S) {
+  S.showDetails = !S.showDetails;
+  app.render();
+  app.toast(`Details ${S.showDetails ? 'visible' : 'hidden'}`);
 }
 
 function wipeCompletedUi(app, S) {
@@ -11895,7 +11901,7 @@ const S={
   pendingNewEditId:null, pendingNewEditPrevId:null,
   reportStart:'', reportEnd:'',
   reportFilters:{ added:true, modified:true, completed:true, deleted:true, untouched:true },
-  showNotes:false, clipboard:null, cutIds:null,
+  showNotes:false, showDetails:false, clipboard:null, cutIds:null,
   lastClickId:'', lastClickAt:0,
   lastCdAt:0,
   repoVersions:null,
@@ -12615,7 +12621,7 @@ const App={
   showProgress(id){ showProgressUi(this, S, id); },
 
   // â”€ Toggle details â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  toggleDetails(){ toggleDetailsUi(this); },
+  toggleDetails(){ toggleDetailsUi(this, S); },
 
   // â”€ Wipe / Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   wipeCompleted(internal){

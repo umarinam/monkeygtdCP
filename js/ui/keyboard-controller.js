@@ -565,7 +565,7 @@ function handleTwoKeySequence(app, state, e) {
     const s2 = state.kbuf.slice(-2);
     if (sc[s2]) {
       e.preventDefault();
-      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj', 'ft', 'hc', 'hf', 'ab', 'bb', 'cb'].includes(s2)) sc[s2]();
+      if (state.selId || ['gt', 'gr', 'gk', 'gh', 'gd', 'gg', 'om', 'oo', 'ss', 'll', 'rd', 'wc', 'im', 'ex', 'st', 'lj', 'ft', 'hc', 'hf', 'sd', 'ab', 'bb', 'cb'].includes(s2)) sc[s2]();
       state.kbuf = '';
       app.clearKH();
       return;

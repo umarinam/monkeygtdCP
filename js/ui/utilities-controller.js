@@ -11,11 +11,11 @@ function showProgressUi(app, S, id) {
   app.toast(`${stats.done}/${stats.total} done`);
 }
 
-function toggleDetailsUi(app) {
-  const ds = document.querySelectorAll('[id^="dtl-"]');
-  const visible = ds.length && ds[0].style.display !== 'none';
-  ds.forEach((el) => (el.style.display = visible ? 'none' : 'block'));
-  app.toast(`Details ${visible ? 'hidden' : 'visible'}`);
+// Kept in state so the list and Due pages both render it and it survives re-renders.
+function toggleDetailsUi(app, S) {
+  S.showDetails = !S.showDetails;
+  app.render();
+  app.toast(`Details ${S.showDetails ? 'visible' : 'hidden'}`);
 }
 
 function wipeCompletedUi(app, S) {

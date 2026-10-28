@@ -11,7 +11,7 @@ const S={
   pendingNewEditId:null, pendingNewEditPrevId:null,
   reportStart:'', reportEnd:'',
   reportFilters:{ added:true, modified:true, completed:true, deleted:true, untouched:true },
-  showNotes:false, clipboard:null, cutIds:null,
+  showNotes:false, showDetails:false, clipboard:null, cutIds:null,
   lastClickId:'', lastClickAt:0,
   lastCdAt:0,
   repoVersions:null,
@@ -731,7 +731,7 @@ const App={
   showProgress(id){ showProgressUi(this, S, id); },
 
   // â”€ Toggle details â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  toggleDetails(){ toggleDetailsUi(this); },
+  toggleDetails(){ toggleDetailsUi(this, S); },
 
   // â”€ Wipe / Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   wipeCompleted(internal){
