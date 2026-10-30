@@ -499,7 +499,7 @@ mark{background:rgba(251,191,36,.4);border-radius:2px}
 </style>
 </head>
 <body>
-<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-28T21:07:39+05:00',commit:'500ee32'};</script>
+<script>window.__MGTD_STANDALONE_DEPLOY={deployedAt:'2026-10-30T19:12:45+05:00',commit:'723b5ab'};</script>
 
 <!-- â”€â”€ App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="app">
@@ -5350,15 +5350,26 @@ async function syncFromGistRemote(app, state, options) {
     state.data.settings.gistLastSyncAt = remoteAt || new Date().toISOString();
 
     const inbox = await gistProcessInboxRemote(state, config, meta);
-    gistRememberSyncSummary(state, inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled', remoteAt || new Date().toISOString());
+    let summary = inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled';
+    gistRememberSyncSummary(state, summary, remoteAt || new Date().toISOString());
 
-    app.save({ touchLocalSaveAt: false });
+    // Imported tasks have already left the inbox file, so push them into the backup now.
+    // A normal save stamps local as newest, so if that push fails the next sync retries
+    // it instead of pulling over them.
+    app.save(inbox.applied > 0 ? {} : { touchLocalSaveAt: false });
+    let pushed = true;
+    if (inbox.applied > 0) {
+      pushed = await syncToGistRemote(app, state, { silent: true });
+      if (!pushed) summary += ' (not pushed)';
+      gistRememberSyncSummary(state, summary);
+      app.save({ touchLocalSaveAt: false });
+    }
     app.render();
     app.syncSettings();
     if (app.syncSB) app.syncSB();
 
     const label = file?.filename || config.filename;
-    const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued` : '';
+    const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued${pushed ? '' : ' (not pushed)'}` : '';
     gistSetStatus(`Pulled ${label}${inboxLabel}`, false);
     if (!opts.silent) app.toast('Gist sync: pulled latest');
     return true;
@@ -5450,6 +5461,23 @@ async function syncGistBidirectionalRemote(app, state, options) {
     const raw = await gistReadFileContent(file);
     const payload = gistParsePayload(raw);
 
+    // Compare timestamps before importing the inbox: the import stamps gistLastSyncAt with
+    // "now", which would make local always look newer and push over remote changes.
+    const remoteDataMs = gistIsoToMs(payload.exportedAt);
+    const remoteMetaMs = gistIsoToMs(meta.updated_at);
+    const remoteMs = Math.max(remoteDataMs, remoteMetaMs);
+    const localMs = Math.max(
+      gistIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
+      gistIsoToMs(state.data?.settings?.gistLastSyncAt)
+    );
+
+    const action = gistResolveRemoteVsLocal(remoteMs, localMs);
+
+    if (action === 'pull') {
+      // syncFromGistRemote imports the inbox on top of the pulled data.
+      return syncFromGistRemote(app, state, { silent: opts.silent, auto: false });
+    }
+
     const inbox = await gistProcessInboxRemote(state, config, meta);
     if (inbox.applied > 0) {
       gistRememberSyncSummary(state, `Inbox imported ${inbox.applied}`, new Date().toISOString());
@@ -5460,25 +5488,12 @@ async function syncGistBidirectionalRemote(app, state, options) {
       if (!opts.silent) app.toast(`Gist inbox: added ${inbox.applied} task(s)`);
     }
 
-    const remoteDataMs = gistIsoToMs(payload.exportedAt);
-    const remoteMetaMs = gistIsoToMs(meta.updated_at);
-    const remoteAt = remoteDataMs >= remoteMetaMs ? (payload.exportedAt || '') : (meta.updated_at || '');
-    const remoteMs = Math.max(remoteDataMs, remoteMetaMs);
-    const localMs = Math.max(
-      gistIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
-      gistIsoToMs(state.data?.settings?.gistLastSyncAt)
-    );
-
-    const action = gistResolveRemoteVsLocal(remoteMs, localMs);
-
-    if (action === 'pull') {
-      return syncFromGistRemote(app, state, { silent: opts.silent, auto: false });
-    }
-    if (action === 'push') {
+    // Imported tasks have already left the inbox file, so get them into the backup now.
+    if (action === 'push' || inbox.applied > 0) {
       return syncToGistRemote(app, state, { silent: opts.silent });
     }
 
-    gistRememberSyncSummary(state, inbox.applied > 0 ? `Inbox imported ${inbox.applied}` : 'In sync', new Date().toISOString());
+    gistRememberSyncSummary(state, 'In sync', new Date().toISOString());
     app.syncSettings();
     if (app.syncSB) app.syncSB();
     gistSetStatus('Gist and local are in sync', false);
@@ -6075,14 +6090,25 @@ async function syncFromRepoRemote(app, state, options) {
 
     const at = payload.exportedAt || new Date().toISOString();
     const inbox = await repoProcessInboxRemote(state, config);
-    repoRememberSyncSummary(state, inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled', at);
+    let summary = inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled';
+    repoRememberSyncSummary(state, summary, at);
 
-    app.save({ touchLocalSaveAt: false });
+    // Imported tasks have already left the inbox file, so push them into the backup now.
+    // A normal save stamps local as newest, so if that push fails the next sync retries
+    // it instead of pulling over them.
+    app.save(inbox.applied > 0 ? {} : { touchLocalSaveAt: false });
+    let pushed = true;
+    if (inbox.applied > 0) {
+      pushed = await syncToRepoRemote(app, state, { silent: true });
+      if (!pushed) summary += ' (not pushed)';
+      repoRememberSyncSummary(state, summary);
+      app.save({ touchLocalSaveAt: false });
+    }
     app.render();
     app.syncSettings();
     if (app.syncSB) app.syncSB();
 
-    const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued` : '';
+    const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued${pushed ? '' : ' (not pushed)'}` : '';
     repoSetStatus(`Pulled ${config.path}${inboxLabel}`, false);
     if (!opts.silent) app.toast('Repo sync: pulled latest');
     return true;
@@ -6177,6 +6203,25 @@ async function syncRepoBidirectionalRemote(app, state, options) {
 
     const remote = await repoFetchFile(config);
 
+    // Compare timestamps before importing the inbox: the import stamps syncLastAt with
+    // "now", which would make local always look newer and push over remote changes.
+    let action = 'push';
+    if (remote) {
+      const payload = repoParsePayload(remote.raw);
+      const remoteMs = repoIsoToMs(payload.exportedAt);
+      const localMs = Math.max(
+        repoIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
+        repoIsoToMs(state.data?.settings?.repoLastSyncAt),
+        repoIsoToMs(state.data?.settings?.syncLastAt)
+      );
+      action = repoResolveRemoteVsLocal(remoteMs, localMs);
+    }
+
+    if (action === 'pull') {
+      // syncFromRepoRemote imports the inbox on top of the pulled data.
+      return syncFromRepoRemote(app, state, { silent: opts.silent, auto: false });
+    }
+
     const inbox = await repoProcessInboxRemote(state, config);
     if (inbox.applied > 0) {
       repoRememberSyncSummary(state, `Inbox imported ${inbox.applied}`, new Date().toISOString());
@@ -6187,31 +6232,14 @@ async function syncRepoBidirectionalRemote(app, state, options) {
       if (!opts.silent) app.toast(`Repo inbox: added ${inbox.applied} task(s)`);
     }
 
-    if (!remote) {
-      return syncToRepoRemote(app, state, { silent: opts.silent });
-    }
-
-    const payload = repoParsePayload(remote.raw);
-    const remoteMs = repoIsoToMs(payload.exportedAt);
-    const localMs = Math.max(
-      repoIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
-      repoIsoToMs(state.data?.settings?.repoLastSyncAt),
-      repoIsoToMs(state.data?.settings?.syncLastAt)
-    );
-
-    const action = repoResolveRemoteVsLocal(remoteMs, localMs);
-
-    if (action === 'pull') {
-      return syncFromRepoRemote(app, state, { silent: opts.silent, auto: false });
-    }
-    if (action === 'push') {
+    // Imported tasks have already left the inbox file, so get them into the backup now.
+    if (action === 'push' || inbox.applied > 0) {
       return syncToRepoRemote(app, state, { silent: opts.silent });
     }
 
     state.data.settings = state.data.settings || {};
-    const summary = inbox.applied > 0 ? `Inbox imported ${inbox.applied}` : 'In sync';
-    state.data.settings.syncLastSummary = summary;
-    state.data.settings.repoLastSyncSummary = summary;
+    state.data.settings.syncLastSummary = 'In sync';
+    state.data.settings.repoLastSyncSummary = 'In sync';
     app.syncSettings();
     if (app.syncSB) app.syncSB();
     repoSetStatus('Repo and local are in sync', false);

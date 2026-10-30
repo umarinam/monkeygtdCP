@@ -439,15 +439,26 @@ async function syncFromGistRemote(app, state, options) {
     state.data.settings.gistLastSyncAt = remoteAt || new Date().toISOString();
 
     const inbox = await gistProcessInboxRemote(state, config, meta);
-    gistRememberSyncSummary(state, inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled', remoteAt || new Date().toISOString());
+    let summary = inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled';
+    gistRememberSyncSummary(state, summary, remoteAt || new Date().toISOString());
 
-    app.save({ touchLocalSaveAt: false });
+    // Imported tasks have already left the inbox file, so push them into the backup now.
+    // A normal save stamps local as newest, so if that push fails the next sync retries
+    // it instead of pulling over them.
+    app.save(inbox.applied > 0 ? {} : { touchLocalSaveAt: false });
+    let pushed = true;
+    if (inbox.applied > 0) {
+      pushed = await syncToGistRemote(app, state, { silent: true });
+      if (!pushed) summary += ' (not pushed)';
+      gistRememberSyncSummary(state, summary);
+      app.save({ touchLocalSaveAt: false });
+    }
     app.render();
     app.syncSettings();
     if (app.syncSB) app.syncSB();
 
     const label = file?.filename || config.filename;
-    const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued` : '';
+    const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued${pushed ? '' : ' (not pushed)'}` : '';
     gistSetStatus(`Pulled ${label}${inboxLabel}`, false);
     if (!opts.silent) app.toast('Gist sync: pulled latest');
     return true;
@@ -539,6 +550,23 @@ async function syncGistBidirectionalRemote(app, state, options) {
     const raw = await gistReadFileContent(file);
     const payload = gistParsePayload(raw);
 
+    // Compare timestamps before importing the inbox: the import stamps gistLastSyncAt with
+    // "now", which would make local always look newer and push over remote changes.
+    const remoteDataMs = gistIsoToMs(payload.exportedAt);
+    const remoteMetaMs = gistIsoToMs(meta.updated_at);
+    const remoteMs = Math.max(remoteDataMs, remoteMetaMs);
+    const localMs = Math.max(
+      gistIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
+      gistIsoToMs(state.data?.settings?.gistLastSyncAt)
+    );
+
+    const action = gistResolveRemoteVsLocal(remoteMs, localMs);
+
+    if (action === 'pull') {
+      // syncFromGistRemote imports the inbox on top of the pulled data.
+      return syncFromGistRemote(app, state, { silent: opts.silent, auto: false });
+    }
+
     const inbox = await gistProcessInboxRemote(state, config, meta);
     if (inbox.applied > 0) {
       gistRememberSyncSummary(state, `Inbox imported ${inbox.applied}`, new Date().toISOString());
@@ -549,25 +577,12 @@ async function syncGistBidirectionalRemote(app, state, options) {
       if (!opts.silent) app.toast(`Gist inbox: added ${inbox.applied} task(s)`);
     }
 
-    const remoteDataMs = gistIsoToMs(payload.exportedAt);
-    const remoteMetaMs = gistIsoToMs(meta.updated_at);
-    const remoteAt = remoteDataMs >= remoteMetaMs ? (payload.exportedAt || '') : (meta.updated_at || '');
-    const remoteMs = Math.max(remoteDataMs, remoteMetaMs);
-    const localMs = Math.max(
-      gistIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
-      gistIsoToMs(state.data?.settings?.gistLastSyncAt)
-    );
-
-    const action = gistResolveRemoteVsLocal(remoteMs, localMs);
-
-    if (action === 'pull') {
-      return syncFromGistRemote(app, state, { silent: opts.silent, auto: false });
-    }
-    if (action === 'push') {
+    // Imported tasks have already left the inbox file, so get them into the backup now.
+    if (action === 'push' || inbox.applied > 0) {
       return syncToGistRemote(app, state, { silent: opts.silent });
     }
 
-    gistRememberSyncSummary(state, inbox.applied > 0 ? `Inbox imported ${inbox.applied}` : 'In sync', new Date().toISOString());
+    gistRememberSyncSummary(state, 'In sync', new Date().toISOString());
     app.syncSettings();
     if (app.syncSB) app.syncSB();
     gistSetStatus('Gist and local are in sync', false);
