@@ -94,7 +94,13 @@ function gistParsePayload(raw) {
 
 function gistPreserveSyncSettings(state, previousSettings) {
   const current = state.data.settings || {};
-  const preservedKeys = ['gistToken', 'repoToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary', 'gistLastLocalSaveAt', 'syncLastAt', 'syncLastSummary'];
+  // Tokens are device-local: never take one from a pulled backup, even one
+  // written before backups stripped them (it may be revoked or another device's).
+  for (const key of ['gistToken', 'repoToken']) {
+    if (previousSettings[key]) current[key] = previousSettings[key];
+    else delete current[key];
+  }
+  const preservedKeys = ['gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary', 'gistLastLocalSaveAt', 'syncLastAt', 'syncLastSummary'];
   for (const key of preservedKeys) {
     if (!current[key] && previousSettings[key]) {
       current[key] = previousSettings[key];

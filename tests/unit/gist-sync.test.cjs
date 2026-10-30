@@ -153,7 +153,7 @@ function makeAppCounters() {
   };
 }
 
-function metaResponse(updatedAt = '2026-06-27T12:00:00.000Z') {
+function metaResponse(updatedAt = '2026-06-27T12:00:00.000Z', remoteSettings = {}) {
   return {
     updated_at: updatedAt,
     files: {
@@ -167,7 +167,7 @@ function metaResponse(updatedAt = '2026-06-27T12:00:00.000Z') {
             tasks: {},
             lists: { l1: { id: 'l1', name: 'Inbox', root_tasks: [] } },
             currentListId: 'l1',
-            settings: {}
+            settings: remoteSettings
           }
         })
       }
@@ -259,6 +259,53 @@ test('syncGistBidirectionalRemote pulls when gist is newer and preserves local t
   assert.equal(state.data.settings.gistToken, 'token');
   assert.equal(state.data.settings.repoToken, 'test-repo-token');
   assert.equal(fetchCalls.filter(c => c.method === 'PATCH').length, 0);
+});
+
+test('syncGistBidirectionalRemote pull keeps local tokens over stale tokens in an older backup', async () => {
+  const localTs = '2026-06-27T10:00:00.000Z';
+  const remoteTs = '2026-06-27T12:00:00.000Z';
+  const remoteSettings = { gistToken: 'leaked-gist-token', repoToken: 'revoked-repo-token', gistId: 'gist-id' };
+
+  const fetchMock = async (url) => {
+    if (String(url).includes('/gists/')) {
+      return { ok: true, json: async () => metaResponse(remoteTs, remoteSettings) };
+    }
+    return { ok: true, text: async () => '' };
+  };
+
+  const { syncGistBidirectionalRemote } = loadGistSyncModule({ fetch: fetchMock });
+  const state = makeState(localTs);
+  state.data.settings.repoToken = 'replacement-repo-token';
+  const { app } = makeAppCounters();
+
+  const changed = await syncGistBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(state.data.settings.gistLastSyncSummary, 'Pulled');
+  assert.equal(state.data.settings.gistToken, 'token');
+  assert.equal(state.data.settings.repoToken, 'replacement-repo-token');
+});
+
+test('syncGistBidirectionalRemote pull does not import a repo token this device never had', async () => {
+  const localTs = '2026-06-27T10:00:00.000Z';
+  const remoteTs = '2026-06-27T12:00:00.000Z';
+
+  const fetchMock = async (url) => {
+    if (String(url).includes('/gists/')) {
+      return { ok: true, json: async () => metaResponse(remoteTs, { repoToken: 'other-device-repo-token' }) };
+    }
+    return { ok: true, text: async () => '' };
+  };
+
+  const { syncGistBidirectionalRemote } = loadGistSyncModule({ fetch: fetchMock });
+  const state = makeState(localTs);
+  const { app } = makeAppCounters();
+
+  const changed = await syncGistBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(state.data.settings.gistToken, 'token');
+  assert.equal(Object.hasOwn(state.data.settings, 'repoToken'), false);
 });
 
 test('syncGistBidirectionalRemote pushes without either token when local is newer', async () => {
