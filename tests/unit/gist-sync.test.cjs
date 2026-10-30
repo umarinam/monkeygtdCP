@@ -542,11 +542,12 @@ test('syncGistBidirectionalRemote applies queued addInbox inbox requests with du
 
 // Fake Gist whose inbox file shrinks when the app PATCHes it, like the real API.
 function makeStatefulGistFetch(remoteTs, inboxLine) {
-  const gist = { inbox: inboxLine, backupPushes: [] };
+  const gist = { inbox: inboxLine, backupPushes: [], failBackupPush: false };
   const fetch = async (url, options = {}) => {
     const method = options.method || 'GET';
     if (method === 'PATCH') {
       const files = JSON.parse(options.body || '{}').files || {};
+      if (files['monkeygtd-backup.json'] && gist.failBackupPush) return { ok: false, status: 500, json: async () => ({}) };
       if (files['monkeygtd-inbox.ndjson']) gist.inbox = files['monkeygtd-inbox.ndjson'].content;
       if (files['monkeygtd-backup.json']) gist.backupPushes.push(JSON.parse(files['monkeygtd-backup.json'].content));
       return { ok: true, json: async () => ({}) };
@@ -574,21 +575,54 @@ async function syncQueuedInboxAgainstNewerGist(remoteTs) {
 
 function assertPulledWithQueuedTask({ changed, gist, state }) {
   assert.equal(changed, true);
-  assert.equal(gist.backupPushes.length, 0, 'stale local copy must not be pushed over the newer gist');
   assert.equal(state.data.tasks.p1?.content, 'Parent', 'remote-only task should be pulled');
   const queued = Object.values(state.data.tasks).filter(t => t.content === 'Queued while remote changed');
   assert.equal(queued.length, 1, 'queued inbox task should survive the pull');
   assert.equal(state.data.lists.l1.root_tasks.includes(queued[0].id), true);
   assert.equal(state.data.settings.gistLastSyncSummary, 'Pulled + inbox imported 1');
   assert.equal(gist.inbox, '');
+  // The only push comes after the pull, so it carries the remote's task plus the imported one.
+  assert.equal(gist.backupPushes.length, 1);
+  const pushedContents = Object.values(gist.backupPushes[0].data.tasks).map(t => t.content).sort();
+  assert.deepEqual(pushedContents, ['Parent', 'Queued while remote changed']);
 }
 
-test('syncGistBidirectionalRemote pulls a newer gist instead of pushing when the inbox has queued requests', async () => {
+test('syncGistBidirectionalRemote pulls a newer gist before pushing queued inbox requests', async () => {
   assertPulledWithQueuedTask(await syncQueuedInboxAgainstNewerGist('2026-06-27T12:00:00.000Z'));
 });
 
 test('syncGistBidirectionalRemote keeps queued inbox tasks when a far-future gist wins the pull', async () => {
   assertPulledWithQueuedTask(await syncQueuedInboxAgainstNewerGist('2099-01-01T00:00:00.000Z'));
+});
+
+test('syncGistBidirectionalRemote retries pushing pulled inbox imports on the next sync after a failed push', async () => {
+  const queueLine = JSON.stringify({ id: 'req-retry-1', action: 'addInbox', content: 'Queued before a failed push' });
+  const { gist, fetch } = makeStatefulGistFetch('2026-06-27T12:00:00.000Z', queueLine);
+  const { syncGistBidirectionalRemote } = loadGistSyncModule({ fetch });
+  const state = makeState('2026-06-27T10:00:00.000Z');
+  const app = {
+    toast: () => {},
+    render: () => {},
+    syncSettings: () => {},
+    save: (options) => {
+      if (!options || options.touchLocalSaveAt !== false) {
+        state.data.settings.gistLastLocalSaveAt = new Date().toISOString();
+      }
+    }
+  };
+
+  gist.failBackupPush = true;
+  const first = await syncGistBidirectionalRemote(app, state, { silent: true, auto: true });
+  assert.equal(first, true);
+  assert.equal(gist.backupPushes.length, 0);
+  assert.equal(state.data.settings.gistLastSyncSummary, 'Pulled + inbox imported 1 (not pushed)');
+
+  gist.failBackupPush = false;
+  const second = await syncGistBidirectionalRemote(app, state, { silent: true, auto: true });
+  assert.equal(second, true);
+  assert.equal(gist.backupPushes.length, 1, 'next sync should push, not pull over the imported task');
+  const pushedContents = Object.values(gist.backupPushes[0].data.tasks).map(t => t.content).sort();
+  assert.deepEqual(pushedContents, ['Parent', 'Queued before a failed push']);
 });
 
 test('syncGistBidirectionalRemote pushes inbox imports when versions are otherwise equal', async () => {

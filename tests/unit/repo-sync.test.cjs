@@ -654,7 +654,7 @@ test('syncRepoBidirectionalRemote leaves inbox queue untouched when there is not
 
 // Fake repo whose inbox file shrinks when the app PUTs it, like the real API.
 function makeStatefulRepoFetch(remoteTs, inboxLine) {
-  const repo = { inbox: inboxLine, backupPushes: [] };
+  const repo = { inbox: inboxLine, backupPushes: [], failBackupPush: false };
   const remotePayload = {
     version: 1,
     exportedAt: remoteTs,
@@ -669,6 +669,7 @@ function makeStatefulRepoFetch(remoteTs, inboxLine) {
     const method = options.method || 'GET';
     const isInbox = String(url).includes('monkeygtd-inbox.ndjson');
     if (method === 'PUT') {
+      if (!isInbox && repo.failBackupPush) return { ok: false, status: 500, json: async () => ({}) };
       const raw = Buffer.from(JSON.parse(options.body).content, 'base64').toString('utf8');
       if (isInbox) repo.inbox = raw;
       else repo.backupPushes.push(JSON.parse(raw));
@@ -700,21 +701,54 @@ async function syncQueuedInboxAgainstNewerRepo(remoteTs) {
 
 function assertPulledWithQueuedTask({ changed, repo, state }) {
   assert.equal(changed, true);
-  assert.equal(repo.backupPushes.length, 0, 'stale local copy must not be pushed over the newer repo file');
   assert.equal(state.data.tasks.p1?.content, 'Parent', 'remote-only task should be pulled');
   const queued = Object.values(state.data.tasks).filter(t => t.content === 'Queued while remote changed');
   assert.equal(queued.length, 1, 'queued inbox task should survive the pull');
   assert.equal(state.data.lists.l1.root_tasks.includes(queued[0].id), true);
   assert.equal(state.data.settings.repoLastSyncSummary, 'Pulled + inbox imported 1');
   assert.equal(repo.inbox, '');
+  // The only push comes after the pull, so it carries the remote's task plus the imported one.
+  assert.equal(repo.backupPushes.length, 1);
+  const pushedContents = Object.values(repo.backupPushes[0].data.tasks).map(t => t.content).sort();
+  assert.deepEqual(pushedContents, ['Parent', 'Queued while remote changed']);
 }
 
-test('syncRepoBidirectionalRemote pulls a newer repo copy instead of pushing when the inbox has queued requests', async () => {
+test('syncRepoBidirectionalRemote pulls a newer repo copy before pushing queued inbox requests', async () => {
   assertPulledWithQueuedTask(await syncQueuedInboxAgainstNewerRepo('2026-07-18T12:00:00.000Z'));
 });
 
 test('syncRepoBidirectionalRemote keeps queued inbox tasks when a far-future repo copy wins the pull', async () => {
   assertPulledWithQueuedTask(await syncQueuedInboxAgainstNewerRepo('2099-01-01T00:00:00.000Z'));
+});
+
+test('syncRepoBidirectionalRemote retries pushing pulled inbox imports on the next sync after a failed push', async () => {
+  const queueLine = JSON.stringify({ id: 'req-retry-1', action: 'addInbox', content: 'Queued before a failed push' });
+  const { repo, fetch } = makeStatefulRepoFetch('2026-07-18T12:00:00.000Z', queueLine);
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch });
+  const state = makeState('2026-07-18T10:00:00.000Z');
+  const app = {
+    toast: () => {},
+    render: () => {},
+    syncSettings: () => {},
+    save: (options) => {
+      if (!options || options.touchLocalSaveAt !== false) {
+        state.data.settings.gistLastLocalSaveAt = new Date().toISOString();
+      }
+    }
+  };
+
+  repo.failBackupPush = true;
+  const first = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+  assert.equal(first, true);
+  assert.equal(repo.backupPushes.length, 0);
+  assert.equal(state.data.settings.repoLastSyncSummary, 'Pulled + inbox imported 1 (not pushed)');
+
+  repo.failBackupPush = false;
+  const second = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+  assert.equal(second, true);
+  assert.equal(repo.backupPushes.length, 1, 'next sync should push, not pull over the imported task');
+  const pushedContents = Object.values(repo.backupPushes[0].data.tasks).map(t => t.content).sort();
+  assert.deepEqual(pushedContents, ['Parent', 'Queued before a failed push']);
 });
 
 test('syncRepoBidirectionalRemote pushes inbox imports when versions are otherwise equal', async () => {

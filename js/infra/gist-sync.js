@@ -439,15 +439,26 @@ async function syncFromGistRemote(app, state, options) {
     state.data.settings.gistLastSyncAt = remoteAt || new Date().toISOString();
 
     const inbox = await gistProcessInboxRemote(state, config, meta);
-    gistRememberSyncSummary(state, inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled', remoteAt || new Date().toISOString());
+    let summary = inbox.applied > 0 ? `Pulled + inbox imported ${inbox.applied}` : 'Pulled';
+    gistRememberSyncSummary(state, summary, remoteAt || new Date().toISOString());
 
-    app.save({ touchLocalSaveAt: false });
+    // Imported tasks have already left the inbox file, so push them into the backup now.
+    // A normal save stamps local as newest, so if that push fails the next sync retries
+    // it instead of pulling over them.
+    app.save(inbox.applied > 0 ? {} : { touchLocalSaveAt: false });
+    let pushed = true;
+    if (inbox.applied > 0) {
+      pushed = await syncToGistRemote(app, state, { silent: true });
+      if (!pushed) summary += ' (not pushed)';
+      gistRememberSyncSummary(state, summary);
+      app.save({ touchLocalSaveAt: false });
+    }
     app.render();
     app.syncSettings();
     if (app.syncSB) app.syncSB();
 
     const label = file?.filename || config.filename;
-    const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued` : '';
+    const inboxLabel = inbox.applied > 0 ? ` + ${inbox.applied} queued${pushed ? '' : ' (not pushed)'}` : '';
     gistSetStatus(`Pulled ${label}${inboxLabel}`, false);
     if (!opts.silent) app.toast('Gist sync: pulled latest');
     return true;
