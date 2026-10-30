@@ -539,6 +539,23 @@ async function syncGistBidirectionalRemote(app, state, options) {
     const raw = await gistReadFileContent(file);
     const payload = gistParsePayload(raw);
 
+    // Compare timestamps before importing the inbox: the import stamps gistLastSyncAt with
+    // "now", which would make local always look newer and push over remote changes.
+    const remoteDataMs = gistIsoToMs(payload.exportedAt);
+    const remoteMetaMs = gistIsoToMs(meta.updated_at);
+    const remoteMs = Math.max(remoteDataMs, remoteMetaMs);
+    const localMs = Math.max(
+      gistIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
+      gistIsoToMs(state.data?.settings?.gistLastSyncAt)
+    );
+
+    const action = gistResolveRemoteVsLocal(remoteMs, localMs);
+
+    if (action === 'pull') {
+      // syncFromGistRemote imports the inbox on top of the pulled data.
+      return syncFromGistRemote(app, state, { silent: opts.silent, auto: false });
+    }
+
     const inbox = await gistProcessInboxRemote(state, config, meta);
     if (inbox.applied > 0) {
       gistRememberSyncSummary(state, `Inbox imported ${inbox.applied}`, new Date().toISOString());
@@ -549,25 +566,12 @@ async function syncGistBidirectionalRemote(app, state, options) {
       if (!opts.silent) app.toast(`Gist inbox: added ${inbox.applied} task(s)`);
     }
 
-    const remoteDataMs = gistIsoToMs(payload.exportedAt);
-    const remoteMetaMs = gistIsoToMs(meta.updated_at);
-    const remoteAt = remoteDataMs >= remoteMetaMs ? (payload.exportedAt || '') : (meta.updated_at || '');
-    const remoteMs = Math.max(remoteDataMs, remoteMetaMs);
-    const localMs = Math.max(
-      gistIsoToMs(state.data?.settings?.gistLastLocalSaveAt),
-      gistIsoToMs(state.data?.settings?.gistLastSyncAt)
-    );
-
-    const action = gistResolveRemoteVsLocal(remoteMs, localMs);
-
-    if (action === 'pull') {
-      return syncFromGistRemote(app, state, { silent: opts.silent, auto: false });
-    }
-    if (action === 'push') {
+    // Imported tasks have already left the inbox file, so get them into the backup now.
+    if (action === 'push' || inbox.applied > 0) {
       return syncToGistRemote(app, state, { silent: opts.silent });
     }
 
-    gistRememberSyncSummary(state, inbox.applied > 0 ? `Inbox imported ${inbox.applied}` : 'In sync', new Date().toISOString());
+    gistRememberSyncSummary(state, 'In sync', new Date().toISOString());
     app.syncSettings();
     if (app.syncSB) app.syncSB();
     gistSetStatus('Gist and local are in sync', false);

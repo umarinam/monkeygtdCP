@@ -651,3 +651,88 @@ test('syncRepoBidirectionalRemote leaves inbox queue untouched when there is not
   assert.equal(state.data.settings.repoLastSyncSummary, 'In sync');
   assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 0);
 });
+
+// Fake repo whose inbox file shrinks when the app PUTs it, like the real API.
+function makeStatefulRepoFetch(remoteTs, inboxLine) {
+  const repo = { inbox: inboxLine, backupPushes: [] };
+  const remotePayload = {
+    version: 1,
+    exportedAt: remoteTs,
+    data: {
+      tasks: { p1: { id: 'p1', content: 'Parent', status: 0, checklist_id: 'l1', parent_id: '', tasks: [] } },
+      lists: { l1: { id: 'l1', name: 'Inbox', root_tasks: ['p1'] } },
+      currentListId: 'l1',
+      settings: {}
+    }
+  };
+  const fetch = async (url, options = {}) => {
+    const method = options.method || 'GET';
+    const isInbox = String(url).includes('monkeygtd-inbox.ndjson');
+    if (method === 'PUT') {
+      const raw = Buffer.from(JSON.parse(options.body).content, 'base64').toString('utf8');
+      if (isInbox) repo.inbox = raw;
+      else repo.backupPushes.push(JSON.parse(raw));
+      return { ok: true, status: 200, json: async () => ({}) };
+    }
+    const raw = isInbox ? repo.inbox : JSON.stringify(remotePayload);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ sha: isInbox ? 'inbox-sha' : 'sha-1', content: Buffer.from(raw, 'utf8').toString('base64') }),
+      text: async () => raw
+    };
+  };
+  return { repo, fetch };
+}
+
+async function syncQueuedInboxAgainstNewerRepo(remoteTs) {
+  const queueLine = JSON.stringify({ id: 'req-pull-1', action: 'addInbox', content: 'Queued while remote changed' });
+  const { repo, fetch } = makeStatefulRepoFetch(remoteTs, queueLine);
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch });
+  // Local copy predates the remote one, which another device pushed with task p1 in it.
+  const state = makeState('2026-07-18T10:00:00.000Z');
+  const { app } = makeAppCounters();
+
+  const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  return { changed, repo, state };
+}
+
+function assertPulledWithQueuedTask({ changed, repo, state }) {
+  assert.equal(changed, true);
+  assert.equal(repo.backupPushes.length, 0, 'stale local copy must not be pushed over the newer repo file');
+  assert.equal(state.data.tasks.p1?.content, 'Parent', 'remote-only task should be pulled');
+  const queued = Object.values(state.data.tasks).filter(t => t.content === 'Queued while remote changed');
+  assert.equal(queued.length, 1, 'queued inbox task should survive the pull');
+  assert.equal(state.data.lists.l1.root_tasks.includes(queued[0].id), true);
+  assert.equal(state.data.settings.repoLastSyncSummary, 'Pulled + inbox imported 1');
+  assert.equal(repo.inbox, '');
+}
+
+test('syncRepoBidirectionalRemote pulls a newer repo copy instead of pushing when the inbox has queued requests', async () => {
+  assertPulledWithQueuedTask(await syncQueuedInboxAgainstNewerRepo('2026-07-18T12:00:00.000Z'));
+});
+
+test('syncRepoBidirectionalRemote keeps queued inbox tasks when a far-future repo copy wins the pull', async () => {
+  assertPulledWithQueuedTask(await syncQueuedInboxAgainstNewerRepo('2099-01-01T00:00:00.000Z'));
+});
+
+test('syncRepoBidirectionalRemote pushes inbox imports when versions are otherwise equal', async () => {
+  const sameTs = '2026-07-18T12:00:00.000Z';
+  const queueLine = JSON.stringify({ id: 'req-eq-1', action: 'addInbox', content: 'Queued with nothing else new' });
+  const { repo, fetch } = makeStatefulRepoFetch(sameTs, queueLine);
+  const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch });
+  const state = makeState(sameTs);
+  state.data.tasks.p1 = { id: 'p1', content: 'Parent', status: 0, checklist_id: 'l1', parent_id: '', tasks: [] };
+  state.data.lists.l1.root_tasks = ['p1'];
+  const { app } = makeAppCounters();
+
+  const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
+
+  assert.equal(changed, true);
+  assert.equal(repo.backupPushes.length, 1);
+  const pushedContents = Object.values(repo.backupPushes[0].data.tasks).map(t => t.content).sort();
+  assert.deepEqual(pushedContents, ['Parent', 'Queued with nothing else new']);
+  assert.equal(state.data.settings.repoLastSyncSummary, 'Pushed');
+  assert.equal(repo.inbox, '');
+});
