@@ -121,14 +121,14 @@ test('syncRepoBidirectionalRemote pulls when repo copy is newer', async () => {
   assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 0);
 });
 
-test('syncRepoBidirectionalRemote pushes when local copy is newer', async () => {
+test('syncRepoBidirectionalRemote pushes without either token when local copy is newer', async () => {
   const localTs = '2026-07-18T12:00:00.000Z';
   const remoteTs = '2026-07-18T10:00:00.000Z';
   const fetchCalls = [];
 
   const fetchMock = async (url, options = {}) => {
     const method = options.method || 'GET';
-    fetchCalls.push({ url, method });
+    fetchCalls.push({ url, method, body: options.body });
 
     if (method === 'PUT') {
       return { ok: true, status: 200, json: async () => ({}) };
@@ -139,6 +139,7 @@ test('syncRepoBidirectionalRemote pushes when local copy is newer', async () => 
 
   const { syncRepoBidirectionalRemote } = loadRepoSyncModule({ fetch: fetchMock });
   const state = makeState(localTs);
+  state.data.settings.gistToken = 'test-gist-token';
   const { app, calls } = makeAppCounters();
 
   const changed = await syncRepoBidirectionalRemote(app, state, { silent: true, auto: true });
@@ -149,6 +150,14 @@ test('syncRepoBidirectionalRemote pushes when local copy is newer', async () => 
   assert.equal(calls.syncSettings, 1);
   assert.equal(state.data.settings.repoLastSyncSummary, 'Pushed');
   assert.equal(fetchCalls.filter(c => c.method === 'PUT').length, 1);
+  const upload = JSON.parse(fetchCalls.find(c => c.method === 'PUT').body);
+  const backup = JSON.parse(Buffer.from(upload.content, 'base64').toString('utf8'));
+  assert.equal(Object.hasOwn(backup.data.settings, 'gistToken'), false);
+  assert.equal(Object.hasOwn(backup.data.settings, 'repoToken'), false);
+  assert.deepEqual(backup.data.lists, state.data.lists);
+  assert.equal(backup.data.settings.repoOwner, 'octocat');
+  assert.equal(state.data.settings.repoToken, 'token');
+  assert.equal(state.data.settings.gistToken, 'test-gist-token');
 });
 
 test('syncRepoBidirectionalRemote does nothing when versions are equal', async () => {

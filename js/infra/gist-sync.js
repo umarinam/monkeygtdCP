@@ -94,7 +94,7 @@ function gistParsePayload(raw) {
 
 function gistPreserveSyncSettings(state, previousSettings) {
   const current = state.data.settings || {};
-  const preservedKeys = ['gistToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary', 'gistLastLocalSaveAt', 'syncLastAt', 'syncLastSummary'];
+  const preservedKeys = ['gistToken', 'repoToken', 'gistId', 'gistFilename', 'gistInboxFilename', 'gistLastSyncAt', 'gistLastSyncSummary', 'gistLastLocalSaveAt', 'syncLastAt', 'syncLastSummary'];
   for (const key of preservedKeys) {
     if (!current[key] && previousSettings[key]) {
       current[key] = previousSettings[key];
@@ -476,6 +476,7 @@ async function syncToGistRemote(app, state, options) {
     const backupData = JSON.parse(JSON.stringify(state.data));
     if (backupData.settings) {
       delete backupData.settings.gistToken;
+      delete backupData.settings.repoToken;
     }
     const exportedAt = new Date().toISOString();
     const content = JSON.stringify({ version: 1, exportedAt, data: backupData }, null, 2);

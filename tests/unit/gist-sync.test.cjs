@@ -226,7 +226,7 @@ function metaResponseWithInbox(updatedAt = '2026-06-27T12:00:00.000Z', inboxLine
   };
 }
 
-test('syncGistBidirectionalRemote pulls when gist is newer', async () => {
+test('syncGistBidirectionalRemote pulls when gist is newer and preserves local tokens', async () => {
   const localTs = '2026-06-27T10:00:00.000Z';
   const remoteTs = '2026-06-27T12:00:00.000Z';
   const fetchCalls = [];
@@ -246,6 +246,7 @@ test('syncGistBidirectionalRemote pulls when gist is newer', async () => {
 
   const { syncGistBidirectionalRemote } = loadGistSyncModule({ fetch: fetchMock });
   const state = makeState(localTs);
+  state.data.settings.repoToken = 'test-repo-token';
   const { app, calls } = makeAppCounters();
 
   const changed = await syncGistBidirectionalRemote(app, state, { silent: true, auto: true });
@@ -255,16 +256,18 @@ test('syncGistBidirectionalRemote pulls when gist is newer', async () => {
   assert.equal(calls.render, 1);
   assert.equal(calls.syncSettings, 1);
   assert.equal(state.data.settings.gistLastSyncSummary, 'Pulled');
+  assert.equal(state.data.settings.gistToken, 'token');
+  assert.equal(state.data.settings.repoToken, 'test-repo-token');
   assert.equal(fetchCalls.filter(c => c.method === 'PATCH').length, 0);
 });
 
-test('syncGistBidirectionalRemote pushes when local is newer', async () => {
+test('syncGistBidirectionalRemote pushes without either token when local is newer', async () => {
   const localTs = '2026-06-27T12:00:00.000Z';
   const remoteTs = '2026-06-27T10:00:00.000Z';
   const fetchCalls = [];
 
   const fetchMock = async (url, options = {}) => {
-    fetchCalls.push({ url, method: options.method || 'GET' });
+    fetchCalls.push({ url, method: options.method || 'GET', body: options.body });
     if ((options.method || 'GET') === 'PATCH') {
       return { ok: true, json: async () => ({}) };
     }
@@ -278,6 +281,7 @@ test('syncGistBidirectionalRemote pushes when local is newer', async () => {
 
   const { syncGistBidirectionalRemote } = loadGistSyncModule({ fetch: fetchMock });
   const state = makeState(localTs);
+  state.data.settings.repoToken = 'test-repo-token';
   const { app, calls } = makeAppCounters();
 
   const changed = await syncGistBidirectionalRemote(app, state, { silent: true, auto: true });
@@ -290,6 +294,14 @@ test('syncGistBidirectionalRemote pushes when local is newer', async () => {
   assert.equal(state.data.settings.syncLastSummary, 'Pushed');
   assert.ok(state.data.settings.syncLastAt);
   assert.equal(fetchCalls.filter(c => c.method === 'PATCH').length, 1);
+  const upload = JSON.parse(fetchCalls.find(c => c.method === 'PATCH').body);
+  const backup = JSON.parse(upload.files['monkeygtd-backup.json'].content);
+  assert.equal(Object.hasOwn(backup.data.settings, 'gistToken'), false);
+  assert.equal(Object.hasOwn(backup.data.settings, 'repoToken'), false);
+  assert.deepEqual(backup.data.lists, state.data.lists);
+  assert.equal(backup.data.settings.gistId, 'gist-id');
+  assert.equal(state.data.settings.gistToken, 'token');
+  assert.equal(state.data.settings.repoToken, 'test-repo-token');
 });
 
 test('syncGistBidirectionalRemote refreshes global sync timestamp when previous global sync exists', async () => {
