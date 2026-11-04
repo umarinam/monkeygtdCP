@@ -1,96 +1,147 @@
 Option Explicit
 
 Private Const SEND_TASK_PY As String = "D:\Personal\Projects\MonkeyGTD\monkeygtd-copilot\scripts\send-task.py"
-Private Const DEFAULT_PARENT_TASK_ID As String = "8bkrfy3mr57q25y"
+' Empty files emails into the "Inbox" list; set a task id to file them under that task instead.
+Private Const PARENT_TASK_ID As String = ""
+Private Const MAX_ERROR_CHARS As Long = 300
 
 Public Sub SendSelectedEmailToMonkeyTask()
 	On Error GoTo EH
 
-	Dim mail As Outlook.MailItem
-	Set mail = GetSelectedMailItem()
-	If mail Is Nothing Then Exit Sub
-
-	Dim parentTaskId As String
-	parentTaskId = Trim$(DEFAULT_PARENT_TASK_ID)
-	If parentTaskId = "" Then
-		parentTaskId = Trim$(InputBox("Enter Parent Task ID:", "MonkeyGTD Parent Task"))
+	If Dir$(SEND_TASK_PY) = "" Then
+		MsgBox "Script not found: " & SEND_TASK_PY, vbCritical
+		Exit Sub
 	End If
-	If parentTaskId = "" Then Exit Sub
 
-	Dim content As String
-	content = BuildTaskContent(mail)
+	Dim exp As Outlook.Explorer
+	Set exp = Application.ActiveExplorer
+	If exp Is Nothing Then
+		MsgBox "No active Outlook explorer window.", vbExclamation
+		Exit Sub
+	End If
 
-	RunSendTaskPython parentTaskId, content
+	Dim sel As Outlook.Selection
+	Set sel = exp.Selection
+	If sel.Count = 0 Then
+		MsgBox "Please select at least one email first.", vbExclamation
+		Exit Sub
+	End If
 
-	MsgBox "Email queued to MonkeyGTD.", vbInformation
+	Dim it As Object
+	Dim mailCount As Long
+	Dim queuedCount As Long
+	Dim skippedCount As Long
+	Dim failures As String
+	Dim errorText As String
+
+	For Each it In sel
+		If TypeName(it) = "MailItem" Then
+			mailCount = mailCount + 1
+			errorText = RunSendTask(BuildTaskContent(it))
+			If errorText = "" Then
+				queuedCount = queuedCount + 1
+			Else
+				failures = failures & vbCrLf & "- " & SubjectOf(it) & ": " & errorText
+			End If
+		Else
+			skippedCount = skippedCount + 1
+		End If
+	Next
+
+	ShowSummary mailCount, queuedCount, skippedCount, failures
 	Exit Sub
 
 EH:
 	MsgBox "Error: " & Err.Description, vbCritical
 End Sub
 
-Private Function GetSelectedMailItem() As Outlook.MailItem
-	Dim exp As Outlook.Explorer
-	Dim sel As Outlook.Selection
-	Dim it As Object
-
-	Set exp = Application.ActiveExplorer
-	If exp Is Nothing Then
-		MsgBox "No active Outlook explorer window.", vbExclamation
-		Set GetSelectedMailItem = Nothing
-		Exit Function
-	End If
-
-	Set sel = exp.Selection
-	If sel Is Nothing Or sel.Count = 0 Then
-		MsgBox "Please select one email first.", vbExclamation
-		Set GetSelectedMailItem = Nothing
-		Exit Function
-	End If
-
-	Set it = sel.Item(1)
-	If TypeName(it) <> "MailItem" Then
-		MsgBox "Selected item is not an email.", vbExclamation
-		Set GetSelectedMailItem = Nothing
-		Exit Function
-	End If
-
-	Set GetSelectedMailItem = it
+Private Function SubjectOf(ByVal mail As Outlook.MailItem) As String
+	Dim subjectText As String
+	subjectText = Trim$(mail.Subject)
+	If subjectText = "" Then subjectText = "(No subject)"
+	SubjectOf = subjectText
 End Function
 
 Private Function BuildTaskContent(ByVal mail As Outlook.MailItem) As String
-	Dim subjectText As String
-	Dim entryId As String
-
-	subjectText = Trim$(mail.Subject)
-	If subjectText = "" Then subjectText = "(No subject)"
-
-	entryId = Trim$(mail.EntryID)
-	BuildTaskContent = subjectText & " [fa:envelope](outlook:" & entryId & ")"
+	BuildTaskContent = SubjectOf(mail) & " [fa:envelope](outlook:" & Trim$(mail.EntryID) & ")"
 End Function
 
-Private Sub RunSendTaskPython(ByVal parentTaskId As String, ByVal content As String)
-	If Dir$(SEND_TASK_PY) = "" Then
-		Err.Raise vbObjectError + 1001, , "Script not found: " & SEND_TASK_PY
+Private Function TargetLabel() As String
+	If PARENT_TASK_ID = "" Then
+		TargetLabel = "the MonkeyGTD Inbox"
+	Else
+		TargetLabel = "MonkeyGTD task " & PARENT_TASK_ID
+	End If
+End Function
+
+' Returns "" on success, otherwise the script's error output.
+Private Function RunSendTask(ByVal content As String) As String
+	Dim targetArgs As String
+	If PARENT_TASK_ID = "" Then
+		targetArgs = "--inbox --source outlook -- "
+	Else
+		targetArgs = "--source outlook -- " & Q(PARENT_TASK_ID) & " "
 	End If
 
-	parentTaskId = Replace(parentTaskId, """", "")
-	content = Replace(content, """", "'")
+	Dim logPath As String
+	logPath = Environ$("TEMP") & "\monkeygtd-outlook.log"
 
+	' "--" keeps a subject that starts with "-" from being read as an option.
 	Dim cmd As String
-	cmd = "py -3 " & Q(SEND_TASK_PY) & " " & Q(parentTaskId) & " " & Q(content)
+	cmd = "py -3 " & Q(SEND_TASK_PY) & " " & targetArgs & Q(Replace(content, """", "'"))
 
-	Dim sh As Object
+	' Run hidden through cmd so the script's output can be captured for the summary.
 	Dim exitCode As Long
-	Set sh = CreateObject("WScript.Shell")
-	exitCode = sh.Run(cmd, 0, True)
+	exitCode = CreateObject("WScript.Shell").Run("cmd /s /c """ & cmd & " > " & Q(logPath) & " 2>&1""", 0, True)
 
-	If exitCode <> 0 Then
-		Err.Raise vbObjectError + 1002, , "send-task.py failed with exit code " & CStr(exitCode)
+	Dim scriptOutput As String
+	scriptOutput = ReadTextFile(logPath)
+	If Dir$(logPath) <> "" Then Kill logPath
+
+	If exitCode = 0 Then Exit Function
+
+	scriptOutput = Trim$(Replace(Replace(scriptOutput, vbCr, ""), vbLf, " "))
+	If scriptOutput = "" Then scriptOutput = "send-task.py failed with exit code " & CStr(exitCode)
+	' Keep the tail: argparse puts the actual error after a long usage line.
+	If Len(scriptOutput) > MAX_ERROR_CHARS Then scriptOutput = "..." & Right$(scriptOutput, MAX_ERROR_CHARS)
+	RunSendTask = scriptOutput
+End Function
+
+Private Function ReadTextFile(ByVal filePath As String) As String
+	If Dir$(filePath) = "" Then Exit Function
+	If FileLen(filePath) = 0 Then Exit Function
+
+	Dim fileText As String
+	Dim f As Integer
+	f = FreeFile
+	Open filePath For Binary Access Read As #f
+	fileText = Space$(LOF(f))
+	Get #f, , fileText
+	Close #f
+	ReadTextFile = fileText
+End Function
+
+Private Sub ShowSummary(ByVal mailCount As Long, ByVal queuedCount As Long, ByVal skippedCount As Long, ByVal failures As String)
+	If mailCount = 0 Then
+		MsgBox "The selection has no emails.", vbExclamation
+		Exit Sub
+	End If
+
+	Dim msg As String
+	If failures = "" Then
+		msg = "Queued " & queuedCount & IIf(queuedCount = 1, " email", " emails") & " to " & TargetLabel() & "."
+	Else
+		msg = "Queued " & queuedCount & " of " & mailCount & " emails to " & TargetLabel() & "."
+	End If
+	If skippedCount > 0 Then msg = msg & vbCrLf & "Skipped " & skippedCount & " selected item(s) that are not emails."
+
+	If failures = "" Then
+		MsgBox msg, vbInformation
+	Else
+		MsgBox msg & vbCrLf & vbCrLf & "Failed:" & failures, vbExclamation
 	End If
 End Sub
 
 Private Function Q(ByVal s As String) As String
 	Q = """" & s & """"
 End Function
-
