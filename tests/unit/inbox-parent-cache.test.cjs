@@ -161,6 +161,8 @@ function bootInbox(localSeed = {}, options = {}) {
   // catch-all below), so this proves the full fallback chain is exercised
   // end-to-end rather than accidentally short-circuiting on the first step.
   const repoBackupOversized = !!options.repoBackupOversized;
+  // Makes the Gist inbox write fail, so a failed send can be tested. Settable after boot.
+  let failInboxWrite = !!options.failInboxWrite;
   const repoBackupDownloadUrl = `https://raw.githubusercontent.com/octocat/private-backups/main/${repoBackupPath}`;
 
   const document = {
@@ -221,6 +223,7 @@ function bootInbox(localSeed = {}, options = {}) {
         }
 
         if (method === 'PATCH') {
+          if (failInboxWrite) return { ok: false, status: 500, json: async () => ({}) };
           const body = JSON.parse(options.body || '{}');
           inboxContent = body.files['monkeygtd-inbox.ndjson'].content;
           return { ok: true, json: async () => ({}) };
@@ -309,6 +312,7 @@ function bootInbox(localSeed = {}, options = {}) {
     localStorage,
     fetchCalls,
     runTimers: () => timers.splice(0).forEach((fn) => fn()),
+    setFailInboxWrite: (on) => { failInboxWrite = !!on; },
     getInboxContent: () => inboxContent,
     getRepoInboxContent: () => repoInboxContent
   };
@@ -821,6 +825,74 @@ test('Inbox remembers a cleared due date as "no due date"', async () => {
   second.elements.taskTitle.value = 'Someday idea';
   await second.elements.taskForm.listeners.submit({ preventDefault() {} });
   assert.equal(JSON.parse(second.getInboxContent().trim()).due, undefined);
+});
+
+test('Inbox resets a picked due date back to today after each send, while list and parent stay', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const seed = {
+    ...credsSeed(),
+    ...backupCacheSeed(),
+    ...prefsSeed({ listId: 'l1', listName: 'Work Projects', parentId: 't2', parentTitle: 'Q3 Planning', due: '2026-10-05' })
+  };
+  const { elements, localStorage, getInboxContent } = bootInbox(seed, { clock });
+  assert.equal(elements.taskDueDate.value, '2026-10-05');
+
+  elements.taskTitle.value = 'Uses the picked date';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  assert.equal(JSON.parse(getInboxContent().trim()).due, '2026-10-05');
+
+  assert.equal(elements.taskDueDate.value, '2026-09-27');
+  assert.deepEqual(chipTexts(elements), ['📋 Work Projects', '↳ Q3 Planning', '📅 Due today']);
+  assert.deepEqual(readPrefs(localStorage), {
+    listId: 'l1',
+    listName: 'Work Projects',
+    parentId: 't2',
+    parentTitle: 'Q3 Planning',
+    due: 'today'
+  });
+
+  elements.taskTitle.value = 'Next task is due today';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  const lines = getInboxContent().trim().split(/\r?\n/);
+  assert.equal(JSON.parse(lines[1]).due, '2026-09-27');
+
+  // A reload after the send doesn't bring the old date back either.
+  const reopened = bootInbox(localStorage.snapshot(), { clock });
+  assert.equal(reopened.elements.taskDueDate.value, '2026-09-27');
+});
+
+test('Inbox resets "no due date" back to today after a send', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const { elements, localStorage, getInboxContent } = bootInbox({ ...credsSeed(), ...prefsSeed({ due: 'none' }) }, { clock });
+  assert.equal(elements.taskDueDate.value, '');
+
+  elements.taskTitle.value = 'Someday idea';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  assert.equal(JSON.parse(getInboxContent().trim()).due, undefined);
+
+  assert.equal(elements.taskDueDate.value, '2026-09-27');
+  assert.equal(readPrefs(localStorage).due, 'today');
+  assert.deepEqual(chipTexts(elements), ['📋 Default list', '📅 Due today']);
+});
+
+test('Inbox keeps the picked due date when a send fails, so a retry uses the same date', async () => {
+  const clock = createClock('2026-09-27T09:00:00');
+  const { elements, localStorage, getInboxContent, setFailInboxWrite } = bootInbox(credsSeed(), { clock, failInboxWrite: true });
+
+  elements.taskDueDate.value = '2026-10-05';
+  elements.taskDueDate.listeners.change();
+  elements.taskTitle.value = 'Flaky network';
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+
+  assert.equal(elements.statusMessage.className, 'status error');
+  assert.equal(elements.taskTitle.value, 'Flaky network');
+  assert.equal(elements.taskDueDate.value, '2026-10-05');
+  assert.equal(readPrefs(localStorage).due, '2026-10-05');
+
+  setFailInboxWrite(false);
+  await elements.taskForm.listeners.submit({ preventDefault() {} });
+  assert.equal(JSON.parse(getInboxContent().trim()).due, '2026-10-05');
+  assert.equal(elements.taskDueDate.value, '2026-09-27');
 });
 
 test('Inbox rolls an untouched "due today" forward when the page is left open past midnight', async () => {

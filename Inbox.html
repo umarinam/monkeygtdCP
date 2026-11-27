@@ -453,7 +453,7 @@
                         <input type="date" id="taskDueDate" name="taskDueDate">
                     </div>
 
-                    <p class="hint">List, parent and due date are remembered for your next task.</p>
+                    <p class="hint">List and parent are remembered for your next task. Due date goes back to today after each send.</p>
                 </div>
             </details>
 
@@ -578,6 +578,12 @@
         function rememberDue() {
             updateInboxPrefs({ due: duePrefFromValue(dueDateInput.value) });
             autoDue = inboxPrefs.due === 'today' ? dueDateInput.value : '';
+        }
+
+        // A picked due date applies to one task only: each send starts the next one back at the default.
+        function resetDue() {
+            dueDateInput.value = resolveDuePref(defaultInboxPrefs().due);
+            rememberDue();
         }
 
         function localDateStr(d) {
@@ -1234,7 +1240,7 @@
             submitTask();
         });
 
-        // Clear only what was typed; the remembered list/parent/due stay for the next task.
+        // Clear only what was typed; the remembered list/parent and the picked due date stay.
         form.addEventListener('reset', (e) => {
             e.preventDefault();
             clearEntryText();
@@ -1472,6 +1478,7 @@
                 }
 
                 cacheParentReference(taskParentId, taskParentTitle);
+                resetDue();
                 clearEntryText();
                 statusTimer = setTimeout(() => {
                     statusMessage.style.display = 'none';
